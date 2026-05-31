@@ -34,6 +34,7 @@ import {
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 type TradeRecordsSearchResult = Awaited<ReturnType<typeof searchTradeRecords>>;
 type TradeRecordRow = TradeRecordsSearchResult["data"][number];
+type SummaryRank = TradeRecordsSearchResult["summary"]["rankings"]["countries"][number];
 
 const defaultSearchInput = {
   tradeFlow: "import",
@@ -52,6 +53,35 @@ function formatMoney(value: string | null, currency?: string) {
   }
 
   return currency ? `${value} ${currency}` : value;
+}
+
+function formatDecimal(value: string | number | null | undefined, fractionDigits = 2) {
+  if (value === null || value === undefined) {
+    return "—";
+  }
+
+  const numericValue = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(numericValue)) {
+    return String(value);
+  }
+
+  return new Intl.NumberFormat("es-CL", {
+    maximumFractionDigits: fractionDigits,
+  }).format(numericValue);
+}
+
+function formatSummaryValue(
+  value: string | null,
+  suffix?: string,
+  fractionDigits = 2,
+) {
+  if (!value) {
+    return "—";
+  }
+
+  return suffix
+    ? `${formatDecimal(value, fractionDigits)} ${suffix}`
+    : formatDecimal(value, fractionDigits);
 }
 
 function formatCodeLabel(code: string | null, label?: string) {
@@ -80,6 +110,27 @@ function optionLabel(options: TradeRecordFilterOption[], value: string | undefin
   }
 
   return options.find((option) => option.value === value)?.displayLabel ?? value;
+}
+
+function optionName(options: TradeRecordFilterOption[], value: string | undefined) {
+  if (!value) {
+    return undefined;
+  }
+
+  return options.find((option) => option.value === value)?.label ?? value;
+}
+
+function summaryCodeLabel(
+  options: TradeRecordFilterOption[],
+  code: string | null | undefined,
+  labelRaw?: string | null,
+) {
+  if (!code && !labelRaw) {
+    return "—";
+  }
+
+  const decoded = code ? options.find((option) => option.value === code)?.label : undefined;
+  return formatCodeLabel(code ?? null, decoded ?? labelRaw ?? undefined);
 }
 
 function sortLabel(value: string | undefined) {
@@ -121,6 +172,30 @@ function itemValueFilterLabel(filters: TradeRecordsSearchResult["filters"]) {
   }
 
   return "Valor item CIF/FOB";
+}
+
+function summaryCountryTitle(filters: TradeRecordsSearchResult["filters"]) {
+  if (filters.tradeFlow === "export") {
+    return "Top países destino";
+  }
+
+  if (filters.tradeFlow === "import") {
+    return "Top países origen";
+  }
+
+  return "Top países";
+}
+
+function summaryPortTitle(filters: TradeRecordsSearchResult["filters"]) {
+  if (filters.tradeFlow === "export") {
+    return "Top puertos embarque";
+  }
+
+  if (filters.tradeFlow === "import") {
+    return "Top puertos desembarque";
+  }
+
+  return "Top puertos relevantes";
 }
 
 function activeFilterItems(
@@ -281,6 +356,177 @@ function RangeInput({
         placeholder={placeholder}
       />
     </div>
+  );
+}
+
+function SummaryMetric({
+  label,
+  value,
+  note,
+}: {
+  label: string;
+  value: string;
+  note?: string;
+}) {
+  return (
+    <div className="min-w-0 rounded-lg border border-border bg-muted/20 px-3 py-2">
+      <div className="text-xs text-muted-foreground">{label}</div>
+      <div className="mt-1 truncate font-mono text-sm font-medium">{value}</div>
+      {note ? <div className="mt-1 text-xs text-muted-foreground">{note}</div> : null}
+    </div>
+  );
+}
+
+function SummaryRanking({
+  emptyLabel = "Sin datos",
+  items,
+  labelFor,
+  title,
+  valueSuffix,
+}: {
+  emptyLabel?: string;
+  items: SummaryRank[];
+  labelFor: (item: SummaryRank) => string;
+  title: string;
+  valueSuffix?: string;
+}) {
+  return (
+    <div className="min-w-0">
+      <div className="mb-2 text-xs font-medium text-muted-foreground">{title}</div>
+      <div className="flex flex-col divide-y divide-border rounded-lg border border-border">
+        {items.length === 0 ? (
+          <div className="px-3 py-2 text-xs text-muted-foreground">{emptyLabel}</div>
+        ) : (
+          items.map((item) => (
+            <div
+              key={`${title}:${item.code}`}
+              className="grid grid-cols-[1fr_auto] gap-3 px-3 py-2 text-xs"
+            >
+              <div className="min-w-0">
+                <div className="truncate font-medium">{labelFor(item)}</div>
+                <div className="text-muted-foreground">
+                  Valor item {formatSummaryValue(item.totalItemValue, valueSuffix)}
+                </div>
+              </div>
+              <div className="font-mono text-muted-foreground">
+                {formatDecimal(item.records, 0)}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
+function IntelligenceSummaryPanel({
+  filterOptions,
+  result,
+}: {
+  filterOptions: TradeRecordFilterOptions;
+  result: TradeRecordsSearchResult;
+}) {
+  const { filters, summary } = result;
+  const currency = summary.totals.currencyCode
+    ? optionName(filterOptions.currencies, summary.totals.currencyCode)
+    : undefined;
+  const quantityUnit = summary.totals.quantityUnitCode
+    ? optionName(filterOptions.quantityUnits, summary.totals.quantityUnitCode)
+    : undefined;
+  const itemValueLabel =
+    filters.tradeFlow === "export"
+      ? "Valor FOB item"
+      : filters.tradeFlow === "import"
+        ? "Valor CIF item"
+        : "Valor item CIF/FOB";
+  const valueSuffix = summary.totals.currencyIsMixed ? "moneda mixta" : currency;
+  const quantityValue = summary.totals.quantityUnitIsMixed
+    ? "—"
+    : formatSummaryValue(summary.totals.quantity, quantityUnit, 2);
+
+  return (
+    <Card>
+      <CardHeader className="border-b">
+        <CardTitle>Resumen del resultado</CardTitle>
+        <CardDescription>
+          Calculado sobre todos los registros que cumplen los filtros actuales, no solo
+          sobre esta página.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+          <SummaryMetric
+            label="Registros"
+            value={formatDecimal(summary.totals.records, 0)}
+          />
+          <SummaryMetric
+            label={itemValueLabel}
+            value={formatSummaryValue(summary.totals.itemValue, valueSuffix)}
+            note={summary.totals.currencyIsMixed ? "Monedas mixtas" : undefined}
+          />
+          <SummaryMetric
+            label="FOB declaración"
+            value={formatSummaryValue(summary.totals.declarationFobValue, valueSuffix)}
+          />
+          <SummaryMetric
+            label="Cantidad"
+            value={quantityValue}
+            note={
+              summary.totals.quantityUnitIsMixed
+                ? "No se suma: múltiples unidades"
+                : undefined
+            }
+          />
+          <SummaryMetric
+            label="Peso bruto item"
+            value={formatSummaryValue(summary.totals.grossWeightItem)}
+          />
+          <SummaryMetric
+            label="Peso bruto total"
+            value={formatSummaryValue(summary.totals.grossWeightTotal)}
+          />
+        </div>
+
+        <div className="grid gap-4 lg:grid-cols-4">
+          <SummaryRanking
+            title={summaryCountryTitle(filters)}
+            items={summary.rankings.countries}
+            valueSuffix={valueSuffix}
+            labelFor={(item) =>
+              summaryCodeLabel(filterOptions.countries, item.code, item.labelRaw)
+            }
+          />
+          <SummaryRanking
+            title="Top aduanas"
+            items={summary.rankings.customsOffices}
+            valueSuffix={valueSuffix}
+            labelFor={(item) =>
+              summaryCodeLabel(filterOptions.customsOffices, item.code, item.labelRaw)
+            }
+          />
+          <SummaryRanking
+            title={summaryPortTitle(filters)}
+            items={summary.rankings.ports}
+            valueSuffix={valueSuffix}
+            labelFor={(item) =>
+              summaryCodeLabel(filterOptions.ports, item.code, item.labelRaw)
+            }
+          />
+          <SummaryRanking
+            title="Top partidas HS"
+            items={summary.rankings.hsCodes}
+            valueSuffix={valueSuffix}
+            labelFor={(item) => `HS ${item.code}`}
+          />
+        </div>
+
+        <p className="text-xs text-muted-foreground">
+          Agregación read-only en Postgres MVP. En filtros muy amplios puede demorar más;
+          los correlativos de importador/exportador siguen siendo anónimos, no identidades
+          legales verificadas.
+        </p>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -692,6 +938,8 @@ export default async function TradeRecordsPage({
           </CardHeader>
         </Card>
       ) : null}
+
+      <IntelligenceSummaryPanel filterOptions={filterOptions} result={result} />
 
       <Card>
         <CardHeader className="border-b">

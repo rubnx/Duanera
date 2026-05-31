@@ -138,6 +138,34 @@ export type TradeRecordListResult = {
   paginationMode: "cursor" | "offset";
 };
 
+export type TradeRecordSummaryRank = {
+  code: string;
+  labelRaw: string | null;
+  records: number;
+  totalItemValue: string | null;
+};
+
+export type TradeRecordIntelligenceSummary = {
+  totals: {
+    records: number;
+    itemValue: string | null;
+    declarationFobValue: string | null;
+    quantity: string | null;
+    quantityUnitCode: string | null;
+    quantityUnitIsMixed: boolean;
+    grossWeightItem: string | null;
+    grossWeightTotal: string | null;
+    currencyCode: string | null;
+    currencyIsMixed: boolean;
+  };
+  rankings: {
+    countries: TradeRecordSummaryRank[];
+    customsOffices: TradeRecordSummaryRank[];
+    ports: TradeRecordSummaryRank[];
+    hsCodes: TradeRecordSummaryRank[];
+  };
+};
+
 const defaultLimit = 50;
 const maxLimit = 200;
 
@@ -250,6 +278,46 @@ function itemValueExpression(filters: TradeRecordFilters): SQL<string> {
 
 function grossWeightExpression(): SQL<string> {
   return sql<string>`coalesce(${tradeRecords.grossWeightItem}, ${tradeRecords.grossWeightTotal})`;
+}
+
+function originOrDestinationCountryExpression(filters: TradeRecordFilters): SQL<string> {
+  if (filters.tradeFlow === "import") {
+    return sql<string>`${tradeRecords.originCountryCode}`;
+  }
+
+  if (filters.tradeFlow === "export") {
+    return sql<string>`${tradeRecords.destinationCountryCode}`;
+  }
+
+  return sql<string>`case when ${tradeRecords.tradeFlow} = 'import' then ${tradeRecords.originCountryCode} else ${tradeRecords.destinationCountryCode} end`;
+}
+
+function relevantPortExpression(filters: TradeRecordFilters): SQL<string> {
+  if (filters.tradeFlow === "import") {
+    return sql<string>`${tradeRecords.disembarkPortCode}`;
+  }
+
+  if (filters.tradeFlow === "export") {
+    return sql<string>`${tradeRecords.embarkPortCode}`;
+  }
+
+  return sql<string>`case when ${tradeRecords.tradeFlow} = 'import' then ${tradeRecords.disembarkPortCode} else ${tradeRecords.embarkPortCode} end`;
+}
+
+function relevantPortLabelExpression(filters: TradeRecordFilters): SQL<string> {
+  if (filters.tradeFlow === "import") {
+    return sql<string>`${tradeRecords.disembarkPortLabelRaw}`;
+  }
+
+  if (filters.tradeFlow === "export") {
+    return sql<string>`${tradeRecords.embarkPortLabelRaw}`;
+  }
+
+  return sql<string>`case when ${tradeRecords.tradeFlow} = 'import' then ${tradeRecords.disembarkPortLabelRaw} else ${tradeRecords.embarkPortLabelRaw} end`;
+}
+
+function hsCodePrefixExpression(): SQL<string> {
+  return sql<string>`substring(${tradeRecords.hsCodeNormalized} from 1 for 6)`;
 }
 
 function gteDecimal(expression: SQL<string>, value: string): SQL {
@@ -547,6 +615,99 @@ function genericOrderBy(filters: TradeRecordFilters): SQL[] {
     case undefined:
       return sourceOrder;
   }
+}
+
+function decimalSumExpression(expression: SQL<string>): SQL<string | null> {
+  return sql<string | null>`sum(${expression})::text`;
+}
+
+async function rankedSummary(
+  db: DbClient,
+  filters: TradeRecordFilters,
+  codeExpression: SQL<string>,
+  labelExpression?: SQL<string>,
+): Promise<TradeRecordSummaryRank[]> {
+  const where = buildWhere(filters);
+  const codeNotEmpty = and(
+    sql`${codeExpression} is not null`,
+    sql`${codeExpression} <> ''`,
+  );
+  const itemValue = itemValueExpression(filters);
+  const rows = await db
+    .select({
+      code: codeExpression,
+      labelRaw: labelExpression ? sql<string | null>`min(${labelExpression})` : sql<null>`null`,
+      records: count(),
+      totalItemValue: decimalSumExpression(itemValue),
+    })
+    .from(tradeRecords)
+    .where(and(where, codeNotEmpty))
+    .groupBy(codeExpression)
+    .orderBy(desc(sql<number>`count(*)`), desc(sql<number>`sum(${itemValue})`))
+    .limit(5);
+
+  return rows.map((row) => ({
+    code: row.code,
+    labelRaw: row.labelRaw,
+    records: row.records,
+    totalItemValue: row.totalItemValue,
+  }));
+}
+
+export async function summarizeTradeRecords(
+  db: DbClient,
+  filters: TradeRecordFilters = {},
+): Promise<TradeRecordIntelligenceSummary> {
+  const where = buildWhere(filters);
+  const itemValue = itemValueExpression(filters);
+  const [totalsRow] = await db
+    .select({
+      records: count(),
+      itemValue: decimalSumExpression(itemValue),
+      declarationFobValue: decimalSumExpression(sql`${tradeRecords.declarationFobValue}`),
+      quantity: decimalSumExpression(sql`${tradeRecords.quantity}`),
+      quantityUnitCode: sql<string | null>`case when count(distinct ${tradeRecords.quantityUnitCode}) = 1 then min(${tradeRecords.quantityUnitCode}) else null end`,
+      quantityUnitIsMixed: sql<boolean>`count(distinct ${tradeRecords.quantityUnitCode}) > 1`,
+      grossWeightItem: decimalSumExpression(sql`${tradeRecords.grossWeightItem}`),
+      grossWeightTotal: decimalSumExpression(sql`${tradeRecords.grossWeightTotal}`),
+      currencyCode: sql<string | null>`case when count(distinct ${tradeRecords.currencyCodeRaw}) = 1 then min(${tradeRecords.currencyCodeRaw}) else null end`,
+      currencyIsMixed: sql<boolean>`count(distinct ${tradeRecords.currencyCodeRaw}) > 1`,
+    })
+    .from(tradeRecords)
+    .where(where);
+
+  const [countries, customsOffices, ports, hsCodes] = await Promise.all([
+    rankedSummary(db, filters, originOrDestinationCountryExpression(filters)),
+    rankedSummary(db, filters, sql<string>`${tradeRecords.customsOfficeCode}`),
+    rankedSummary(
+      db,
+      filters,
+      relevantPortExpression(filters),
+      relevantPortLabelExpression(filters),
+    ),
+    rankedSummary(db, filters, hsCodePrefixExpression()),
+  ]);
+
+  return {
+    totals: {
+      records: totalsRow?.records ?? 0,
+      itemValue: totalsRow?.itemValue ?? null,
+      declarationFobValue: totalsRow?.declarationFobValue ?? null,
+      quantity: totalsRow?.quantity ?? null,
+      quantityUnitCode: totalsRow?.quantityUnitCode ?? null,
+      quantityUnitIsMixed: totalsRow?.quantityUnitIsMixed ?? false,
+      grossWeightItem: totalsRow?.grossWeightItem ?? null,
+      grossWeightTotal: totalsRow?.grossWeightTotal ?? null,
+      currencyCode: totalsRow?.currencyCode ?? null,
+      currencyIsMixed: totalsRow?.currencyIsMixed ?? false,
+    },
+    rankings: {
+      countries,
+      customsOffices,
+      ports,
+      hsCodes,
+    },
+  };
 }
 
 function exactMonthForRawOrderedList(

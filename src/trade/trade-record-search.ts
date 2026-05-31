@@ -6,6 +6,8 @@ import {
 import {
   decodeTradeRecordCursor,
   listTradeRecords,
+  summarizeTradeRecords,
+  type TradeRecordIntelligenceSummary,
   type TradeFlow,
   type TradeRecordFilters,
   type TradeRecordListResult,
@@ -26,6 +28,7 @@ export type TradeRecordSearchResponse = {
     paginationMode: "cursor" | "offset";
   };
   filters: TradeRecordFilters;
+  summary: TradeRecordIntelligenceSummary;
 };
 
 export class TradeRecordSearchError extends Error {
@@ -255,7 +258,10 @@ export async function searchTradeRecords(
   input: TradeRecordSearchInput,
 ): Promise<TradeRecordSearchResponse> {
   const filters = parseTradeRecordSearchParams(input);
-  const result = await listTradeRecords(db, filters);
+  const [result, summary] = await Promise.all([
+    listTradeRecords(db, filters),
+    summarizeTradeRecords(db, filters),
+  ]);
   const records = await enrichTradeRecordsWithLabels(db, result.records);
 
   return {
@@ -268,5 +274,6 @@ export async function searchTradeRecords(
       paginationMode: result.paginationMode,
     },
     filters,
+    summary,
   };
 }

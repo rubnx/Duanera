@@ -14,12 +14,16 @@ export type TradeRecordFilterOptions = {
   customsOffices: TradeRecordFilterOption[];
   transportModes: TradeRecordFilterOption[];
   ports: TradeRecordFilterOption[];
+  currencies: TradeRecordFilterOption[];
+  quantityUnits: TradeRecordFilterOption[];
 };
 
 const filterTableKeys = {
   countries: "chile_aduana:paises",
   customsOffices: "chile_aduana:aduanas",
+  currencies: "chile_aduana:moneda",
   ports: "chile_aduana:puertos",
+  quantityUnits: "chile_aduana:unidades_de_medida",
   transportModes: "chile_aduana:vias_de_transporte",
 } as const;
 
@@ -34,8 +38,10 @@ function emptyOptions(): TradeRecordFilterOptions {
   return {
     countries: [],
     customsOffices: [],
+    currencies: [],
     transportModes: [],
     ports: [],
+    quantityUnits: [],
   };
 }
 
