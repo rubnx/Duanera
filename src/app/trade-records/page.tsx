@@ -27,6 +27,7 @@ import {
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 type TradeRecordsSearchResult = Awaited<ReturnType<typeof searchTradeRecords>>;
+type TradeRecordRow = TradeRecordsSearchResult["data"][number];
 
 const defaultSearchInput = {
   tradeFlow: "import",
@@ -59,18 +60,77 @@ function formatCodeLabel(code: string | null, label?: string) {
   return code ?? label ?? "—";
 }
 
-function participant(record: Awaited<ReturnType<typeof searchTradeRecords>>["data"][number]) {
-  if (record.tradeFlow === "import") {
-    return record.importerCorrelativeId ?? "—";
+function formatQuantity(value: string | null, unitCode: string | null, unitLabel?: string) {
+  if (!value) {
+    return "—";
   }
 
-  return record.exporterPrimaryCorrelativeId ?? record.exporterSecondaryCorrelativeId ?? "—";
+  return `${value} ${unitLabel ?? unitCode ?? ""}`.trim();
 }
 
-function valueForFlow(record: Awaited<ReturnType<typeof searchTradeRecords>>["data"][number]) {
-  return record.tradeFlow === "import"
-    ? formatMoney(record.itemCifValue, record.decodedLabels.currency)
-    : formatMoney(record.itemFobValue, record.decodedLabels.currency);
+function participant(record: TradeRecordRow) {
+  if (record.tradeFlow === "import") {
+    return {
+      label: "Importador Aduana",
+      value: record.importerCorrelativeId ?? "—",
+    };
+  }
+
+  return {
+    label: "Exportador Aduana",
+    value:
+      record.exporterPrimaryCorrelativeId ??
+      record.exporterSecondaryCorrelativeId ??
+      "—",
+  };
+}
+
+function itemValueForFlow(record: TradeRecordRow) {
+  if (record.tradeFlow === "import") {
+    return {
+      label: "CIF item",
+      value: formatMoney(record.itemCifValue, record.decodedLabels.currency),
+    };
+  }
+
+  return {
+    label: "FOB item",
+    value: formatMoney(record.itemFobValue, record.decodedLabels.currency),
+  };
+}
+
+function countryForFlow(record: TradeRecordRow) {
+  if (record.tradeFlow === "import") {
+    return {
+      label: "Origen",
+      value: formatCodeLabel(record.originCountryCode, record.decodedLabels.originCountry),
+    };
+  }
+
+  return {
+    label: "Destino",
+    value: formatCodeLabel(
+      record.destinationCountryCode,
+      record.decodedLabels.destinationCountry,
+    ),
+  };
+}
+
+function portForFlow(record: TradeRecordRow) {
+  if (record.tradeFlow === "import") {
+    return {
+      label: "Desembarque",
+      value: formatCodeLabel(
+        record.disembarkPortCode,
+        record.decodedLabels.disembarkPort,
+      ),
+    };
+  }
+
+  return {
+    label: "Embarque",
+    value: formatCodeLabel(record.embarkPortCode, record.decodedLabels.embarkPort),
+  };
 }
 
 function buildPageHref(
@@ -171,7 +231,8 @@ export default async function TradeRecordsPage({
         <CardHeader>
           <CardTitle>Filtros</CardTitle>
           <CardDescription>
-            Los filtros viajan por URL y usan el servicio `trade-records`.
+            Busca por flujo, período, partida HS, producto, atributos auxiliares y
+            correlativos anónimos de Aduana.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -216,7 +277,7 @@ export default async function TradeRecordsPage({
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="q">Producto</Label>
+              <Label htmlFor="q">Producto / atributos</Label>
               <Input
                 id="q"
                 name="q"
@@ -315,72 +376,145 @@ export default async function TradeRecordsPage({
           </CardDescription>
         </CardHeader>
         <CardContent className="p-0">
-          <Table>
+          <Table className="min-w-[1320px]">
             <TableHeader>
               <TableRow>
-                <TableHead>Flujo</TableHead>
-                <TableHead>Periodo</TableHead>
-                <TableHead>HS</TableHead>
+                <TableHead>Operación</TableHead>
                 <TableHead>Producto</TableHead>
-                <TableHead>Correlativo</TableHead>
+                <TableHead>Correlativo Aduana</TableHead>
+                <TableHead>Valor item</TableHead>
+                <TableHead>Cantidad / peso</TableHead>
                 <TableHead>País</TableHead>
-                <TableHead>Valor</TableHead>
-                <TableHead>Cantidad</TableHead>
+                <TableHead>Logística</TableHead>
                 <TableHead>Fuente</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {result.data.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="h-24 text-center text-muted-foreground">
+                  <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
                     No encontramos registros con estos filtros. Prueba ampliar el rango
                     de fechas o usar una partida HS más general.
                   </TableCell>
                 </TableRow>
               ) : (
-                result.data.map((record) => (
-                  <TableRow key={record.id}>
-                    <TableCell>
-                      <Badge variant="secondary">
-                        {record.tradeFlow === "import" ? "Importación" : "Exportación"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {record.periodYear}-{String(record.periodMonth).padStart(2, "0")}
-                    </TableCell>
-                    <TableCell className="font-mono text-xs">
-                      {record.hsCodeNormalized ?? "—"}
-                    </TableCell>
-                    <TableCell className="max-w-[340px]">
-                      <Link
-                        href={`/trade-records/${record.id}`}
-                        className="font-medium underline-offset-4 hover:underline"
-                      >
-                        {record.productDescriptionRaw ?? "Sin descripción"}
-                      </Link>
-                    </TableCell>
-                    <TableCell className="font-mono text-xs">{participant(record)}</TableCell>
-                    <TableCell className="max-w-[220px] text-xs">
-                      {record.tradeFlow === "import"
-                        ? formatCodeLabel(
-                            record.originCountryCode,
-                            record.decodedLabels.originCountry,
-                          )
-                        : formatCodeLabel(
-                            record.destinationCountryCode,
-                            record.decodedLabels.destinationCountry,
-                          )}
-                    </TableCell>
-                    <TableCell className="font-mono text-xs">{valueForFlow(record)}</TableCell>
-                    <TableCell className="text-xs">
-                      {record.quantity ?? "—"}{" "}
-                      {record.decodedLabels.quantityUnit ?? record.quantityUnitCode ?? ""}
-                    </TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
-                      {record.sourceFilename} · fila {record.rawRowNumber}
-                    </TableCell>
-                  </TableRow>
-                ))
+                result.data.map((record) => {
+                  const itemValue = itemValueForFlow(record);
+                  const participantSummary = participant(record);
+                  const country = countryForFlow(record);
+                  const port = portForFlow(record);
+                  const period = `${record.periodYear}-${String(record.periodMonth).padStart(
+                    2,
+                    "0",
+                  )}`;
+
+                  return (
+                    <TableRow key={record.id}>
+                      <TableCell className="align-top">
+                        <div className="flex flex-col gap-1">
+                          <Badge variant="secondary" className="w-fit">
+                            {record.tradeFlow === "import" ? "Importación" : "Exportación"}
+                          </Badge>
+                          <div className="font-mono text-xs text-muted-foreground">{period}</div>
+                          <div className="font-mono text-xs">
+                            Declaración {record.declarationIdRaw ?? "—"} · Item{" "}
+                            {record.itemNumber ?? "—"}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {record.acceptanceDate ?? "Sin fecha aceptación"}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="max-w-[320px] align-top whitespace-normal">
+                        <div className="flex flex-col gap-1">
+                          <div className="font-mono text-xs text-muted-foreground">
+                            HS {record.hsCodeNormalized ?? "—"}
+                          </div>
+                          <Link
+                            href={`/trade-records/${record.id}`}
+                            className="font-medium leading-snug underline-offset-4 hover:underline"
+                          >
+                            {record.productDescriptionRaw ?? "Sin descripción"}
+                          </Link>
+                        </div>
+                      </TableCell>
+                      <TableCell className="align-top">
+                        <div className="flex flex-col gap-1">
+                          <div className="text-xs text-muted-foreground">
+                            {participantSummary.label}
+                          </div>
+                          <div className="font-mono text-xs">{participantSummary.value}</div>
+                          <div className="max-w-[170px] whitespace-normal text-xs text-muted-foreground">
+                            Correlativo anónimo, no identidad legal.
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="align-top">
+                        <div className="flex flex-col gap-1">
+                          <div className="text-xs text-muted-foreground">{itemValue.label}</div>
+                          <div className="font-mono text-xs">{itemValue.value}</div>
+                          <div className="text-xs text-muted-foreground">FOB declaración</div>
+                          <div className="font-mono text-xs">
+                            {formatMoney(
+                              record.declarationFobValue,
+                              record.decodedLabels.currency,
+                            )}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="align-top">
+                        <div className="flex flex-col gap-1">
+                          <div className="font-mono text-xs">
+                            {formatQuantity(
+                              record.quantity,
+                              record.quantityUnitCode,
+                              record.decodedLabels.quantityUnit,
+                            )}
+                          </div>
+                          <div className="text-xs text-muted-foreground">Peso bruto item</div>
+                          <div className="font-mono text-xs">
+                            {record.grossWeightItem ?? "—"}
+                          </div>
+                          <div className="text-xs text-muted-foreground">Peso bruto total</div>
+                          <div className="font-mono text-xs">
+                            {record.grossWeightTotal ?? "—"}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="max-w-[210px] align-top whitespace-normal text-xs">
+                        <div className="flex flex-col gap-1">
+                          <div className="text-muted-foreground">{country.label}</div>
+                          <div>{country.value}</div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="max-w-[260px] align-top whitespace-normal text-xs">
+                        <div className="flex flex-col gap-1">
+                          <div>
+                            <span className="text-muted-foreground">Aduana: </span>
+                            {formatCodeLabel(
+                              record.customsOfficeCode,
+                              record.decodedLabels.customsOffice,
+                            )}
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">{port.label}: </span>
+                            {port.value}
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Vía: </span>
+                            {formatCodeLabel(
+                              record.transportModeCode,
+                              record.decodedLabels.transportMode,
+                            )}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="max-w-[220px] align-top whitespace-normal text-xs text-muted-foreground">
+                        {record.sourceFilename} · fila {record.rawRowNumber}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               )}
             </TableBody>
           </Table>

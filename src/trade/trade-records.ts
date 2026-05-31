@@ -64,6 +64,8 @@ export type TradeRecordSummary = {
   productDescriptionRaw: string | null;
   quantity: string | null;
   quantityUnitCode: string | null;
+  grossWeightTotal: string | null;
+  grossWeightItem: string | null;
   itemCifValue: string | null;
   itemFobValue: string | null;
   declarationFobValue: string | null;
@@ -90,8 +92,6 @@ export type TradeRecordSummary = {
 
 export type TradeRecordDetail = TradeRecordSummary & {
   productAttributes: unknown;
-  grossWeightTotal: string | null;
-  grossWeightItem: string | null;
   freightValue: string | null;
   insuranceValue: string | null;
   cifValue: string | null;
@@ -316,6 +316,8 @@ const summaryColumns = {
   productDescriptionRaw: tradeRecords.productDescriptionRaw,
   quantity: tradeRecords.quantity,
   quantityUnitCode: tradeRecords.quantityUnitCode,
+  grossWeightTotal: tradeRecords.grossWeightTotal,
+  grossWeightItem: tradeRecords.grossWeightItem,
   itemCifValue: tradeRecords.itemCifValue,
   itemFobValue: tradeRecords.itemFobValue,
   declarationFobValue: tradeRecords.declarationFobValue,
@@ -504,8 +506,6 @@ export async function getTradeRecordById(
     .select({
       ...summaryColumns,
       productAttributes: tradeRecords.productAttributes,
-      grossWeightTotal: tradeRecords.grossWeightTotal,
-      grossWeightItem: tradeRecords.grossWeightItem,
       freightValue: tradeRecords.freightValue,
       insuranceValue: tradeRecords.insuranceValue,
       cifValue: tradeRecords.cifValue,
