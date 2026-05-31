@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -26,6 +27,11 @@ import {
   type TradeRecordFilterOption,
   type TradeRecordFilterOptions,
 } from "@/trade/trade-record-filter-options";
+import {
+  buildTradeRecordSearchHref,
+  filtersToTradeRecordSearchParams,
+  type TradeRecordDrilldownTarget,
+} from "@/trade/trade-record-links";
 import {
   searchTradeRecords,
   TradeRecordSearchError,
@@ -381,7 +387,7 @@ function SummaryMetric({
   return (
     <div className="min-w-0 rounded-lg border border-border bg-muted/20 px-3 py-2">
       <div className="text-xs text-muted-foreground">{label}</div>
-      <div className="mt-1 truncate font-mono text-sm font-medium">{value}</div>
+      <div className="mt-1 break-words font-mono text-sm font-medium">{value}</div>
       {note ? <div className="mt-1 text-xs text-muted-foreground">{note}</div> : null}
     </div>
   );
@@ -389,12 +395,14 @@ function SummaryMetric({
 
 function SummaryRanking({
   emptyLabel = "Sin datos",
+  hrefFor,
   items,
   labelFor,
   title,
   valueSuffix,
 }: {
   emptyLabel?: string;
+  hrefFor?: (item: SummaryRank) => string;
   items: SummaryRank[];
   labelFor: (item: SummaryRank) => string;
   title: string;
@@ -413,7 +421,16 @@ function SummaryRanking({
               className="grid grid-cols-[1fr_auto] gap-3 px-3 py-2 text-xs"
             >
               <div className="min-w-0">
-                <div className="truncate font-medium">{labelFor(item)}</div>
+                {hrefFor ? (
+                  <Link
+                    href={hrefFor(item)}
+                    className="block truncate font-medium underline-offset-4 hover:underline"
+                  >
+                    {labelFor(item)}
+                  </Link>
+                ) : (
+                  <div className="truncate font-medium">{labelFor(item)}</div>
+                )}
                 <div className="text-muted-foreground">
                   Valor item {formatSummaryValue(item.totalItemValue, valueSuffix)}
                 </div>
@@ -431,9 +448,11 @@ function SummaryRanking({
 
 function IntelligenceSummaryPanel({
   filterOptions,
+  params,
   result,
 }: {
   filterOptions: TradeRecordFilterOptions;
+  params: Record<string, string | string[] | undefined>;
   result: TradeRecordsSearchResult;
 }) {
   const { filters, summary } = result;
@@ -502,6 +521,13 @@ function IntelligenceSummaryPanel({
             title={summaryCountryTitle(filters)}
             items={summary.rankings.countries}
             valueSuffix={valueSuffix}
+            hrefFor={(item) =>
+              buildTradeRecordSearchHref(params, {
+                type: "country",
+                code: item.code,
+                tradeFlow: filters.tradeFlow,
+              })
+            }
             labelFor={(item) =>
               summaryCodeLabel(filterOptions.countries, item.code, item.labelRaw)
             }
@@ -510,6 +536,12 @@ function IntelligenceSummaryPanel({
             title="Top aduanas"
             items={summary.rankings.customsOffices}
             valueSuffix={valueSuffix}
+            hrefFor={(item) =>
+              buildTradeRecordSearchHref(params, {
+                type: "customsOffice",
+                code: item.code,
+              })
+            }
             labelFor={(item) =>
               summaryCodeLabel(filterOptions.customsOffices, item.code, item.labelRaw)
             }
@@ -518,6 +550,12 @@ function IntelligenceSummaryPanel({
             title={summaryPortTitle(filters)}
             items={summary.rankings.ports}
             valueSuffix={valueSuffix}
+            hrefFor={(item) =>
+              buildTradeRecordSearchHref(params, {
+                type: "port",
+                code: item.code,
+              })
+            }
             labelFor={(item) =>
               summaryCodeLabel(filterOptions.ports, item.code, item.labelRaw)
             }
@@ -526,6 +564,12 @@ function IntelligenceSummaryPanel({
             title="Top partidas HS"
             items={summary.rankings.hsCodes}
             valueSuffix={valueSuffix}
+            hrefFor={(item) =>
+              buildTradeRecordSearchHref(params, {
+                type: "hsCodePrefix",
+                code: item.code,
+              })
+            }
             labelFor={(item) => `HS ${item.code}`}
           />
         </div>
@@ -613,6 +657,34 @@ function buildPageHref(
   return query ? `/trade-records?${query}` : "/trade-records";
 }
 
+function FilterAction({
+  href,
+  children,
+}: {
+  href: string | null;
+  children: ReactNode;
+}) {
+  if (!href) {
+    return null;
+  }
+
+  return (
+    <Link
+      href={href}
+      className="w-fit text-xs font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+    >
+      {children}
+    </Link>
+  );
+}
+
+function drilldownHref(
+  params: Record<string, string | string[] | undefined>,
+  target: TradeRecordDrilldownTarget,
+) {
+  return buildTradeRecordSearchHref(params, target);
+}
+
 export default async function TradeRecordsPage({
   searchParams,
 }: {
@@ -665,13 +737,14 @@ export default async function TradeRecordsPage({
 
   const previousOffset = Math.max(result.pagination.offset - result.pagination.limit, 0);
   const nextOffset = result.pagination.offset + result.pagination.limit;
+  const effectiveSearchParams = filtersToTradeRecordSearchParams(result.filters);
   const hasCursor = Boolean(searchInput.after);
   const hasPrevious = result.pagination.offset > 0 && !hasCursor;
   const hasNext =
     Boolean(result.pagination.nextCursor) || (!hasCursor && nextOffset < result.pagination.total);
   const nextHref = result.pagination.nextCursor
-    ? buildPageHref(params, { after: result.pagination.nextCursor })
-    : buildPageHref(params, { offset: nextOffset });
+    ? buildPageHref(effectiveSearchParams, { after: result.pagination.nextCursor })
+    : buildPageHref(effectiveSearchParams, { offset: nextOffset });
   const activeFilters = activeFilterItems(result, filterOptions);
   const usesOffsetMode = result.pagination.paginationMode === "offset";
   const searchPerformanceNote = performanceNote(result);
@@ -961,7 +1034,11 @@ export default async function TradeRecordsPage({
         </Card>
       ) : null}
 
-      <IntelligenceSummaryPanel filterOptions={filterOptions} result={result} />
+      <IntelligenceSummaryPanel
+        filterOptions={filterOptions}
+        params={effectiveSearchParams}
+        result={result}
+      />
 
       <Card>
         <CardHeader className="border-b">
@@ -1006,6 +1083,55 @@ export default async function TradeRecordsPage({
                     2,
                     "0",
                   )}`;
+                  const hsFilterHref = record.hsCodeNormalized
+                    ? drilldownHref(effectiveSearchParams, {
+                        type: "hsCodePrefix",
+                        code: record.hsCodeNormalized,
+                      })
+                    : null;
+                  const participantFilterHref =
+                    record.tradeFlow === "import" && record.importerCorrelativeId
+                      ? drilldownHref(effectiveSearchParams, {
+                          type: "importer",
+                          code: record.importerCorrelativeId,
+                        })
+                      : record.tradeFlow === "export" &&
+                          (record.exporterPrimaryCorrelativeId ||
+                            record.exporterSecondaryCorrelativeId)
+                        ? drilldownHref(effectiveSearchParams, {
+                            type: "exporter",
+                            code:
+                              record.exporterPrimaryCorrelativeId ??
+                              record.exporterSecondaryCorrelativeId!,
+                          })
+                        : null;
+                  const countryCode =
+                    record.tradeFlow === "export"
+                      ? record.destinationCountryCode
+                      : record.originCountryCode;
+                  const countryFilterHref = countryCode
+                    ? drilldownHref(effectiveSearchParams, {
+                        type: "country",
+                        code: countryCode,
+                        tradeFlow: record.tradeFlow === "export" ? "export" : "import",
+                      })
+                    : null;
+                  const customsFilterHref = record.customsOfficeCode
+                    ? drilldownHref(effectiveSearchParams, {
+                        type: "customsOffice",
+                        code: record.customsOfficeCode,
+                      })
+                    : null;
+                  const portCode =
+                    record.tradeFlow === "export"
+                      ? record.embarkPortCode
+                      : record.disembarkPortCode;
+                  const portFilterHref = portCode
+                    ? drilldownHref(effectiveSearchParams, {
+                        type: "port",
+                        code: portCode,
+                      })
+                    : null;
 
                   return (
                     <TableRow key={record.id}>
@@ -1029,6 +1155,7 @@ export default async function TradeRecordsPage({
                           <div className="font-mono text-xs text-muted-foreground">
                             HS {record.hsCodeNormalized ?? "—"}
                           </div>
+                          <FilterAction href={hsFilterHref}>Filtrar HS</FilterAction>
                           <Link
                             href={`/trade-records/${record.id}`}
                             className="font-medium leading-snug underline-offset-4 hover:underline"
@@ -1053,6 +1180,9 @@ export default async function TradeRecordsPage({
                             {participantSummary.label}
                           </div>
                           <div className="font-mono text-xs">{participantSummary.value}</div>
+                          <FilterAction href={participantFilterHref}>
+                            Ver mismo correlativo
+                          </FilterAction>
                           <div className="max-w-[170px] whitespace-normal text-xs text-muted-foreground">
                             Correlativo anónimo, no identidad legal.
                           </div>
@@ -1094,6 +1224,9 @@ export default async function TradeRecordsPage({
                         <div className="flex flex-col gap-1">
                           <div className="text-muted-foreground">{country.label}</div>
                           <div>{country.value}</div>
+                          <FilterAction href={countryFilterHref}>
+                            Filtrar país
+                          </FilterAction>
                         </div>
                       </TableCell>
                       <TableCell className="max-w-[260px] align-top whitespace-normal text-xs">
@@ -1105,10 +1238,14 @@ export default async function TradeRecordsPage({
                               record.decodedLabels.customsOffice,
                             )}
                           </div>
+                          <FilterAction href={customsFilterHref}>
+                            Filtrar aduana
+                          </FilterAction>
                           <div>
                             <span className="text-muted-foreground">{port.label}: </span>
                             {port.value}
                           </div>
+                          <FilterAction href={portFilterHref}>Filtrar puerto</FilterAction>
                           <div>
                             <span className="text-muted-foreground">Vía: </span>
                             {formatCodeLabel(
@@ -1142,7 +1279,7 @@ export default async function TradeRecordsPage({
       <nav className="flex items-center justify-between">
         <Link
           aria-disabled={!hasPrevious}
-          href={hasPrevious ? buildPageHref(params, { offset: previousOffset }) : "#"}
+          href={hasPrevious ? buildPageHref(effectiveSearchParams, { offset: previousOffset }) : "#"}
           className="inline-flex h-8 items-center rounded-lg border border-border px-2.5 text-sm font-medium aria-disabled:pointer-events-none aria-disabled:opacity-40 hover:bg-muted"
         >
           Anterior

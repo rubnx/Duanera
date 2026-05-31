@@ -17,8 +17,21 @@ import {
   productAttributeEntries,
   productDisplayFromRaw,
 } from "@/trade/trade-record-display";
-import { enrichTradeRecordWithLabels } from "@/trade/trade-record-labels";
-import { getTradeRecordById } from "@/trade/trade-records";
+import {
+  enrichTradeRecordWithLabels,
+  enrichTradeRecordsWithLabels,
+  type TradeRecordWithLabels,
+} from "@/trade/trade-record-labels";
+import {
+  buildTradeRecordSearchHref,
+  filtersToTradeRecordSearchParams,
+} from "@/trade/trade-record-links";
+import {
+  getTradeRecordById,
+  listRelatedTradeRecords,
+  type TradeRecordRelatedGroup,
+  type TradeRecordSummary,
+} from "@/trade/trade-records";
 
 type PageProps = {
   params: Promise<{ id: string }>;
@@ -27,6 +40,10 @@ type PageProps = {
 type DetailRecord = NonNullable<
   Awaited<ReturnType<typeof enrichTradeRecordWithLabels>>
 >;
+type RelatedRecord = TradeRecordWithLabels<TradeRecordSummary>;
+type RelatedGroupWithLabels = Omit<TradeRecordRelatedGroup, "records"> & {
+  records: RelatedRecord[];
+};
 
 function formatCodeLabel(code: string | null, label?: string) {
   if (!code && !label) {
@@ -150,13 +167,139 @@ function Field({
   );
 }
 
+function relatedGroupHref(group: RelatedGroupWithLabels) {
+  return buildTradeRecordSearchHref(
+    filtersToTradeRecordSearchParams({
+      ...group.filters,
+      limit: 25,
+    }),
+  );
+}
+
+function relatedRecordValue(record: RelatedRecord) {
+  if (record.tradeFlow === "import") {
+    return formatMoney(record.itemCifValue, record.decodedLabels.currency);
+  }
+
+  return formatMoney(record.itemFobValue, record.decodedLabels.currency);
+}
+
+function relatedRecordCountry(record: RelatedRecord) {
+  if (record.tradeFlow === "export") {
+    return formatCodeLabel(
+      record.destinationCountryCode,
+      record.decodedLabels.destinationCountry,
+    );
+  }
+
+  return formatCodeLabel(record.originCountryCode, record.decodedLabels.originCountry);
+}
+
+function RelatedRecordsSection({ groups }: { groups: RelatedGroupWithLabels[] }) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Registros relacionados</CardTitle>
+        <CardDescription>
+          Grupos acotados del mismo mes para investigar patrones sin inferir identidad
+          legal. Los correlativos Aduana son anónimos.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {groups.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No encontramos registros relacionados claros con los campos disponibles.
+          </p>
+        ) : (
+          <div className="grid gap-4 xl:grid-cols-2">
+            {groups.map((group) => (
+              <section
+                key={group.key}
+                className="min-w-0 rounded-lg border border-border"
+              >
+                <div className="flex flex-col gap-2 border-b px-3 py-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0">
+                    <h2 className="text-sm font-medium">{group.title}</h2>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {group.description}
+                    </p>
+                  </div>
+                  <Link
+                    href={relatedGroupHref(group)}
+                    className="shrink-0 text-xs font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+                  >
+                    Ver búsqueda
+                  </Link>
+                </div>
+                <div className="divide-y divide-border">
+                  {group.records.map((related) => {
+                    const product = productDisplayFromRaw(related.productDescriptionRaw);
+                    const period = `${related.periodYear}-${String(related.periodMonth).padStart(
+                      2,
+                      "0",
+                    )}`;
+
+                    return (
+                      <Link
+                        key={related.id}
+                        href={`/trade-records/${related.id}`}
+                        className="grid gap-2 px-3 py-3 text-sm hover:bg-muted/50 md:grid-cols-[1fr_auto]"
+                      >
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Badge variant="outline">{period}</Badge>
+                            <span className="font-mono text-xs text-muted-foreground">
+                              HS {related.hsCodeNormalized ?? "—"}
+                            </span>
+                          </div>
+                          <div className="mt-1 line-clamp-2 font-medium">
+                            {product.title}
+                          </div>
+                          <div className="mt-1 text-xs text-muted-foreground">
+                            {relatedRecordCountry(related)}
+                          </div>
+                        </div>
+                        <div className="min-w-[120px] font-mono text-xs text-muted-foreground md:text-right">
+                          {relatedRecordValue(related)}
+                        </div>
+                      </Link>
+                    );
+                  })}
+                </div>
+              </section>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 export default async function TradeRecordDetailPage({ params }: PageProps) {
   const { id } = await params;
-  const record = await enrichTradeRecordWithLabels(db, await getTradeRecordById(db, id));
+  const baseRecord = await getTradeRecordById(db, id);
+  const record = await enrichTradeRecordWithLabels(db, baseRecord);
 
   if (!record) {
     notFound();
   }
+
+  const relatedGroupsRaw = await listRelatedTradeRecords(db, record, 5);
+  const relatedRecordsRaw = relatedGroupsRaw.flatMap((group) => group.records);
+  const relatedRecordsById = new Map(
+    relatedRecordsRaw.length > 0
+      ? (await enrichTradeRecordsWithLabels(db, relatedRecordsRaw)).map((related) => [
+          related.id,
+          related,
+        ])
+      : [],
+  );
+  const relatedGroups = relatedGroupsRaw.map((group) => ({
+    ...group,
+    records: group.records
+      .map((related) => relatedRecordsById.get(related.id))
+      .filter((related): related is RelatedRecord => Boolean(related)),
+  }));
 
   const participant = participantLabel(record);
   const period = `${record.periodYear}-${String(record.periodMonth).padStart(2, "0")}`;
@@ -503,6 +646,8 @@ export default async function TradeRecordDetailPage({ params }: PageProps) {
           </Card>
         </aside>
       </section>
+
+      <RelatedRecordsSection groups={relatedGroups} />
 
       <Card>
         <CardHeader>

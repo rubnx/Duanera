@@ -6,7 +6,15 @@ import {
   parseTradeRecordSearchParams,
   TradeRecordSearchError,
 } from "../../src/trade/trade-record-search";
-import { encodeTradeRecordCursor } from "../../src/trade/trade-records";
+import {
+  buildTradeRecordSearchHref,
+  filtersToTradeRecordSearchParams,
+} from "../../src/trade/trade-record-links";
+import {
+  buildTradeRecordRelatedGroupDefinitions,
+  encodeTradeRecordCursor,
+  type TradeRecordSummary,
+} from "../../src/trade/trade-records";
 
 test("parses route-style trade search params", () => {
   const params = new URLSearchParams({
@@ -259,4 +267,189 @@ test("classifies trade search performance warnings", () => {
     }).map((warning) => warning.code),
     ["offset_pagination", "slow_summary"],
   );
+});
+
+test("builds trade record drilldown links without pagination cursors", () => {
+  const href = buildTradeRecordSearchHref(
+    {
+      tradeFlow: "import",
+      periodFrom: "2026-03",
+      periodTo: "2026-03",
+      hsCodePrefix: "4011",
+      sourceFileId: "source-1",
+      importBatchId: "batch-1",
+      originCountry: "336",
+      limit: "25",
+      after: "cursor",
+      offset: "50",
+    },
+    { type: "country", code: "220" },
+  );
+
+  assert.equal(
+    href,
+    "/trade-records?tradeFlow=import&periodFrom=2026-03&periodTo=2026-03&sourceFileId=source-1&importBatchId=batch-1&hsCodePrefix=4011&originCountry=220&limit=25",
+  );
+});
+
+test("maps export country drilldowns to destination country", () => {
+  const href = buildTradeRecordSearchHref(
+    {
+      tradeFlow: "export",
+      periodFrom: "2026-03",
+      periodTo: "2026-03",
+      originCountry: "336",
+    },
+    { type: "country", code: "840" },
+  );
+
+  assert.equal(
+    href,
+    "/trade-records?tradeFlow=export&periodFrom=2026-03&periodTo=2026-03&destinationCountry=840",
+  );
+});
+
+test("converts related-record filters into search-link params", () => {
+  assert.deepEqual(
+    filtersToTradeRecordSearchParams({
+      tradeFlow: "import",
+      periodFrom: "2026-03",
+      periodTo: "2026-03",
+      sourceFileId: "source-1",
+      importBatchId: "batch-1",
+      hsCodePrefix: "220421",
+      importerCorrelativeId: "10998",
+      originCountryCode: "724",
+      customsOfficeCode: "39",
+      portCode: "906",
+      limit: 25,
+    }),
+    {
+      tradeFlow: "import",
+      periodFrom: "2026-03",
+      periodTo: "2026-03",
+      sourceFileId: "source-1",
+      importBatchId: "batch-1",
+      hsCodePrefix: "220421",
+      importer: "10998",
+      originCountry: "724",
+      customsOffice: "39",
+      port: "906",
+      limit: "25",
+    },
+  );
+});
+
+test("builds related-record group definitions from an import record", () => {
+  const groups = buildTradeRecordRelatedGroupDefinitions(
+    {
+      id: "record-1",
+      tradeFlow: "import",
+      periodYear: 2026,
+      periodMonth: 3,
+      hsCodeNormalized: "220421",
+      importerCorrelativeId: "10998",
+      originCountryCode: "724",
+      customsOfficeCode: "39",
+      disembarkPortCode: "906",
+    } as TradeRecordSummary,
+    5,
+  );
+
+  assert.deepEqual(
+    groups.map((group) => [group.key, group.filters]),
+    [
+      [
+        "same_hs_flow",
+        {
+          tradeFlow: "import",
+          periodFrom: "2026-03",
+          periodTo: "2026-03",
+          limit: 5,
+          hsCodePrefix: "220421",
+        },
+      ],
+      [
+        "same_country_hs",
+        {
+          tradeFlow: "import",
+          periodFrom: "2026-03",
+          periodTo: "2026-03",
+          limit: 5,
+          hsCodePrefix: "220421",
+          originCountryCode: "724",
+        },
+      ],
+      [
+        "same_participant",
+        {
+          tradeFlow: "import",
+          periodFrom: "2026-03",
+          periodTo: "2026-03",
+          limit: 5,
+          importerCorrelativeId: "10998",
+        },
+      ],
+      [
+        "same_customs_office",
+        {
+          tradeFlow: "import",
+          periodFrom: "2026-03",
+          periodTo: "2026-03",
+          limit: 5,
+          customsOfficeCode: "39",
+        },
+      ],
+      [
+        "same_relevant_port",
+        {
+          tradeFlow: "import",
+          periodFrom: "2026-03",
+          periodTo: "2026-03",
+          limit: 5,
+          portCode: "906",
+        },
+      ],
+    ],
+  );
+});
+
+test("builds export related-record groups with destination and embark port", () => {
+  const groups = buildTradeRecordRelatedGroupDefinitions(
+    {
+      id: "record-2",
+      tradeFlow: "export",
+      periodYear: 2026,
+      periodMonth: 3,
+      hsCodeNormalized: "080610",
+      exporterPrimaryCorrelativeId: "3904",
+      destinationCountryCode: "840",
+      customsOfficeCode: "34",
+      embarkPortCode: "905",
+    } as TradeRecordSummary,
+    3,
+  );
+
+  assert.deepEqual(groups.find((group) => group.key === "same_country_hs")?.filters, {
+    tradeFlow: "export",
+    periodFrom: "2026-03",
+    periodTo: "2026-03",
+    limit: 3,
+    hsCodePrefix: "080610",
+    destinationCountryCode: "840",
+  });
+  assert.deepEqual(groups.find((group) => group.key === "same_participant")?.filters, {
+    tradeFlow: "export",
+    periodFrom: "2026-03",
+    periodTo: "2026-03",
+    limit: 3,
+    exporterCorrelativeId: "3904",
+  });
+  assert.deepEqual(groups.find((group) => group.key === "same_relevant_port")?.filters, {
+    tradeFlow: "export",
+    periodFrom: "2026-03",
+    periodTo: "2026-03",
+    limit: 3,
+    portCode: "905",
+  });
 });
