@@ -9,6 +9,7 @@ import {
   type TradeFlow,
   type TradeRecordFilters,
   type TradeRecordListResult,
+  type TradeRecordSort,
 } from "./trade-records";
 
 export type TradeRecordSearchInput =
@@ -77,6 +78,20 @@ function integer(input: TradeRecordSearchInput, key: string): number | undefined
   return Number.parseInt(value, 10);
 }
 
+function decimal(input: TradeRecordSearchInput, key: string): string | undefined {
+  const value = text(input, key);
+  if (!value) {
+    return undefined;
+  }
+
+  const normalized = value.replace(",", ".");
+  if (!/^\d+(\.\d+)?$/.test(normalized)) {
+    throw new TradeRecordSearchError(`${key} must be a positive decimal number.`);
+  }
+
+  return normalized;
+}
+
 function tradeFlow(input: TradeRecordSearchInput): TradeFlow | undefined {
   const value = text(input, "tradeFlow");
   if (!value) {
@@ -88,6 +103,28 @@ function tradeFlow(input: TradeRecordSearchInput): TradeFlow | undefined {
   }
 
   return value;
+}
+
+function tradeRecordSort(input: TradeRecordSearchInput): TradeRecordSort | undefined {
+  const value = text(input, "sort");
+  if (!value) {
+    return undefined;
+  }
+
+  const validSorts = [
+    "source",
+    "item_value_desc",
+    "item_value_asc",
+    "declaration_fob_desc",
+    "quantity_desc",
+    "gross_weight_desc",
+  ] satisfies TradeRecordSort[];
+
+  if (!validSorts.includes(value as TradeRecordSort)) {
+    throw new TradeRecordSearchError("sort is not supported.");
+  }
+
+  return value as TradeRecordSort;
 }
 
 function period(input: TradeRecordSearchInput, key: "periodFrom" | "periodTo") {
@@ -145,6 +182,17 @@ export function parseTradeRecordSearchParams(
     customsOfficeCode: codeLookup(input, "customsOffice"),
     transportModeCode: codeLookup(input, "transportMode"),
     portCode: codeLookup(input, "port"),
+    minItemValue: decimal(input, "minItemValue"),
+    maxItemValue: decimal(input, "maxItemValue"),
+    minDeclarationFob: decimal(input, "minDeclarationFob"),
+    maxDeclarationFob: decimal(input, "maxDeclarationFob"),
+    minQuantity: decimal(input, "minQuantity"),
+    maxQuantity: decimal(input, "maxQuantity"),
+    minGrossWeightItem: decimal(input, "minGrossWeightItem"),
+    maxGrossWeightItem: decimal(input, "maxGrossWeightItem"),
+    minGrossWeightTotal: decimal(input, "minGrossWeightTotal"),
+    maxGrossWeightTotal: decimal(input, "maxGrossWeightTotal"),
+    sort: tradeRecordSort(input),
     sourceFileId: text(input, "sourceFileId"),
     importBatchId: text(input, "importBatchId"),
     limit: integer(input, "limit"),
@@ -155,6 +203,26 @@ export function parseTradeRecordSearchParams(
   if (filters.periodMonth && (filters.periodMonth < 1 || filters.periodMonth > 12)) {
     throw new TradeRecordSearchError("periodMonth must be between 1 and 12.");
   }
+
+  const numericPairs = [
+    ["minItemValue", "maxItemValue"],
+    ["minDeclarationFob", "maxDeclarationFob"],
+    ["minQuantity", "maxQuantity"],
+    ["minGrossWeightItem", "maxGrossWeightItem"],
+    ["minGrossWeightTotal", "maxGrossWeightTotal"],
+  ] as const;
+
+  for (const [minKey, maxKey] of numericPairs) {
+    const minValue = filters[minKey];
+    const maxValue = filters[maxKey];
+    if (minValue && maxValue && Number(minValue) > Number(maxValue)) {
+      throw new TradeRecordSearchError(`${minKey} must be less than or equal to ${maxKey}.`);
+    }
+  }
+
+  const hasRangeFilter = numericPairs.some(
+    ([minKey, maxKey]) => Boolean(filters[minKey]) || Boolean(filters[maxKey]),
+  );
 
   const hasExactPeriod =
     Boolean(filters.periodYear && filters.periodMonth) ||
@@ -168,7 +236,9 @@ export function parseTradeRecordSearchParams(
       filters.importerCorrelativeId ||
       filters.exporterCorrelativeId ||
       filters.sourceFileId ||
-      filters.importBatchId)
+      filters.importBatchId ||
+      hasRangeFilter ||
+      (filters.sort && filters.sort !== "source"))
   ) {
     throw new TradeRecordSearchError(
       "Cursor pagination requires tradeFlow, one exact period, and supported structured filters.",

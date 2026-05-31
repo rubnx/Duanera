@@ -19,6 +19,17 @@ test("parses route-style trade search params", () => {
     customsOffice: "39",
     transportMode: "1 · MARÍTIMA, FLUVIAL Y LACUSTRE",
     port: "906",
+    minItemValue: "1000,50",
+    maxItemValue: "50000.75",
+    minDeclarationFob: "100",
+    maxDeclarationFob: "90000",
+    minQuantity: "2",
+    maxQuantity: "100",
+    minGrossWeightItem: "1",
+    maxGrossWeightItem: "200",
+    minGrossWeightTotal: "10",
+    maxGrossWeightTotal: "1000",
+    sort: "item_value_desc",
     limit: "25",
     offset: "10",
   });
@@ -34,6 +45,17 @@ test("parses route-style trade search params", () => {
     customsOfficeCode: "39",
     transportModeCode: "1",
     portCode: "906",
+    minItemValue: "1000.50",
+    maxItemValue: "50000.75",
+    minDeclarationFob: "100",
+    maxDeclarationFob: "90000",
+    minQuantity: "2",
+    maxQuantity: "100",
+    minGrossWeightItem: "1",
+    maxGrossWeightItem: "200",
+    minGrossWeightTotal: "10",
+    maxGrossWeightTotal: "1000",
+    sort: "item_value_desc",
     limit: 25,
     offset: 10,
   });
@@ -70,6 +92,28 @@ test("rejects invalid period and month values", () => {
   );
 });
 
+test("rejects invalid numeric filters and ranges", () => {
+  assert.throws(
+    () => parseTradeRecordSearchParams({ minItemValue: "-1" }),
+    TradeRecordSearchError,
+  );
+  assert.throws(
+    () => parseTradeRecordSearchParams({ minQuantity: "abc" }),
+    TradeRecordSearchError,
+  );
+  assert.throws(
+    () => parseTradeRecordSearchParams({ minItemValue: "20", maxItemValue: "10" }),
+    TradeRecordSearchError,
+  );
+});
+
+test("rejects unsupported sort values", () => {
+  assert.throws(
+    () => parseTradeRecordSearchParams({ sort: "company_name" }),
+    TradeRecordSearchError,
+  );
+});
+
 test("parses cursor params", () => {
   const after = encodeTradeRecordCursor({
     rawRowNumber: 100000,
@@ -81,12 +125,14 @@ test("parses cursor params", () => {
       tradeFlow: "import",
       periodFrom: "2026-03",
       periodTo: "2026-03",
+      sort: "source",
       after,
     }),
     {
       tradeFlow: "import",
       periodFrom: "2026-03",
       periodTo: "2026-03",
+      sort: "source",
       afterCursor: {
         rawRowNumber: 100000,
         rawTradeRowId: "00000000-0000-4000-8000-000000000001",
@@ -108,6 +154,28 @@ test("rejects unsupported cursor filters", () => {
         periodFrom: "2026-03",
         periodTo: "2026-03",
         q: "motor",
+        after,
+      }),
+    TradeRecordSearchError,
+  );
+  assert.throws(
+    () =>
+      parseTradeRecordSearchParams({
+        tradeFlow: "import",
+        periodFrom: "2026-03",
+        periodTo: "2026-03",
+        minItemValue: "1000",
+        after,
+      }),
+    TradeRecordSearchError,
+  );
+  assert.throws(
+    () =>
+      parseTradeRecordSearchParams({
+        tradeFlow: "import",
+        periodFrom: "2026-03",
+        periodTo: "2026-03",
+        sort: "item_value_desc",
         after,
       }),
     TradeRecordSearchError,

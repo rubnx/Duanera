@@ -4,9 +4,11 @@ import {
   count,
   desc,
   eq,
+  gte,
   gt,
   ilike,
   like,
+  lte,
   or,
   sql,
   type SQL,
@@ -21,6 +23,13 @@ import {
 } from "../db/schema";
 
 export type TradeFlow = "import" | "export";
+export type TradeRecordSort =
+  | "source"
+  | "item_value_desc"
+  | "item_value_asc"
+  | "declaration_fob_desc"
+  | "quantity_desc"
+  | "gross_weight_desc";
 
 export type TradeRecordFilters = {
   tradeFlow?: TradeFlow;
@@ -37,6 +46,17 @@ export type TradeRecordFilters = {
   customsOfficeCode?: string;
   transportModeCode?: string;
   portCode?: string;
+  minItemValue?: string;
+  maxItemValue?: string;
+  minDeclarationFob?: string;
+  maxDeclarationFob?: string;
+  minQuantity?: string;
+  maxQuantity?: string;
+  minGrossWeightItem?: string;
+  maxGrossWeightItem?: string;
+  minGrossWeightTotal?: string;
+  maxGrossWeightTotal?: string;
+  sort?: TradeRecordSort;
   sourceFileId?: string;
   importBatchId?: string;
   limit?: number;
@@ -216,6 +236,30 @@ function periodTupleExpression(): SQL<number> {
   return sql<number>`(${tradeRecords.periodYear}, ${tradeRecords.periodMonth})`;
 }
 
+function itemValueExpression(filters: TradeRecordFilters): SQL<string> {
+  if (filters.tradeFlow === "import") {
+    return sql<string>`${tradeRecords.itemCifValue}`;
+  }
+
+  if (filters.tradeFlow === "export") {
+    return sql<string>`${tradeRecords.itemFobValue}`;
+  }
+
+  return sql<string>`case when ${tradeRecords.tradeFlow} = 'import' then ${tradeRecords.itemCifValue} else ${tradeRecords.itemFobValue} end`;
+}
+
+function grossWeightExpression(): SQL<string> {
+  return sql<string>`coalesce(${tradeRecords.grossWeightItem}, ${tradeRecords.grossWeightTotal})`;
+}
+
+function gteDecimal(expression: SQL<string>, value: string): SQL {
+  return sql`${expression} >= ${value}`;
+}
+
+function lteDecimal(expression: SQL<string>, value: string): SQL {
+  return sql`${expression} <= ${value}`;
+}
+
 function buildWhere(filters: TradeRecordFilters): SQL | undefined {
   const conditions: SQL[] = [];
 
@@ -305,6 +349,42 @@ function buildWhere(filters: TradeRecordFilters): SQL | undefined {
     }
   }
 
+  const itemValue = itemValueExpression(filters);
+  if (filters.minItemValue) {
+    conditions.push(gteDecimal(itemValue, filters.minItemValue));
+  }
+  if (filters.maxItemValue) {
+    conditions.push(lteDecimal(itemValue, filters.maxItemValue));
+  }
+
+  if (filters.minDeclarationFob) {
+    conditions.push(gte(tradeRecords.declarationFobValue, filters.minDeclarationFob));
+  }
+  if (filters.maxDeclarationFob) {
+    conditions.push(lte(tradeRecords.declarationFobValue, filters.maxDeclarationFob));
+  }
+
+  if (filters.minQuantity) {
+    conditions.push(gte(tradeRecords.quantity, filters.minQuantity));
+  }
+  if (filters.maxQuantity) {
+    conditions.push(lte(tradeRecords.quantity, filters.maxQuantity));
+  }
+
+  if (filters.minGrossWeightItem) {
+    conditions.push(gte(tradeRecords.grossWeightItem, filters.minGrossWeightItem));
+  }
+  if (filters.maxGrossWeightItem) {
+    conditions.push(lte(tradeRecords.grossWeightItem, filters.maxGrossWeightItem));
+  }
+
+  if (filters.minGrossWeightTotal) {
+    conditions.push(gte(tradeRecords.grossWeightTotal, filters.minGrossWeightTotal));
+  }
+  if (filters.maxGrossWeightTotal) {
+    conditions.push(lte(tradeRecords.grossWeightTotal, filters.maxGrossWeightTotal));
+  }
+
   if (filters.sourceFileId) {
     conditions.push(eq(tradeRecords.sourceFileId, filters.sourceFileId));
   }
@@ -314,6 +394,21 @@ function buildWhere(filters: TradeRecordFilters): SQL | undefined {
   }
 
   return conditions.length > 0 ? and(...conditions) : undefined;
+}
+
+function hasRangeFilters(filters: TradeRecordFilters): boolean {
+  return Boolean(
+    filters.minItemValue ||
+      filters.maxItemValue ||
+      filters.minDeclarationFob ||
+      filters.maxDeclarationFob ||
+      filters.minQuantity ||
+      filters.maxQuantity ||
+      filters.minGrossWeightItem ||
+      filters.maxGrossWeightItem ||
+      filters.minGrossWeightTotal ||
+      filters.maxGrossWeightTotal,
+  );
 }
 
 const summaryColumns = {
@@ -392,8 +487,66 @@ function hasRawOrderedIncompatibleFilters(filters: TradeRecordFilters): boolean 
       filters.importerCorrelativeId ||
       filters.exporterCorrelativeId ||
       filters.sourceFileId ||
-      filters.importBatchId,
+      filters.importBatchId ||
+      hasRangeFilters(filters) ||
+      (filters.sort && filters.sort !== "source"),
   );
+}
+
+function genericOrderBy(filters: TradeRecordFilters): SQL[] {
+  const sourceOrder = [
+    desc(tradeRecords.periodYear),
+    desc(tradeRecords.periodMonth),
+    asc(tradeRecords.tradeFlow),
+    asc(rawTradeRows.rowNumber),
+    asc(rawTradeRows.id),
+  ];
+
+  switch (filters.sort) {
+    case "item_value_desc":
+      return [
+        sql`${itemValueExpression(filters)} desc nulls last`,
+        desc(tradeRecords.periodYear),
+        desc(tradeRecords.periodMonth),
+        asc(rawTradeRows.rowNumber),
+        asc(rawTradeRows.id),
+      ];
+    case "item_value_asc":
+      return [
+        sql`${itemValueExpression(filters)} asc nulls last`,
+        desc(tradeRecords.periodYear),
+        desc(tradeRecords.periodMonth),
+        asc(rawTradeRows.rowNumber),
+        asc(rawTradeRows.id),
+      ];
+    case "declaration_fob_desc":
+      return [
+        sql`${tradeRecords.declarationFobValue} desc nulls last`,
+        desc(tradeRecords.periodYear),
+        desc(tradeRecords.periodMonth),
+        asc(rawTradeRows.rowNumber),
+        asc(rawTradeRows.id),
+      ];
+    case "quantity_desc":
+      return [
+        sql`${tradeRecords.quantity} desc nulls last`,
+        desc(tradeRecords.periodYear),
+        desc(tradeRecords.periodMonth),
+        asc(rawTradeRows.rowNumber),
+        asc(rawTradeRows.id),
+      ];
+    case "gross_weight_desc":
+      return [
+        sql`${grossWeightExpression()} desc nulls last`,
+        desc(tradeRecords.periodYear),
+        desc(tradeRecords.periodMonth),
+        asc(rawTradeRows.rowNumber),
+        asc(rawTradeRows.id),
+      ];
+    case "source":
+    case undefined:
+      return sourceOrder;
+  }
 }
 
 function exactMonthForRawOrderedList(
@@ -483,13 +636,7 @@ export async function listTradeRecords(
         .offset(usesCursor ? 0 : offset)
     : await baseSummaryQuery(db)
         .where(where)
-        .orderBy(
-          desc(tradeRecords.periodYear),
-          desc(tradeRecords.periodMonth),
-          asc(tradeRecords.tradeFlow),
-          asc(rawTradeRows.rowNumber),
-          asc(rawTradeRows.id),
-        )
+        .orderBy(...genericOrderBy(filters))
         .limit(queryLimit)
         .offset(offset);
 

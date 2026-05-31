@@ -82,6 +82,47 @@ function optionLabel(options: TradeRecordFilterOption[], value: string | undefin
   return options.find((option) => option.value === value)?.displayLabel ?? value;
 }
 
+function sortLabel(value: string | undefined) {
+  const labels: Record<string, string> = {
+    source: "Orden fuente",
+    item_value_desc: "Mayor valor item",
+    item_value_asc: "Menor valor item",
+    declaration_fob_desc: "Mayor FOB declaración",
+    quantity_desc: "Mayor cantidad",
+    gross_weight_desc: "Mayor peso bruto",
+  };
+
+  return value ? labels[value] ?? value : undefined;
+}
+
+function rangeLabel(from: string | undefined, to: string | undefined) {
+  if (from && to) {
+    return `${from} a ${to}`;
+  }
+
+  if (from) {
+    return `desde ${from}`;
+  }
+
+  if (to) {
+    return `hasta ${to}`;
+  }
+
+  return undefined;
+}
+
+function itemValueFilterLabel(filters: TradeRecordsSearchResult["filters"]) {
+  if (filters.tradeFlow === "import") {
+    return "Valor CIF item";
+  }
+
+  if (filters.tradeFlow === "export") {
+    return "Valor FOB item";
+  }
+
+  return "Valor item CIF/FOB";
+}
+
 function activeFilterItems(
   result: TradeRecordsSearchResult,
   filterOptions: TradeRecordFilterOptions,
@@ -132,6 +173,30 @@ function activeFilterItems(
     {
       label: "Puerto relevante",
       value: optionLabel(filterOptions.ports, filters.portCode),
+    },
+    {
+      label: itemValueFilterLabel(filters),
+      value: rangeLabel(filters.minItemValue, filters.maxItemValue),
+    },
+    {
+      label: "FOB declaración",
+      value: rangeLabel(filters.minDeclarationFob, filters.maxDeclarationFob),
+    },
+    {
+      label: "Cantidad",
+      value: rangeLabel(filters.minQuantity, filters.maxQuantity),
+    },
+    {
+      label: "Peso bruto item",
+      value: rangeLabel(filters.minGrossWeightItem, filters.maxGrossWeightItem),
+    },
+    {
+      label: "Peso bruto total",
+      value: rangeLabel(filters.minGrossWeightTotal, filters.maxGrossWeightTotal),
+    },
+    {
+      label: "Orden",
+      value: filters.sort && filters.sort !== "source" ? sortLabel(filters.sort) : undefined,
     },
   ];
 
@@ -186,6 +251,35 @@ function LookupSelect({
           </option>
         ))}
       </select>
+    </div>
+  );
+}
+
+function RangeInput({
+  id,
+  label,
+  name,
+  placeholder,
+  value,
+}: {
+  id: string;
+  label: string;
+  name: string;
+  placeholder: string;
+  value?: string;
+}) {
+  return (
+    <div className="flex min-w-0 flex-col gap-1.5">
+      <Label htmlFor={id}>{label}</Label>
+      <Input
+        id={id}
+        name={name}
+        type="text"
+        inputMode="decimal"
+        pattern="[0-9]+([,.][0-9]+)?"
+        defaultValue={value ?? ""}
+        placeholder={placeholder}
+      />
     </div>
   );
 }
@@ -282,6 +376,17 @@ export default async function TradeRecordsPage({
     customsOffice: firstValue(params.customsOffice),
     transportMode: firstValue(params.transportMode),
     port: firstValue(params.port),
+    minItemValue: firstValue(params.minItemValue),
+    maxItemValue: firstValue(params.maxItemValue),
+    minDeclarationFob: firstValue(params.minDeclarationFob),
+    maxDeclarationFob: firstValue(params.maxDeclarationFob),
+    minQuantity: firstValue(params.minQuantity),
+    maxQuantity: firstValue(params.maxQuantity),
+    minGrossWeightItem: firstValue(params.minGrossWeightItem),
+    maxGrossWeightItem: firstValue(params.maxGrossWeightItem),
+    minGrossWeightTotal: firstValue(params.minGrossWeightTotal),
+    maxGrossWeightTotal: firstValue(params.maxGrossWeightTotal),
+    sort: firstValue(params.sort),
     limit: firstValue(params.limit) ?? defaultSearchInput.limit,
     offset: firstValue(params.offset),
     after: firstValue(params.after),
@@ -312,16 +417,17 @@ export default async function TradeRecordsPage({
     ? buildPageHref(params, { after: result.pagination.nextCursor })
     : buildPageHref(params, { offset: nextOffset });
   const activeFilters = activeFilterItems(result, filterOptions);
+  const usesOffsetMode = result.pagination.paginationMode === "offset";
 
   return (
     <main className="mx-auto flex w-full max-w-[1440px] flex-col gap-4 px-4 py-5 lg:px-6">
       <header className="flex flex-col gap-3 border-b pb-4 lg:flex-row lg:items-end lg:justify-between">
-        <div className="flex flex-col gap-1">
+        <div className="flex min-w-0 flex-col gap-1">
           <Badge variant="outline" className="w-fit">
             Demo interno
           </Badge>
           <h1 className="text-2xl font-semibold tracking-tight">Registros Aduana</h1>
-          <p className="max-w-3xl text-sm text-muted-foreground">
+          <p className="max-w-3xl break-words text-sm text-muted-foreground">
             Muestra de importaciones y exportaciones de marzo 2026. Los IDs de
             importador/exportador son correlativos anónimos de Aduana, no identidades
             legales verificadas.
@@ -338,10 +444,11 @@ export default async function TradeRecordsPage({
       <Card>
         <CardHeader>
           <CardTitle>Filtros</CardTitle>
-          <CardDescription>
+          <CardDescription className="break-words">
             Busca por flujo, período, partida HS, producto, etiquetas decodificadas y
             correlativos anónimos de Aduana. Puerto relevante usa desembarque en
-            importaciones y embarque en exportaciones.
+            importaciones y embarque en exportaciones. Los rangos comerciales usan
+            valor CIF item en importaciones y valor FOB item en exportaciones.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -463,6 +570,92 @@ export default async function TradeRecordsPage({
               options={filterOptions.ports}
               placeholder="Todos los puertos"
             />
+            <div className="flex min-w-0 flex-col gap-1.5">
+              <Label htmlFor="sort">Orden</Label>
+              <select
+                id="sort"
+                name="sort"
+                defaultValue={result.filters.sort ?? "source"}
+                className="h-8 w-full min-w-0 rounded-lg border border-input bg-background px-2.5 text-sm"
+              >
+                <option value="source">Orden fuente</option>
+                <option value="item_value_desc">Mayor valor item</option>
+                <option value="item_value_asc">Menor valor item</option>
+                <option value="declaration_fob_desc">Mayor FOB declaración</option>
+                <option value="quantity_desc">Mayor cantidad</option>
+                <option value="gross_weight_desc">Mayor peso bruto</option>
+              </select>
+            </div>
+            <RangeInput
+              id="minItemValue"
+              name="minItemValue"
+              label="Valor item desde"
+              value={result.filters.minItemValue}
+              placeholder="1000"
+            />
+            <RangeInput
+              id="maxItemValue"
+              name="maxItemValue"
+              label="Valor item hasta"
+              value={result.filters.maxItemValue}
+              placeholder="50000"
+            />
+            <RangeInput
+              id="minDeclarationFob"
+              name="minDeclarationFob"
+              label="FOB declaración desde"
+              value={result.filters.minDeclarationFob}
+              placeholder="1000"
+            />
+            <RangeInput
+              id="maxDeclarationFob"
+              name="maxDeclarationFob"
+              label="FOB declaración hasta"
+              value={result.filters.maxDeclarationFob}
+              placeholder="50000"
+            />
+            <RangeInput
+              id="minQuantity"
+              name="minQuantity"
+              label="Cantidad desde"
+              value={result.filters.minQuantity}
+              placeholder="10"
+            />
+            <RangeInput
+              id="maxQuantity"
+              name="maxQuantity"
+              label="Cantidad hasta"
+              value={result.filters.maxQuantity}
+              placeholder="10000"
+            />
+            <RangeInput
+              id="minGrossWeightItem"
+              name="minGrossWeightItem"
+              label="Peso item desde"
+              value={result.filters.minGrossWeightItem}
+              placeholder="10"
+            />
+            <RangeInput
+              id="maxGrossWeightItem"
+              name="maxGrossWeightItem"
+              label="Peso item hasta"
+              value={result.filters.maxGrossWeightItem}
+              placeholder="10000"
+            />
+            <RangeInput
+              id="minGrossWeightTotal"
+              name="minGrossWeightTotal"
+              label="Peso total desde"
+              value={result.filters.minGrossWeightTotal}
+              placeholder="10"
+            />
+            <RangeInput
+              id="maxGrossWeightTotal"
+              name="maxGrossWeightTotal"
+              label="Peso total hasta"
+              value={result.filters.maxGrossWeightTotal}
+              placeholder="10000"
+            />
           </form>
           <div className="mt-4 border-t pt-3">
             <div className="mb-2 text-xs font-medium text-muted-foreground">
@@ -470,11 +663,21 @@ export default async function TradeRecordsPage({
             </div>
             <div className="flex flex-wrap gap-2">
               {activeFilters.map((filter) => (
-                <Badge key={`${filter.label}:${filter.value}`} variant="outline">
+                <Badge
+                  key={`${filter.label}:${filter.value}`}
+                  variant="outline"
+                  className="h-auto max-w-full justify-start whitespace-normal break-words text-left"
+                >
                   {filter.label}: {filter.value}
                 </Badge>
               ))}
             </div>
+            {usesOffsetMode ? (
+              <p className="mt-2 text-xs text-muted-foreground">
+                Los rangos comerciales, búsquedas de texto, correlativos y ordenamientos
+                por valor usan paginación por posición para mantener el orden solicitado.
+              </p>
+            ) : null}
           </div>
         </CardContent>
       </Card>
