@@ -54,6 +54,16 @@ function text(input: TradeRecordSearchInput, key: string): string | undefined {
   return value ? value : undefined;
 }
 
+function codeLookup(input: TradeRecordSearchInput, key: string): string | undefined {
+  const value = text(input, key);
+  if (!value) {
+    return undefined;
+  }
+
+  const displayValueMatch = /^([A-Za-z0-9_-]+)\s*[·-]\s+/.exec(value);
+  return displayValueMatch?.[1] ?? value;
+}
+
 function integer(input: TradeRecordSearchInput, key: string): number | undefined {
   const value = text(input, key);
   if (!value) {
@@ -130,10 +140,11 @@ export function parseTradeRecordSearchParams(
     productQuery: text(input, "q"),
     importerCorrelativeId: text(input, "importer"),
     exporterCorrelativeId: text(input, "exporter"),
-    originCountryCode: text(input, "originCountry"),
-    destinationCountryCode: text(input, "destinationCountry"),
-    customsOfficeCode: text(input, "customsOffice"),
-    transportModeCode: text(input, "transportMode"),
+    originCountryCode: codeLookup(input, "originCountry"),
+    destinationCountryCode: codeLookup(input, "destinationCountry"),
+    customsOfficeCode: codeLookup(input, "customsOffice"),
+    transportModeCode: codeLookup(input, "transportMode"),
+    portCode: codeLookup(input, "port"),
     sourceFileId: text(input, "sourceFileId"),
     importBatchId: text(input, "importBatchId"),
     limit: integer(input, "limit"),

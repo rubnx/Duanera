@@ -36,6 +36,7 @@ export type TradeRecordFilters = {
   destinationCountryCode?: string;
   customsOfficeCode?: string;
   transportModeCode?: string;
+  portCode?: string;
   sourceFileId?: string;
   importBatchId?: string;
   limit?: number;
@@ -287,6 +288,21 @@ function buildWhere(filters: TradeRecordFilters): SQL | undefined {
 
   if (filters.transportModeCode) {
     conditions.push(eq(tradeRecords.transportModeCode, filters.transportModeCode));
+  }
+
+  if (filters.portCode) {
+    if (filters.tradeFlow === "import") {
+      conditions.push(eq(tradeRecords.disembarkPortCode, filters.portCode));
+    } else if (filters.tradeFlow === "export") {
+      conditions.push(eq(tradeRecords.embarkPortCode, filters.portCode));
+    } else {
+      conditions.push(
+        or(
+          eq(tradeRecords.embarkPortCode, filters.portCode),
+          eq(tradeRecords.disembarkPortCode, filters.portCode),
+        )!,
+      );
+    }
   }
 
   if (filters.sourceFileId) {

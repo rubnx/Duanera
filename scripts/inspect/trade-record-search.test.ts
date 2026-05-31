@@ -15,6 +15,10 @@ test("parses route-style trade search params", () => {
     hsCodePrefix: "8523",
     q: "tarjetas",
     importer: "10998",
+    originCountry: "336 · México",
+    customsOffice: "39",
+    transportMode: "1 · MARÍTIMA, FLUVIAL Y LACUSTRE",
+    port: "906",
     limit: "25",
     offset: "10",
   });
@@ -26,6 +30,10 @@ test("parses route-style trade search params", () => {
     hsCodePrefix: "8523",
     productQuery: "tarjetas",
     importerCorrelativeId: "10998",
+    originCountryCode: "336",
+    customsOfficeCode: "39",
+    transportModeCode: "1",
+    portCode: "906",
     limit: 25,
     offset: 10,
   });

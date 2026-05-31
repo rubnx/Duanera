@@ -21,6 +21,11 @@ import {
 } from "@/components/ui/table";
 import { db } from "@/db/client";
 import {
+  loadTradeRecordFilterOptions,
+  type TradeRecordFilterOption,
+  type TradeRecordFilterOptions,
+} from "@/trade/trade-record-filter-options";
+import {
   searchTradeRecords,
   TradeRecordSearchError,
 } from "@/trade/trade-record-search";
@@ -68,6 +73,70 @@ function formatQuantity(value: string | null, unitCode: string | null, unitLabel
   return `${value} ${unitLabel ?? unitCode ?? ""}`.trim();
 }
 
+function optionLabel(options: TradeRecordFilterOption[], value: string | undefined) {
+  if (!value) {
+    return undefined;
+  }
+
+  return options.find((option) => option.value === value)?.displayLabel ?? value;
+}
+
+function activeFilterItems(
+  result: TradeRecordsSearchResult,
+  filterOptions: TradeRecordFilterOptions,
+) {
+  const filters = result.filters;
+  const items = [
+    {
+      label: "Flujo",
+      value: filters.tradeFlow === "export" ? "Exportaciones" : "Importaciones",
+    },
+    {
+      label: "Período",
+      value:
+        filters.periodFrom && filters.periodTo
+          ? `${filters.periodFrom} a ${filters.periodTo}`
+          : undefined,
+    },
+    { label: "HS", value: filters.hsCodePrefix },
+    { label: "Producto", value: filters.productQuery },
+    {
+      label: "Importador Aduana",
+      value: filters.importerCorrelativeId
+        ? `${filters.importerCorrelativeId} · correlativo anónimo`
+        : undefined,
+    },
+    {
+      label: "Exportador Aduana",
+      value: filters.exporterCorrelativeId
+        ? `${filters.exporterCorrelativeId} · correlativo anónimo`
+        : undefined,
+    },
+    {
+      label: "País origen",
+      value: optionLabel(filterOptions.countries, filters.originCountryCode),
+    },
+    {
+      label: "País destino",
+      value: optionLabel(filterOptions.countries, filters.destinationCountryCode),
+    },
+    {
+      label: "Aduana",
+      value: optionLabel(filterOptions.customsOffices, filters.customsOfficeCode),
+    },
+    {
+      label: "Vía transporte",
+      value: optionLabel(filterOptions.transportModes, filters.transportModeCode),
+    },
+    {
+      label: "Puerto relevante",
+      value: optionLabel(filterOptions.ports, filters.portCode),
+    },
+  ];
+
+  return items.filter((item): item is { label: string; value: string } => Boolean(item.value));
+}
+
 function participant(record: TradeRecordRow) {
   if (record.tradeFlow === "import") {
     return {
@@ -83,6 +152,41 @@ function participant(record: TradeRecordRow) {
       record.exporterSecondaryCorrelativeId ??
       "—",
   };
+}
+
+function LookupSelect({
+  id,
+  label,
+  name,
+  options,
+  placeholder,
+  value,
+}: {
+  id: string;
+  label: string;
+  name: string;
+  options: TradeRecordFilterOption[];
+  placeholder: string;
+  value?: string;
+}) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <Label htmlFor={id}>{label}</Label>
+      <select
+        id={id}
+        name={name}
+        defaultValue={value ?? ""}
+        className="h-8 w-full rounded-lg border border-input bg-background px-2.5 text-sm"
+      >
+        <option value="">{placeholder}</option>
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.displayLabel}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
 }
 
 function itemValueForFlow(record: TradeRecordRow) {
@@ -176,6 +280,7 @@ export default async function TradeRecordsPage({
     destinationCountry: firstValue(params.destinationCountry),
     customsOffice: firstValue(params.customsOffice),
     transportMode: firstValue(params.transportMode),
+    port: firstValue(params.port),
     limit: firstValue(params.limit) ?? defaultSearchInput.limit,
     offset: firstValue(params.offset),
     after: firstValue(params.after),
@@ -183,6 +288,7 @@ export default async function TradeRecordsPage({
 
   let result: TradeRecordsSearchResult;
   let searchError: string | null = null;
+  const filterOptions = await loadTradeRecordFilterOptions(db);
 
   try {
     result = await searchTradeRecords(db, searchInput);
@@ -204,6 +310,7 @@ export default async function TradeRecordsPage({
   const nextHref = result.pagination.nextCursor
     ? buildPageHref(params, { after: result.pagination.nextCursor })
     : buildPageHref(params, { offset: nextOffset });
+  const activeFilters = activeFilterItems(result, filterOptions);
 
   return (
     <main className="mx-auto flex w-full max-w-[1440px] flex-col gap-4 px-4 py-5 lg:px-6">
@@ -231,8 +338,9 @@ export default async function TradeRecordsPage({
         <CardHeader>
           <CardTitle>Filtros</CardTitle>
           <CardDescription>
-            Busca por flujo, período, partida HS, producto, atributos auxiliares y
-            correlativos anónimos de Aduana.
+            Busca por flujo, período, partida HS, producto, etiquetas decodificadas y
+            correlativos anónimos de Aduana. Puerto relevante usa desembarque en
+            importaciones y embarque en exportaciones.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -297,7 +405,7 @@ export default async function TradeRecordsPage({
               </Link>
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="importer">Importador</Label>
+              <Label htmlFor="importer">Correlativo importador</Label>
               <Input
                 id="importer"
                 name="importer"
@@ -306,7 +414,7 @@ export default async function TradeRecordsPage({
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="exporter">Exportador</Label>
+              <Label htmlFor="exporter">Correlativo exportador</Label>
               <Input
                 id="exporter"
                 name="exporter"
@@ -314,43 +422,59 @@ export default async function TradeRecordsPage({
                 placeholder="3904"
               />
             </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="originCountry">País origen</Label>
-              <Input
-                id="originCountry"
-                name="originCountry"
-                defaultValue={result.filters.originCountryCode ?? ""}
-                placeholder="225"
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="destinationCountry">País destino</Label>
-              <Input
-                id="destinationCountry"
-                name="destinationCountry"
-                defaultValue={result.filters.destinationCountryCode ?? ""}
-                placeholder="225"
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="customsOffice">Aduana</Label>
-              <Input
-                id="customsOffice"
-                name="customsOffice"
-                defaultValue={result.filters.customsOfficeCode ?? ""}
-                placeholder="39"
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="transportMode">Vía transporte</Label>
-              <Input
-                id="transportMode"
-                name="transportMode"
-                defaultValue={result.filters.transportModeCode ?? ""}
-                placeholder="1"
-              />
-            </div>
+            <LookupSelect
+              id="originCountry"
+              name="originCountry"
+              label="País origen"
+              value={result.filters.originCountryCode}
+              options={filterOptions.countries}
+              placeholder="Todos los orígenes"
+            />
+            <LookupSelect
+              id="destinationCountry"
+              name="destinationCountry"
+              label="País destino"
+              value={result.filters.destinationCountryCode}
+              options={filterOptions.countries}
+              placeholder="Todos los destinos"
+            />
+            <LookupSelect
+              id="customsOffice"
+              name="customsOffice"
+              label="Aduana"
+              value={result.filters.customsOfficeCode}
+              options={filterOptions.customsOffices}
+              placeholder="Todas las aduanas"
+            />
+            <LookupSelect
+              id="transportMode"
+              name="transportMode"
+              label="Vía transporte"
+              value={result.filters.transportModeCode}
+              options={filterOptions.transportModes}
+              placeholder="Todas las vías"
+            />
+            <LookupSelect
+              id="port"
+              name="port"
+              label="Puerto relevante"
+              value={result.filters.portCode}
+              options={filterOptions.ports}
+              placeholder="Todos los puertos"
+            />
           </form>
+          <div className="mt-4 border-t pt-3">
+            <div className="mb-2 text-xs font-medium text-muted-foreground">
+              Filtros activos
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {activeFilters.map((filter) => (
+                <Badge key={`${filter.label}:${filter.value}`} variant="outline">
+                  {filter.label}: {filter.value}
+                </Badge>
+              ))}
+            </div>
+          </div>
         </CardContent>
       </Card>
 
