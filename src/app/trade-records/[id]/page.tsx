@@ -43,6 +43,14 @@ function formatMoney(value: string | null, currency?: string) {
   return currency ? `${value} ${currency}` : value;
 }
 
+function formatQuantity(value: string | null, unit?: string) {
+  if (!value) {
+    return "-";
+  }
+
+  return unit ? `${value} ${unit}` : value;
+}
+
 function formatJson(value: unknown) {
   if (value === null || value === undefined) {
     return "-";
@@ -59,20 +67,62 @@ function formatPrunedAt(value: Date | string | null) {
   return value instanceof Date ? value.toISOString() : value;
 }
 
+function formatPayloadRetentionMode(value: string) {
+  const labels: Record<string, string> = {
+    full_postgres: "Completo en Postgres",
+    errors_and_warnings: "Solo errores y advertencias",
+    pruned_after_normalization: "Podado después de normalizar",
+  };
+
+  return labels[value] ?? value;
+}
+
+function formatPayloadRetainedReason(value: string | null) {
+  if (!value) {
+    return "-";
+  }
+
+  const labels: Record<string, string> = {
+    existing_full_postgres_payload: "Payload completo retenido de carga existente",
+    parse_error: "Retenido por error de parseo",
+    parse_warning: "Retenido por advertencia de parseo",
+    pending_post_normalization_prune: "Pendiente de poda posterior a normalización",
+    pruned_after_normalization: "Podado después de normalizar",
+  };
+
+  return labels[value] ?? value;
+}
+
 function participantLabel(record: DetailRecord) {
   if (record.tradeFlow === "import") {
     return {
-      label: "Correlativo importador",
+      label: "Correlativo importador Aduana",
       value: record.importerCorrelativeId ?? "-",
     };
   }
 
   return {
-    label: "Correlativo exportador",
+    label: "Correlativo exportador Aduana",
     value:
       record.exporterPrimaryCorrelativeId ??
       record.exporterSecondaryCorrelativeId ??
       "-",
+  };
+}
+
+function valueSectionCopy(record: DetailRecord) {
+  if (record.tradeFlow === "import") {
+    return {
+      title: "Valores de importación",
+      description:
+        "Montos y medidas útiles para revisar costo CIF, base FOB, flete, seguro y unidad declarada.",
+    };
+  }
+
+  return {
+    title: "Valores de exportación",
+    description:
+      "Campos FOB y contexto logístico de exportación. No se muestran campos CIF en cero que no aportan lectura comercial.",
   };
 }
 
@@ -105,6 +155,7 @@ export default async function TradeRecordDetailPage({ params }: PageProps) {
 
   const participant = participantLabel(record);
   const period = `${record.periodYear}-${String(record.periodMonth).padStart(2, "0")}`;
+  const valuesCopy = valueSectionCopy(record);
 
   return (
     <main className="mx-auto flex w-full max-w-[1200px] flex-col gap-4 px-4 py-5 lg:px-6">
@@ -119,17 +170,17 @@ export default async function TradeRecordDetailPage({ params }: PageProps) {
         <div className="flex flex-col gap-2">
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant="secondary">
-              {record.tradeFlow === "import" ? "Importacion" : "Exportacion"}
+              {record.tradeFlow === "import" ? "Importación" : "Exportación"}
             </Badge>
             <Badge variant="outline">{period}</Badge>
             <Badge variant="outline">{record.hsCodeNormalized ?? "HS sin normalizar"}</Badge>
           </div>
           <h1 className="max-w-5xl text-2xl font-semibold tracking-tight">
-            {record.productDescriptionRaw ?? "Registro sin descripcion de producto"}
+            {record.productDescriptionRaw ?? "Registro sin descripción de producto"}
           </h1>
           <p className="max-w-4xl text-sm text-muted-foreground">
-            Este detalle conserva la trazabilidad al archivo fuente, lote de importacion
-            y fila cruda. Los correlativos son identificadores anonimos de Aduana, no
+            Este detalle conserva la trazabilidad al archivo fuente, lote de importación
+            y fila cruda. Los correlativos son identificadores anónimos de Aduana, no
             nombres legales ni RUTs de importador/exportador.
           </p>
         </div>
@@ -139,14 +190,14 @@ export default async function TradeRecordDetailPage({ params }: PageProps) {
         <div className="flex flex-col gap-4">
           <Card>
             <CardHeader>
-              <CardTitle>Producto y operacion</CardTitle>
+              <CardTitle>Producto y operación</CardTitle>
               <CardDescription>Campos normalizados desde la fila Aduana.</CardDescription>
             </CardHeader>
             <CardContent>
               <dl className="grid gap-4 md:grid-cols-2">
-                <Field label="Declaracion" value={record.declarationIdRaw} mono />
+                <Field label="Declaración" value={record.declarationIdRaw} mono />
                 <Field label="Item" value={record.itemNumber} />
-                <Field label="Fecha aceptacion" value={record.acceptanceDate} />
+                <Field label="Fecha aceptación" value={record.acceptanceDate} />
                 <Field label={participant.label} value={participant.value} mono />
                 <Field label="HS original" value={record.hsCodeRaw} mono />
                 <Field label="HS normalizado" value={record.hsCodeNormalized} mono />
@@ -164,69 +215,143 @@ export default async function TradeRecordDetailPage({ params }: PageProps) {
 
           <Card>
             <CardHeader>
-              <CardTitle>Valores</CardTitle>
-              <CardDescription>Montos disponibles segun el flujo y la fuente.</CardDescription>
+              <CardTitle>{valuesCopy.title}</CardTitle>
+              <CardDescription>{valuesCopy.description}</CardDescription>
             </CardHeader>
             <CardContent>
-              <dl className="grid gap-4 md:grid-cols-3">
-                <Field
-                  label="Valor CIF item"
-                  value={formatMoney(record.itemCifValue, record.decodedLabels.currency)}
-                  mono
-                />
-                <Field
-                  label="Valor FOB item"
-                  value={formatMoney(record.itemFobValue, record.decodedLabels.currency)}
-                  mono
-                />
-                <Field
-                  label="Valor FOB declaracion"
-                  value={formatMoney(
-                    record.declarationFobValue,
-                    record.decodedLabels.currency,
-                  )}
-                  mono
-                />
-                <Field label="Valor CIF declaracion" value={record.cifValue} mono />
-                <Field label="Flete" value={record.freightValue} mono />
-                <Field label="Seguro" value={record.insuranceValue} mono />
-                <Field label="Precio unitario" value={record.unitPriceValue} mono />
-                <Field label="Peso bruto total" value={record.grossWeightTotal} mono />
-                <Field label="Peso bruto item" value={record.grossWeightItem} mono />
-              </dl>
+              {record.tradeFlow === "import" ? (
+                <dl className="grid gap-4 md:grid-cols-3">
+                  <Field
+                    label="CIF item"
+                    value={formatMoney(record.itemCifValue, record.decodedLabels.currency)}
+                    mono
+                  />
+                  <Field
+                    label="FOB declaración"
+                    value={formatMoney(
+                      record.declarationFobValue,
+                      record.decodedLabels.currency,
+                    )}
+                    mono
+                  />
+                  <Field
+                    label="CIF declaración"
+                    value={formatMoney(record.cifValue, record.decodedLabels.currency)}
+                    mono
+                  />
+                  <Field
+                    label="Flete"
+                    value={formatMoney(record.freightValue, record.decodedLabels.currency)}
+                    mono
+                  />
+                  <Field
+                    label="Seguro"
+                    value={formatMoney(record.insuranceValue, record.decodedLabels.currency)}
+                    mono
+                  />
+                  <Field
+                    label="Precio unitario"
+                    value={formatMoney(record.unitPriceValue, record.decodedLabels.currency)}
+                    mono
+                  />
+                  <Field
+                    label="Cantidad"
+                    value={formatQuantity(record.quantity, record.decodedLabels.quantityUnit)}
+                    mono
+                  />
+                  <Field label="Peso bruto total" value={record.grossWeightTotal} mono />
+                  <Field label="Peso bruto item" value={record.grossWeightItem} mono />
+                </dl>
+              ) : (
+                <dl className="grid gap-4 md:grid-cols-3">
+                  <Field
+                    label="FOB item"
+                    value={formatMoney(record.itemFobValue, record.decodedLabels.currency)}
+                    mono
+                  />
+                  <Field
+                    label="FOB declaración"
+                    value={formatMoney(
+                      record.declarationFobValue,
+                      record.decodedLabels.currency,
+                    )}
+                    mono
+                  />
+                  <Field
+                    label="Precio unitario FOB"
+                    value={formatMoney(record.unitPriceValue, record.decodedLabels.currency)}
+                    mono
+                  />
+                  <Field
+                    label="Cantidad"
+                    value={formatQuantity(record.quantity, record.decodedLabels.quantityUnit)}
+                    mono
+                  />
+                  <Field label="Peso bruto item" value={record.grossWeightItem} mono />
+                  <Field label="Peso bruto total" value={record.grossWeightTotal} mono />
+                  <Field
+                    label="País destino"
+                    value={formatCodeLabel(
+                      record.destinationCountryCode,
+                      record.decodedLabels.destinationCountry,
+                    )}
+                  />
+                  <Field
+                    label="Puerto embarque"
+                    value={formatCodeLabel(
+                      record.embarkPortCode,
+                      record.decodedLabels.embarkPort,
+                    )}
+                  />
+                  <Field
+                    label="Puerto desembarque"
+                    value={formatCodeLabel(
+                      record.disembarkPortCode,
+                      record.decodedLabels.disembarkPort,
+                    )}
+                  />
+                  <Field
+                    label="Vía transporte"
+                    value={formatCodeLabel(
+                      record.transportModeCode,
+                      record.decodedLabels.transportMode,
+                    )}
+                  />
+                </dl>
+              )}
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
-              <CardTitle>Geografia y logistica</CardTitle>
-              <CardDescription>Codigos decodificados cuando existe tabla oficial.</CardDescription>
+              <CardTitle>Geografía y logística</CardTitle>
+              <CardDescription>Códigos decodificados cuando existe tabla oficial.</CardDescription>
             </CardHeader>
             <CardContent>
               <dl className="grid gap-4 md:grid-cols-2">
                 <Field
-                  label="Pais origen"
+                  label="País origen"
                   value={formatCodeLabel(
                     record.originCountryCode,
                     record.decodedLabels.originCountry,
                   )}
                 />
                 <Field
-                  label="Pais adquisicion"
+                  label="País adquisición"
                   value={formatCodeLabel(
                     record.acquisitionCountryCode,
                     record.decodedLabels.acquisitionCountry,
                   )}
                 />
                 <Field
-                  label="Pais consignacion"
+                  label="País consignación"
                   value={formatCodeLabel(
                     record.consignmentCountryCode,
                     record.decodedLabels.consignmentCountry,
                   )}
                 />
                 <Field
-                  label="Pais destino"
+                  label="País destino"
                   value={formatCodeLabel(
                     record.destinationCountryCode,
                     record.decodedLabels.destinationCountry,
@@ -240,7 +365,7 @@ export default async function TradeRecordDetailPage({ params }: PageProps) {
                   )}
                 />
                 <Field
-                  label="Via transporte"
+                  label="Vía transporte"
                   value={formatCodeLabel(
                     record.transportModeCode,
                     record.decodedLabels.transportMode,
@@ -270,7 +395,7 @@ export default async function TradeRecordDetailPage({ params }: PageProps) {
           <Card>
             <CardHeader>
               <CardTitle>Proveniencia</CardTitle>
-              <CardDescription>Trazabilidad minima para auditar el registro.</CardDescription>
+              <CardDescription>Trazabilidad mínima para auditar el registro.</CardDescription>
             </CardHeader>
             <CardContent>
               <dl className="grid gap-4">
@@ -280,8 +405,14 @@ export default async function TradeRecordDetailPage({ params }: PageProps) {
                 <Field label="Lote" value={record.importBatchId} mono />
                 <Field label="Estado lote" value={record.importBatchStatus} />
                 <Field label="Parser" value={`${record.parserName} ${record.parserVersion}`} />
-                <Field label="Retencion payload" value={record.payloadRetentionMode} />
-                <Field label="Estado payload" value={record.payloadRetainedReason} />
+                <Field
+                  label="Retención payload"
+                  value={formatPayloadRetentionMode(record.payloadRetentionMode)}
+                />
+                <Field
+                  label="Estado payload"
+                  value={formatPayloadRetainedReason(record.payloadRetainedReason)}
+                />
                 <Field label="Payload hash" value={record.payloadHashSha256} mono />
                 <Field label="Payload podado" value={formatPrunedAt(record.payloadPrunedAt)} />
               </dl>
@@ -291,7 +422,7 @@ export default async function TradeRecordDetailPage({ params }: PageProps) {
           <Card>
             <CardHeader>
               <CardTitle>Atributos producto</CardTitle>
-              <CardDescription>Campos auxiliares confirmados cuando estan presentes.</CardDescription>
+              <CardDescription>Campos auxiliares confirmados cuando están presentes.</CardDescription>
             </CardHeader>
             <CardContent>
               <pre className="max-h-[320px] overflow-auto rounded-lg bg-muted p-3 text-xs leading-relaxed">
@@ -306,7 +437,7 @@ export default async function TradeRecordDetailPage({ params }: PageProps) {
         <CardHeader>
           <CardTitle>Fila cruda</CardTitle>
           <CardDescription>
-            Vista de auditoria. Puede incluir partes operativas del documento, pero no se
+            Vista de auditoría. Puede incluir partes operativas del documento, pero no se
             interpreta como identidad legal de importador/exportador.
           </CardDescription>
         </CardHeader>
