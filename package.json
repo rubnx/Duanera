@@ -1,0 +1,58 @@
+{
+  "name": "duanera",
+  "version": "1.0.0",
+  "description": "Duanera is a customs, import/export, and trade intelligence web app.",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:seed:code-tables": "tsx scripts/seed/code-tables.ts",
+    "db:seed:source-files": "tsx scripts/seed/source-file-manifest.ts",
+    "db:seed:source-layouts": "tsx scripts/seed/source-layout-metadata.ts",
+    "db:load:raw-sample": "tsx scripts/ingest/load-raw-trade-row-sample.ts",
+    "db:normalize:trade-sample": "tsx scripts/ingest/normalize-trade-record-sample.ts",
+    "db:prune:raw-payloads": "tsx scripts/ingest/prune-raw-trade-row-payloads.ts",
+    "db:studio": "drizzle-kit studio",
+    "inspect:trade-records": "tsx scripts/inspect/trade-records.ts",
+    "test:trade-search": "tsx --test scripts/inspect/trade-record-search.test.ts",
+    "test:raw-row-retention": "tsx --test scripts/ingest/raw-row-retention.test.ts",
+    "test:parser": "tsx --test scripts/ingest/aduana-parser.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@base-ui/react": "^1.5.0",
+    "@neondatabase/serverless": "^1.1.0",
+    "@tailwindcss/postcss": "^4.3.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "dotenv": "^17.4.2",
+    "drizzle-orm": "^0.45.2",
+    "lucide-react": "^1.17.0",
+    "next": "^16.2.6",
+    "postcss": "^8.5.15",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
+    "shadcn": "^4.8.2",
+    "tailwind-merge": "^3.6.0",
+    "tailwindcss": "^4.3.0",
+    "tw-animate-css": "^1.4.0"
+  },
+  "overrides": {
+    "postcss": "^8.5.15"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.1",
+    "@types/react": "^19.2.15",
+    "@types/react-dom": "^19.2.3",
+    "csv-parse": "^6.2.1",
+    "drizzle-kit": "^0.31.10",
+    "exceljs": "^4.4.0",
+    "iconv-lite": "^0.7.2",
+    "tsx": "^4.22.3",
+    "typescript": "^6.0.3"
+  }
+}

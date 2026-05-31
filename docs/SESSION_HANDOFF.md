@@ -1,0 +1,107 @@
+# Session Handoff
+
+## Current snapshot
+
+Duanera is a greenfield customs/import-export data product.
+
+Confirmed decisions:
+
+- Chile-first.
+- Spanish-first.
+- Neon-hosted PostgreSQL as the MVP database provider.
+- Drizzle as database layer.
+- Raw source files in R2/S3-compatible object storage.
+- Postgres-first MVP.
+- ClickHouse-ready architecture, but no ClickHouse dependency yet.
+- No database-provider auth/storage/realtime/edge functions/generated APIs by default.
+- Strong raw/provenance/normalization separation.
+
+Main unresolved items:
+
+- Chile Aduana official sources have initial local research archives under `data/sources/chile-aduana/`.
+- Exact final field mapping and data granularity still need source-by-source validation.
+- Public Aduana main files expose importer/exporter anonymous correlative IDs, not legal importer/exporter names or RUTs. `docs/research/CHILE_ADUANA_IDENTITY_INFERENCE_PILOT.md` documents a manual possible-identity workflow: exporter inference is promising when bulto marks/product text expose company evidence; importer inference is weaker and should stay internal until validated.
+- Aduana.cl transparency evidence strengthens this conclusion. Responses `AE007T0002141` and `AE007T0002876`, plus Consejo para la Transparencia decisions `C1002-17` and `C3165-17`, indicate that names/RUTs linked to import/export transactions are excluded from open data or withheld under secrecy/reserve reasoning. A sampled Aduana.cl `ingresos_2002.zip` operational CSV also has only aggregate/statistical columns and no identity fields.
+- Older Aduana.cl transparency registers are a real pre-datos.gob.cl lead. The April/September 2016 Aduana notices confirm a transition from transparency-request delivery to Datos Abiertos. Sampled 2012/2013 response registers and downloaded responses show complete monthly import/export databases and filtered extracts were delivered by CD, Excel, and RAR attachments through transparency requests. The public response documents do not expose the actual attached datasets/CD contents, so this proves prior request-specific access but not a public retrievable identity source. Evidence is stored under `data/research/aduana-transparency-archives/`.
+- `docs/research/CHILE_ADUANA_IDENTITY_INFERENCE_SYSTEM.md` defines the V1 direction for DataSur-style possible importer/exporter identity. Aduana correlatives remain anonymous source identifiers; possible company names/RUTs must come from a separate evidence-backed inference layer with confidence, review status, and provenance. `docs/DECISIONS.md` decision 7 records this as product/data-identity policy.
+- Wayback Machine checks of old Aduana.cl public statistics pages found archived import/export/statistics pages and one downloadable workbook sample, but the links and workbook contents are aggregate by country/product/series rather than identity-bearing transaction records. Keyword CDX checks for Aduana.cl URLs containing `importador`, `exportador`, or `rut` from 2000-2016 returned zero 200-status captures. Evidence is stored under `data/research/wayback-aduana-cl/`.
+- Wayback Machine checks of datos.gob.cl found archived 2015/2016 CKAN Aduana dataset pages and the Aduana data dictionary page. The archived pages list monthly RAR item-record resources and XLSX metadata/dictionary resources, not legal identity files or correlative-to-RUT/name lookup tables. Exact CDX checks for sampled binary download URLs returned zero archived 200-status captures. Evidence is stored under `data/research/wayback-datos-gob-cl/`.
+- `scripts/research/chile_aduana_identity_validation.py` now implements the V1 historical identity validation pipeline. It writes outputs under `data/research/chile-aduana-identity-validation/`; the current sampled run found 4,627 anonymous fingerprints and 0 historical named fingerprints.
+- `scripts/research/chile_aduana_historical_acquisition.py` now acquires official historical datos.gob.cl resources for identity validation. January 2003, 2010, and 2015 imports and exports were downloaded, extracted, and manifest-preserved. Multipart RAR imports require `unar`; `bsdtar` alone can list some volumes but cannot reliably extract them. The downloader now resumes partial `.download` files after transient datos.gob.cl failures.
+- Auth provider is not chosen.
+- R2 vs another S3-compatible storage provider is not final.
+- ClickHouse timing depends on actual data volume and query needs.
+- Neon project `Duanera` now has a `dev` branch created from `production`. Local `.env.local` points at the dev branch; production should remain reserved for approved migrations and deployed app usage.
+- Drizzle foundation exists with an initial provenance-only schema and generated migration. The first migration creates `source_files`, `import_batches`, `source_layouts`, and `source_layout_fields` only.
+- The Drizzle schema now includes the first Aduana data foundation through `drizzle/0003_deep_iron_patriot.sql`: `raw_trade_rows`, `code_tables`, `code_values`, `source_trade_participants`, and `trade_records`.
+- The implemented `trade_records` table is shared across imports/exports, provenance-linked to source file/import batch/raw row, and stores confirmed Aduana fields only. It intentionally does not include importer/exporter legal names, importer/exporter legal RUTs, company foreign keys, or ClickHouse as a dependency.
+- Dev-only sample scripts exist for source file metadata, code-table seeding, raw row loading, and trade normalization. Data-mutating scripts require `DUANERA_DB_TARGET=dev`. The raw-row and normalization scripts are now batched/chunked for larger dev validation, but they still are not production ingestion.
+- The Neon `dev` branch has been seeded with the current full March 2026 data foundation after the project was upgraded from the prior 512 MB limit. Current dev counts: 4 `source_files`, 2 `source_layouts`, 262 `source_layout_fields`, 12 `code_tables`, 870 `code_values`, 2 completed `import_batches`, 439,353 import `raw_trade_rows`, 109,187 export `raw_trade_rows`, 439,353 import `trade_records`, 109,187 export `trade_records`, and anonymous source participants for 15,491 importers, 3,461 primary exporters, and 7 nonzero secondary exporters. There are 0 raw parse failures, 0 orphaned trade records, 0 duplicate raw links, and 0 parsed raw rows missing trade records. The dev database is roughly 2 GB after storing full raw row snapshots and normalized records.
+- Full-month chronological list performance has a first dev optimization. The slow path was the generic `trade_records` list query joining every matching row to `raw_trade_rows` only to sort by source `row_number`. Migration `drizzle/0004_unknown_terrax.sql` adds `raw_trade_rows_trade_flow_period_row_number_idx` on `(trade_flow, period_year, period_month, row_number, id)`, and `src/trade/trade-records.ts` now uses a raw-row-ordered fast path for one-flow, one-exact-month list queries with no extra filters.
+- After the optimization, database plans for the list query improved from roughly 14.7 seconds to 0.3 ms for March imports and from roughly 6.2 seconds to 22 ms for March exports. Local Next dev smoke checks on port 3001 returned 200 at roughly 1.1 seconds for the import API, 1.4-1.5 seconds for the export API, and 2.1 seconds for the import `/trade-records` page. Remaining overhead is mostly exact counts, code-label loading, Neon round trips, and Next dev rendering.
+- A second dev-only query-performance pass hardened representative non-fast-path filters. Migration `drizzle/0005_certain_living_lightning.sql` enables `pg_trgm` and adds targeted `trade_records` indexes for origin country, destination country, customs office, transport mode, product text trigram search, and secondary exporter correlative. `src/trade/trade-records.ts` now uses raw-row ordered exact-month lists for compatible structured filters such as HS prefix, country, customs office, and transport mode, while product text and participant filters stay on the generic path.
+- After the second pass, representative database plans improved: product text count for `motor` dropped from roughly 489 ms to 53 ms, origin/customs/transport counts moved from parallel sequential scans around 285-313 ms to index-only plans around 32-71 ms, and compatible structured list queries now use `raw_trade_rows_trade_flow_period_row_number_idx` with sub-millisecond to low-millisecond execution. Local API smoke checks returned 200 with roughly 0.9-1.2 seconds for structured filters, roughly 1.2 seconds for product text, and roughly 1.5 seconds for offset 100000.
+- Cursor/keyset pagination now supplements offset pagination for raw-row ordered exact-month browsing. `src/trade/trade-records.ts` encodes/decodes opaque `after` cursors from raw row number and raw row id, `src/trade/trade-record-search.ts` parses `after`, and `/trade-records` uses returned `nextCursor` values for forward browsing. Existing `offset` URLs remain accepted for compatibility.
+- Cursor performance comparison in dev: a raw-row ordered March import query with `offset 100000` took roughly 2.6 seconds in `EXPLAIN ANALYZE`; the equivalent `after` cursor predicate starting after raw row 100000 took roughly 8 ms. API smoke checks returned 200 for first cursor page, second cursor page, HS cursor-capable filter, and the `/trade-records` page. Invalid cursors return 400.
+- Remaining pagination limits: product text and participant filters still use the generic path for now, and the demo UI only supports forward cursor navigation. Backward cursor navigation would require a cursor history stack or an explicit previous-cursor strategy.
+- A read-only storage review of the March 2026 dev load measured the database at roughly 2.14 GiB. `raw_trade_rows` accounts for roughly 1.60 GiB total, including 1.43 GiB table storage and 170 MiB indexes. `trade_records` accounts for roughly 520 MiB total, including 342 MiB table storage and 178 MiB indexes. Code/source/provenance tables account for roughly 9 MiB. If the current design is kept unchanged, a simple linear estimate is about 25 GiB for 12 months and about 75 GiB for 36 months before additional countries, companion files, or production overhead.
+- The storage review found that full raw row payloads are the main growth risk. A sampled raw row averages about 524 bytes of `raw_text`, 1,661 bytes of `raw_values`, and 211 bytes of trace metadata. Recommendation for the next design pass: keep source/provenance metadata and hashes in Postgres, but move full successful raw row payloads to object storage or reconstruct them from preserved source files, while retaining full payloads in Postgres only for dev/debug/error/sample cases.
+- `docs/DECISIONS.md` decision 14 now records the raw-row retention policy. Official source files must be preserved outside Postgres forever. Postgres keeps raw row trace metadata, source/batch/row references, row hashes, parser status, and compact issue summaries. Full raw payloads should remain in Postgres only for dev samples, parser debugging, errors, warnings, sampled QA rows, or explicit audit examples. Successful high-volume payloads should be reconstructed from preserved source files or stored externally with a Postgres pointer/hash. No existing dev payloads should be deleted until a separate migration/backfill plan is approved.
+- Migration `drizzle/0006_lovely_scrambler.sql` implements the first additive raw-row retention metadata on the Neon dev branch. `raw_trade_rows` now has payload retention mode, storage kind, optional storage bucket/key, payload hash, retained reason, prune timestamp, and reconstruction flag. Existing March 2026 dev rows were backfilled as `full_postgres` / `postgres` with `payload_hash_sha256 = row_hash_sha256`; read-only verification found all 548,540 rows have matching payload hashes and `payload_reconstructable = true`.
+- Migration `drizzle/0007_dusty_jane_foster.sql` makes `raw_trade_rows.raw_text` and `raw_trade_rows.raw_values` nullable on the Neon dev branch. This enables post-normalization payload pruning while preserving trace metadata. Read-only verification confirmed both columns are nullable and all existing 548,540 March rows still have payloads.
+- Future raw-row dev loads can set `RAW_ROW_PAYLOAD_RETENTION`. The default is `full_postgres`, preserving current behavior. `errors_and_warnings` records failed rows with `payload_retained_reason = parse_error`, warning rows as `parse_warning`, and successful rows as `pending_post_normalization_prune`. The current normalizer skips rows whose `raw_values` are already pruned.
+- `npm run db:prune:raw-payloads` is now a dev-only post-normalization pruning script. It dry-runs unless `RAW_ROW_PRUNE_CONFIRM=prune` is set. It prunes only `errors_and_warnings` / `pending_post_normalization_prune` rows with `parse_status = parsed`, no errors/warnings, unpruned payloads, `payload_reconstructable = true`, and a matching `trade_records` row with the same source file, import batch, flow, year, and month. A dry run on the current dev data found 0 candidates, as expected, because existing March rows are still `full_postgres`. No existing March 2026 dev payloads were deleted.
+- The full retention/pruning flow was smoke-tested on a tiny isolated Neon dev sample under source file `retention_prune_smoke_1779999316642.txt`. One successful `errors_and_warnings` row with a matching `trade_records` row was pruned; one failed row and one warning row kept payloads. Verification confirmed the pruned row still has source file, import batch, row number, row hash, parser metadata, payload hash, `payload_retained_reason = pruned_after_normalization`, and a matching trade record. The `/trade-records/5f9c1cad-3167-4494-936a-788802d66169` detail page returned 200 and displayed the pruned-payload state. All 548,540 March 2026 `full_postgres` rows still have payloads.
+- A read-only trade query service now exists at `src/trade/trade-records.ts`. It supports normalized filters over `trade_records` and joins provenance fields from source file, import batch, and raw row. A route-ready adapter exists at `src/trade/trade-record-search.ts`; it parses URL-style search params and returns API-shaped data/pagination/filter output. `npm run inspect:trade-records` prints a small import/export sample through this adapter.
+- A Next.js App Router shell now exists under `src/app`. The first API route is `GET /api/trade-records`, implemented in `src/app/api/trade-records/route.ts`, and wired to the trade search adapter. Tailwind + shadcn/ui are installed. Internal demo pages now exist at `/trade-records` and `/trade-records/[id]`, using the trade service layer and decoded code-table labels. Local dev server was smoke-tested on port 3001 because port 3000 was already in use.
+
+## Chile Aduana source archive context
+
+Current local research layout:
+
+```txt
+data/sources/chile-aduana/
+  datos-gob-cl/
+    imports/raw/
+    imports/working/
+    exports/raw/
+    exports/working/
+    references/raw/
+    references/working/
+    manifests/
+  aduana-cl/
+    imports/raw/
+    imports/working/
+    exports/raw/
+    exports/working/
+    code-tables/raw/
+    code-tables/working/
+    references/raw/
+    references/working/
+    manifests/
+```
+
+Local source filenames are normalized to lowercase ASCII snake_case. Manifests preserve official filenames in `original_filename`, local raw names in `normalized_raw_filename`, and usable files in `normalized_working_filenames`. The old `raw-data/` staging tree was removed after all non-temporary files were confirmed by checksum to exist in `data/sources/chile-aduana/`.
+
+For `datos.gob.cl`, `imports/` and `exports/` should contain only actual monthly or yearly trade data resources. Shared dictionaries, metadata workbooks, schemas, methodology files, and similar non-trade-data references belong under `datos-gob-cl/references/`. Use `code-tables/` only for lookup tables that decode coded values such as countries, customs offices, operation codes, currencies, units, transport modes, or ports.
+
+Manifest raw file roles:
+
+- `compressed_source_file`: official compressed raw package, preserved in `raw/`.
+- `direct_source_file`: directly usable official raw file, preserved in `raw/` and copied into `working/`.
+- `reference_file`: dictionary, metadata, schema, or methodology file preserved under `references/raw/` and copied into `references/working/`.
+
+`working/` is now the default location for Codex, scripts, and future parsers to inspect files. `extracted/` is no longer used.
+
+## Next recommended steps
+
+1. Finish manifest provenance for legacy `aduana.cl` CSV files whose original package URLs are still marked `unknown`.
+2. Inspect the normalized `working/` datos.gob.cl 2026 import and export files manually.
+3. Create a field inventory from official metadata and sampled rows.
+4. If historical identity remains critical, expand coverage around specific policy/publication-change dates. January 2003, 2010, and 2015 import/export samples do not expose legal importer/exporter names or RUTs.
+5. Treat public official identity lookup as unlikely unless a specific lawful/licensed source is identified. If such a source is found, keep it as a separate evidence layer and rerun `python3 scripts/research/chile_aduana_identity_validation.py --include-ckan` without a row cap.
+6. If company intelligence remains in scope, create a validation set for possible importer/exporter identity inference before making any user-facing precision claim.
+7. Inspect the internal search/detail UI for field quality, decoded labels, and obvious mapping mistakes before loading full files.
+8. Before loading additional months, run a small real-file dev validation with `RAW_ROW_PAYLOAD_RETENTION=errors_and_warnings`, then normalize and prune with tight limits. The synthetic smoke path passed, but the next check should use actual Aduana parsed rows without touching existing March `full_postgres` payloads.
+9. Keep company identity tables deferred until a separate evidence-backed identity pass is requested.
+10. Do not promote migrations or sample data to production until the dev sample is reviewed and accepted.

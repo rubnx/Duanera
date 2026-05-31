@@ -1,0 +1,62 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1779940835406,
+      "tag": "0000_modern_infant_terrible",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1779942928597,
+      "tag": "0001_awesome_swarm",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1779944293013,
+      "tag": "0002_sparkling_sir_ram",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1779944603799,
+      "tag": "0003_deep_iron_patriot",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1779990514734,
+      "tag": "0004_unknown_terrax",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1779991514989,
+      "tag": "0005_certain_living_lightning",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1779995742379,
+      "tag": "0006_lovely_scrambler",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1779998142678,
+      "tag": "0007_dusty_jane_foster",
+      "breakpoints": true
+    }
+  ]
+}

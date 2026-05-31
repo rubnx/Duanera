@@ -1,0 +1,1 @@
+CREATE INDEX "raw_trade_rows_trade_flow_period_row_number_idx" ON "raw_trade_rows" USING btree ("trade_flow","period_year","period_month","row_number","id");

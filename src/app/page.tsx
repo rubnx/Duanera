@@ -1,0 +1,66 @@
+import Link from "next/link";
+
+import { Badge } from "@/components/ui/badge";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+
+export default function HomePage() {
+  return (
+    <main className="mx-auto flex min-h-screen w-full max-w-[1120px] flex-col gap-5 px-4 py-8 lg:px-6">
+      <header className="flex flex-col gap-3 border-b pb-5">
+        <Badge variant="outline" className="w-fit">
+          Duanera MVP
+        </Badge>
+        <h1 className="max-w-3xl text-3xl font-semibold tracking-tight">
+          Base interna para explorar registros Aduana
+        </h1>
+        <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
+          La muestra dev permite buscar registros normalizados de importacion y
+          exportacion, manteniendo trazabilidad al archivo fuente, lote y fila cruda.
+        </p>
+      </header>
+
+      <section className="grid gap-4 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Buscador interno</CardTitle>
+            <CardDescription>
+              Tabla filtrable sobre la muestra normalizada de marzo 2026.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3">
+            <Link
+              href="/trade-records"
+              className="inline-flex h-8 w-fit items-center rounded-lg bg-primary px-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+            >
+              Abrir registros
+            </Link>
+            <p className="text-sm text-muted-foreground">
+              Los IDs de importador/exportador son correlativos anonimos de Aduana, no
+              identidades legales verificadas.
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>API dev</CardTitle>
+            <CardDescription>
+              La UI usa el mismo adaptador de busqueda que la ruta API.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <code className="block break-words rounded-lg bg-muted p-3 text-xs">
+              /api/trade-records?tradeFlow=import&amp;periodFrom=2026-03&amp;periodTo=2026-03&amp;limit=5
+            </code>
+          </CardContent>
+        </Card>
+      </section>
+    </main>
+  );
+}

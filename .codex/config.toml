@@ -1,0 +1,6 @@
+[mcp_servers.Neon]
+type = "http"
+url = "https://mcp.neon.tech/mcp"
+
+  [mcp_servers.Neon.http_headers]
+  Authorization = "Bearer napi_d1yymgghyij3li0ao661piy0ii9v9qwbi8mvk0l85fn08zcjbkh9bto96xqpr1u7"
