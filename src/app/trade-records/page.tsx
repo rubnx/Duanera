@@ -170,13 +170,13 @@ function LookupSelect({
   value?: string;
 }) {
   return (
-    <div className="flex flex-col gap-1.5">
+    <div className="flex min-w-0 flex-col gap-1.5">
       <Label htmlFor={id}>{label}</Label>
       <select
         id={id}
         name={name}
         defaultValue={value ?? ""}
-        className="h-8 w-full rounded-lg border border-input bg-background px-2.5 text-sm"
+        className="h-8 w-full min-w-0 rounded-lg border border-input bg-background px-2.5 text-sm"
       >
         <option value="">{placeholder}</option>
         {options.map((option) => (
@@ -344,14 +344,14 @@ export default async function TradeRecordsPage({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form className="grid gap-3 md:grid-cols-2 xl:grid-cols-6">
+          <form className="grid gap-3 md:grid-cols-2 xl:grid-cols-6 [&>*]:min-w-0">
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="tradeFlow">Flujo</Label>
               <select
                 id="tradeFlow"
                 name="tradeFlow"
                 defaultValue={result.filters.tradeFlow ?? "import"}
-                className="h-8 rounded-lg border border-input bg-background px-2.5 text-sm"
+                className="h-8 w-full min-w-0 rounded-lg border border-input bg-background px-2.5 text-sm"
               >
                 <option value="import">Importaciones</option>
                 <option value="export">Exportaciones</option>
@@ -393,13 +393,13 @@ export default async function TradeRecordsPage({
                 placeholder="neumáticos"
               />
             </div>
-            <div className="flex items-end gap-2">
-              <Button type="submit" className="w-full">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+              <Button type="submit" className="sm:flex-1">
                 Buscar
               </Button>
               <Link
                 href="/trade-records"
-                className="inline-flex h-8 items-center rounded-lg border border-border px-2.5 text-sm font-medium hover:bg-muted"
+                className="inline-flex h-8 shrink-0 items-center justify-center rounded-lg border border-border px-2.5 text-sm font-medium hover:bg-muted"
               >
                 Limpiar
               </Link>
@@ -499,7 +499,7 @@ export default async function TradeRecordsPage({
               : ` desde posición ${result.pagination.offset}.`}
           </CardDescription>
         </CardHeader>
-        <CardContent className="p-0">
+        <CardContent className="overflow-x-auto p-0">
           <Table className="min-w-[1320px]">
             <TableHeader>
               <TableRow>
