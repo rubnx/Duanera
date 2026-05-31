@@ -9,4 +9,7 @@ node_modules/
 dist/
 coverage/
 
+data/
+raw-data/
+
 .DS_Store
