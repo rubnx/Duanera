@@ -12,6 +12,11 @@ import {
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { db } from "@/db/client";
+import {
+  isNonZeroDecimal,
+  productAttributeEntries,
+  productDisplayFromRaw,
+} from "@/trade/trade-record-display";
 import { enrichTradeRecordWithLabels } from "@/trade/trade-record-labels";
 import { getTradeRecordById } from "@/trade/trade-records";
 
@@ -25,19 +30,19 @@ type DetailRecord = NonNullable<
 
 function formatCodeLabel(code: string | null, label?: string) {
   if (!code && !label) {
-    return "-";
+    return "No informado";
   }
 
   if (code && label) {
     return `${code} · ${label}`;
   }
 
-  return code ?? label ?? "-";
+  return code ?? label ?? "No informado";
 }
 
 function formatMoney(value: string | null, currency?: string) {
   if (!value) {
-    return "-";
+    return "No informado";
   }
 
   return currency ? `${value} ${currency}` : value;
@@ -45,7 +50,7 @@ function formatMoney(value: string | null, currency?: string) {
 
 function formatQuantity(value: string | null, unit?: string) {
   if (!value) {
-    return "-";
+    return "No informado";
   }
 
   return unit ? `${value} ${unit}` : value;
@@ -53,7 +58,7 @@ function formatQuantity(value: string | null, unit?: string) {
 
 function formatJson(value: unknown) {
   if (value === null || value === undefined) {
-    return "-";
+    return "No informado";
   }
 
   return JSON.stringify(value, null, 2);
@@ -61,7 +66,7 @@ function formatJson(value: unknown) {
 
 function formatPrunedAt(value: Date | string | null) {
   if (!value) {
-    return "-";
+    return "No informado";
   }
 
   return value instanceof Date ? value.toISOString() : value;
@@ -79,7 +84,7 @@ function formatPayloadRetentionMode(value: string) {
 
 function formatPayloadRetainedReason(value: string | null) {
   if (!value) {
-    return "-";
+    return "No informado";
   }
 
   const labels: Record<string, string> = {
@@ -97,7 +102,7 @@ function participantLabel(record: DetailRecord) {
   if (record.tradeFlow === "import") {
     return {
       label: "Correlativo importador Aduana",
-      value: record.importerCorrelativeId ?? "-",
+      value: record.importerCorrelativeId ?? "No informado",
     };
   }
 
@@ -106,7 +111,7 @@ function participantLabel(record: DetailRecord) {
     value:
       record.exporterPrimaryCorrelativeId ??
       record.exporterSecondaryCorrelativeId ??
-      "-",
+      "No informado",
   };
 }
 
@@ -139,7 +144,7 @@ function Field({
     <div className="flex min-w-0 flex-col gap-1">
       <dt className="text-xs font-medium text-muted-foreground">{label}</dt>
       <dd className={mono ? "break-words font-mono text-xs" : "break-words text-sm"}>
-        {value ?? "-"}
+        {value ?? "No informado"}
       </dd>
     </div>
   );
@@ -156,6 +161,13 @@ export default async function TradeRecordDetailPage({ params }: PageProps) {
   const participant = participantLabel(record);
   const period = `${record.periodYear}-${String(record.periodMonth).padStart(2, "0")}`;
   const valuesCopy = valueSectionCopy(record);
+  const product = productDisplayFromRaw(record.productDescriptionRaw);
+  const productAttributes = productAttributeEntries(record.productAttributes);
+  const exportAdditionalValues = [
+    { label: "Flete declaración", value: record.freightValue },
+    { label: "Seguro declaración", value: record.insuranceValue },
+    { label: "CIF declaración", value: record.cifValue },
+  ].filter((field) => isNonZeroDecimal(field.value));
 
   return (
     <main className="mx-auto flex w-full max-w-[1200px] flex-col gap-4 px-4 py-5 lg:px-6">
@@ -176,8 +188,19 @@ export default async function TradeRecordDetailPage({ params }: PageProps) {
             <Badge variant="outline">{record.hsCodeNormalized ?? "HS sin normalizar"}</Badge>
           </div>
           <h1 className="max-w-5xl text-2xl font-semibold tracking-tight">
-            {record.productDescriptionRaw ?? "Registro sin descripción de producto"}
+            {product.title}
           </h1>
+          {product.details.length > 0 || product.sourceReference ? (
+            <div className="flex max-w-4xl flex-col gap-1 text-sm text-muted-foreground">
+              {product.sourceReference ? (
+                <div>
+                  Referencia fuente:{" "}
+                  <span className="font-mono text-xs">{product.sourceReference}</span>
+                </div>
+              ) : null}
+              {product.details.length > 0 ? <div>{product.details.join(" · ")}</div> : null}
+            </div>
+          ) : null}
           <p className="max-w-4xl text-sm text-muted-foreground">
             Este detalle conserva la trazabilidad al archivo fuente, lote de importación
             y fila cruda. Los correlativos son identificadores anónimos de Aduana, no
@@ -199,6 +222,12 @@ export default async function TradeRecordDetailPage({ params }: PageProps) {
                 <Field label="Item" value={record.itemNumber} />
                 <Field label="Fecha aceptación" value={record.acceptanceDate} />
                 <Field label={participant.label} value={participant.value} mono />
+                <Field label="Descripción fuente" value={record.productDescriptionRaw} />
+                <Field
+                  label="Referencia producto fuente"
+                  value={product.sourceReference ?? "No informado"}
+                  mono
+                />
                 <Field label="HS original" value={record.hsCodeRaw} mono />
                 <Field label="HS normalizado" value={record.hsCodeNormalized} mono />
                 <Field
@@ -263,61 +292,89 @@ export default async function TradeRecordDetailPage({ params }: PageProps) {
                   <Field label="Peso bruto item" value={record.grossWeightItem} mono />
                 </dl>
               ) : (
-                <dl className="grid gap-4 md:grid-cols-3">
-                  <Field
-                    label="FOB item"
-                    value={formatMoney(record.itemFobValue, record.decodedLabels.currency)}
-                    mono
-                  />
-                  <Field
-                    label="FOB declaración"
-                    value={formatMoney(
-                      record.declarationFobValue,
-                      record.decodedLabels.currency,
-                    )}
-                    mono
-                  />
-                  <Field
-                    label="Precio unitario FOB"
-                    value={formatMoney(record.unitPriceValue, record.decodedLabels.currency)}
-                    mono
-                  />
-                  <Field
-                    label="Cantidad"
-                    value={formatQuantity(record.quantity, record.decodedLabels.quantityUnit)}
-                    mono
-                  />
-                  <Field label="Peso bruto item" value={record.grossWeightItem} mono />
-                  <Field label="Peso bruto total" value={record.grossWeightTotal} mono />
-                  <Field
-                    label="País destino"
-                    value={formatCodeLabel(
-                      record.destinationCountryCode,
-                      record.decodedLabels.destinationCountry,
-                    )}
-                  />
-                  <Field
-                    label="Puerto embarque"
-                    value={formatCodeLabel(
-                      record.embarkPortCode,
-                      record.decodedLabels.embarkPort,
-                    )}
-                  />
-                  <Field
-                    label="Puerto desembarque"
-                    value={formatCodeLabel(
-                      record.disembarkPortCode,
-                      record.decodedLabels.disembarkPort,
-                    )}
-                  />
-                  <Field
-                    label="Vía transporte"
-                    value={formatCodeLabel(
-                      record.transportModeCode,
-                      record.decodedLabels.transportMode,
-                    )}
-                  />
-                </dl>
+                <div className="flex flex-col gap-4">
+                  <dl className="grid gap-4 md:grid-cols-3">
+                    <Field
+                      label="FOB item"
+                      value={formatMoney(record.itemFobValue, record.decodedLabels.currency)}
+                      mono
+                    />
+                    <Field
+                      label="FOB declaración"
+                      value={formatMoney(
+                        record.declarationFobValue,
+                        record.decodedLabels.currency,
+                      )}
+                      mono
+                    />
+                    <Field
+                      label="Precio unitario FOB"
+                      value={formatMoney(record.unitPriceValue, record.decodedLabels.currency)}
+                      mono
+                    />
+                    <Field
+                      label="Cantidad"
+                      value={formatQuantity(record.quantity, record.decodedLabels.quantityUnit)}
+                      mono
+                    />
+                    <Field label="Peso bruto item" value={record.grossWeightItem} mono />
+                    <Field label="Peso bruto total" value={record.grossWeightTotal} mono />
+                    <Field
+                      label="País destino"
+                      value={formatCodeLabel(
+                        record.destinationCountryCode,
+                        record.decodedLabels.destinationCountry,
+                      )}
+                    />
+                    <Field
+                      label="Puerto embarque"
+                      value={formatCodeLabel(
+                        record.embarkPortCode,
+                        record.decodedLabels.embarkPort,
+                      )}
+                    />
+                    <Field
+                      label="Puerto desembarque"
+                      value={formatCodeLabel(
+                        record.disembarkPortCode,
+                        record.decodedLabels.disembarkPort,
+                      )}
+                    />
+                    <Field
+                      label="Vía transporte"
+                      value={formatCodeLabel(
+                        record.transportModeCode,
+                        record.decodedLabels.transportMode,
+                      )}
+                    />
+                  </dl>
+                  {exportAdditionalValues.length > 0 ? (
+                    <>
+                      <Separator />
+                      <div className="flex flex-col gap-3">
+                        <div>
+                          <h3 className="text-sm font-medium">
+                            Costos declarados adicionales
+                          </h3>
+                          <p className="text-xs text-muted-foreground">
+                            Se muestran solo cuando la fuente trae valores distintos de
+                            cero; FOB sigue siendo la lectura principal de exportación.
+                          </p>
+                        </div>
+                        <dl className="grid gap-4 md:grid-cols-3">
+                          {exportAdditionalValues.map((field) => (
+                            <Field
+                              key={field.label}
+                              label={field.label}
+                              value={formatMoney(field.value, record.decodedLabels.currency)}
+                              mono
+                            />
+                          ))}
+                        </dl>
+                      </div>
+                    </>
+                  ) : null}
+                </div>
               )}
             </CardContent>
           </Card>
@@ -422,12 +479,26 @@ export default async function TradeRecordDetailPage({ params }: PageProps) {
           <Card>
             <CardHeader>
               <CardTitle>Atributos producto</CardTitle>
-              <CardDescription>Campos auxiliares confirmados cuando están presentes.</CardDescription>
+              <CardDescription>
+                Campos auxiliares de la fuente, normalizados solo para lectura.
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              <pre className="max-h-[320px] overflow-auto rounded-lg bg-muted p-3 text-xs leading-relaxed">
-                {formatJson(record.productAttributes)}
-              </pre>
+              {productAttributes.length > 0 ? (
+                <dl className="grid gap-3">
+                  {productAttributes.map((attribute) => (
+                    <Field
+                      key={`${attribute.label}:${attribute.value}`}
+                      label={attribute.label}
+                      value={attribute.value}
+                    />
+                  ))}
+                </dl>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  No hay atributos auxiliares informados para este item.
+                </p>
+              )}
             </CardContent>
           </Card>
         </aside>

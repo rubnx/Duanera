@@ -20,6 +20,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { db } from "@/db/client";
+import { productDisplayFromRaw } from "@/trade/trade-record-display";
 import {
   loadTradeRecordFilterOptions,
   type TradeRecordFilterOption,
@@ -527,6 +528,7 @@ export default async function TradeRecordsPage({
                   const participantSummary = participant(record);
                   const country = countryForFlow(record);
                   const port = portForFlow(record);
+                  const product = productDisplayFromRaw(record.productDescriptionRaw);
                   const period = `${record.periodYear}-${String(record.periodMonth).padStart(
                     2,
                     "0",
@@ -558,8 +560,18 @@ export default async function TradeRecordsPage({
                             href={`/trade-records/${record.id}`}
                             className="font-medium leading-snug underline-offset-4 hover:underline"
                           >
-                            {record.productDescriptionRaw ?? "Sin descripción"}
+                            {product.title}
                           </Link>
+                          {product.sourceReference ? (
+                            <div className="font-mono text-xs text-muted-foreground">
+                              Ref. fuente: {product.sourceReference}
+                            </div>
+                          ) : null}
+                          {product.details.length > 0 ? (
+                            <div className="line-clamp-2 text-xs text-muted-foreground">
+                              {product.details.join(" · ")}
+                            </div>
+                          ) : null}
                         </div>
                       </TableCell>
                       <TableCell className="align-top">
@@ -631,6 +643,15 @@ export default async function TradeRecordsPage({
                               record.decodedLabels.transportMode,
                             )}
                           </div>
+                          {record.cargoTypeCode || record.decodedLabels.cargoType ? (
+                            <div>
+                              <span className="text-muted-foreground">Carga: </span>
+                              {formatCodeLabel(
+                                record.cargoTypeCode,
+                                record.decodedLabels.cargoType,
+                              )}
+                            </div>
+                          ) : null}
                         </div>
                       </TableCell>
                       <TableCell className="max-w-[220px] align-top whitespace-normal text-xs text-muted-foreground">
