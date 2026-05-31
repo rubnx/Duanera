@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  classifyTradeRecordPerformanceWarnings,
   parseTradeRecordSearchParams,
   TradeRecordSearchError,
 } from "../../src/trade/trade-record-search";
@@ -204,5 +205,58 @@ test("rejects invalid cursor usage", () => {
         offset: "25",
       }),
     TradeRecordSearchError,
+  );
+});
+
+test("classifies trade search performance warnings", () => {
+  assert.deepEqual(
+    classifyTradeRecordPerformanceWarnings({
+      filters: {
+        tradeFlow: "import",
+        periodFrom: "2026-03",
+        periodTo: "2026-03",
+        hsCodePrefix: "4011",
+      },
+      pagination: {
+        paginationMode: "cursor",
+        total: 1000,
+      },
+      summaryMs: 100,
+    }),
+    [],
+  );
+
+  assert.deepEqual(
+    classifyTradeRecordPerformanceWarnings({
+      filters: {
+        tradeFlow: "import",
+        periodFrom: "2026-03",
+        periodTo: "2026-03",
+      },
+      pagination: {
+        paginationMode: "cursor",
+        total: 439353,
+      },
+      summaryMs: 100,
+    }).map((warning) => warning.code),
+    ["broad_result_set"],
+  );
+
+  assert.deepEqual(
+    classifyTradeRecordPerformanceWarnings({
+      filters: {
+        tradeFlow: "export",
+        periodFrom: "2026-03",
+        periodTo: "2026-03",
+        minQuantity: "10",
+        sort: "quantity_desc",
+      },
+      pagination: {
+        paginationMode: "offset",
+        total: 25834,
+      },
+      summaryMs: 1500,
+    }).map((warning) => warning.code),
+    ["offset_pagination", "slow_summary"],
   );
 });

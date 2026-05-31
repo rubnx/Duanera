@@ -198,6 +198,16 @@ function summaryPortTitle(filters: TradeRecordsSearchResult["filters"]) {
   return "Top puertos relevantes";
 }
 
+function performanceNote(result: TradeRecordsSearchResult) {
+  const warnings = result.meta.performanceWarnings;
+  if (warnings.length === 0) {
+    return undefined;
+  }
+
+  const reasons = warnings.map((warning) => warning.message).join(" ");
+  return `${reasons} Tiempos internos: lista ${result.meta.timingMs.list} ms, resumen ${result.meta.timingMs.summary} ms, etiquetas ${result.meta.timingMs.labels} ms, total ${result.meta.timingMs.total} ms.`;
+}
+
 function activeFilterItems(
   result: TradeRecordsSearchResult,
   filterOptions: TradeRecordFilterOptions,
@@ -664,6 +674,7 @@ export default async function TradeRecordsPage({
     : buildPageHref(params, { offset: nextOffset });
   const activeFilters = activeFilterItems(result, filterOptions);
   const usesOffsetMode = result.pagination.paginationMode === "offset";
+  const searchPerformanceNote = performanceNote(result);
 
   return (
     <main className="mx-auto flex w-full max-w-[1440px] flex-col gap-4 px-4 py-5 lg:px-6">
@@ -934,6 +945,17 @@ export default async function TradeRecordsPage({
             <CardTitle>Filtro inválido</CardTitle>
             <CardDescription>
               {searchError} Se muestran los registros por defecto.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      ) : null}
+
+      {searchPerformanceNote ? (
+        <Card className="border-amber-500/30 bg-amber-50/50">
+          <CardHeader>
+            <CardTitle>Nota de rendimiento</CardTitle>
+            <CardDescription className="break-words">
+              {searchPerformanceNote}
             </CardDescription>
           </CardHeader>
         </Card>
