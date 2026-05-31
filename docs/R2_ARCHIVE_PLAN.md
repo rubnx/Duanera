@@ -1,0 +1,131 @@
+# Cloudflare R2 Archive Plan
+
+## Purpose
+
+Duanera uses Cloudflare R2 as the private archive for official source files, working extracts, source manifests, and internal research evidence.
+
+The repository must not track large source files. The local `data/` directory remains ignored and should be treated as a working copy of the archive, not as durable storage by itself.
+
+## Bucket
+
+Initial bucket:
+
+```txt
+duanera-source-archive
+```
+
+The bucket must remain private. Do not enable public bucket access, `r2.dev`, or custom-domain access for this archive.
+
+## Object Layout
+
+Use deterministic keys that preserve country, source, source domain, category, period, and file role.
+
+```txt
+sources/cl/aduana/datos-gob-cl/imports/2026/03/raw/cl_aduana_imports_2026_03_raw.rar
+sources/cl/aduana/datos-gob-cl/imports/2026/03/working/cl_aduana_imports_2026_03.txt
+sources/cl/aduana/datos-gob-cl/exports/2026/03/raw/cl_aduana_exports_2026_03_raw.rar
+sources/cl/aduana/aduana-cl/code-tables/2026/05/raw/cl_aduana_code_tables_2026_05_26_raw.xlsx
+manifests/cl/aduana/datos-gob-cl/cl_aduana_datos_gob_cl_2026_source_files_manifest.csv
+research/cl/aduana/identity-validation/run_summary.json
+```
+
+## File Classes
+
+- `official_source_raw`: files under `data/sources/**/raw/`; upload first and preserve indefinitely.
+- `working_file`: extracted or copied usable files under `data/sources/**/working/`; upload after raw files if reproducible parsing needs remote working copies.
+- `source_manifest`: source manifests, checksums, and source README files; keep small copies in Git and upload to R2.
+- `research_evidence`: PDFs, HTML captures, Wayback/CDX JSON, and transparency responses under `data/research/`; keep private.
+- `generated_validation`: generated identity-validation CSV/JSON outputs; keep private and label as generated.
+- `disposable`: `.DS_Store`, temporary downloads, and local cache files; do not upload.
+
+## Checksums And Metadata
+
+SHA-256 is the canonical integrity check. Do not use ETags as canonical checksums because multipart uploads can make ETags unsuitable for whole-file integrity checks.
+
+R2 custom metadata should be compact and should not replace source manifests:
+
+```txt
+country=CL
+source_domain=datos.gob.cl
+source_kind=official_source
+file_role=compressed_source_file
+trade_flow=import
+period=2026-03
+sha256=<hex>
+manifest_local_path=data/sources/chile-aduana/datos-gob-cl/manifests/...
+```
+
+## Dry-Run Manifest
+
+Generate a dry-run manifest:
+
+```bash
+npm run archive:r2:plan -- --pretty > /tmp/duanera-r2-upload-plan.json
+```
+
+The command:
+
+- scans the ignored local `data/` directory
+- computes byte size and SHA-256 for every file
+- proposes R2 keys and metadata
+- excludes disposable files
+- validates official raw files against source manifests
+- does not upload or write files
+
+The command exits non-zero if an official raw file lacks a manifest reference, file role, checksum, proposed R2 key, or has a checksum mismatch.
+
+## Credential And Bucket Verification
+
+After R2 credentials are stored in `.env.local`, verify bucket access without uploading:
+
+```bash
+npm run archive:r2:verify
+```
+
+The command checks that required R2 environment variables are present without printing secret values, then performs a read/list-only `ListObjectsV2` request against the private bucket.
+
+Required local environment variables:
+
+```txt
+CLOUDFLARE_ACCOUNT_ID
+R2_ACCESS_KEY_ID
+R2_SECRET_ACCESS_KEY
+R2_BUCKET
+R2_ENDPOINT
+```
+
+## Upload Workflow
+
+The upload script is dry-run by default:
+
+```bash
+npm run archive:r2:upload -- --plan-file /tmp/duanera-r2-upload-plan.json
+```
+
+By default it selects only `official_source_raw` objects and prints the object count and byte summary that would be uploaded. It verifies bucket access first and does not upload unless both confirmations are present:
+
+```bash
+R2_UPLOAD_CONFIRM=upload npm run archive:r2:upload -- \
+  --plan-file /tmp/duanera-r2-upload-plan.json \
+  --only-classification official_source_raw \
+  --confirm-upload
+```
+
+Do not run the confirmed command until the dry-run manifest has been reviewed.
+
+The upload command refuses plan files with warnings or errors. During confirmed uploads, existing remote objects are treated as immutable: matching objects are verified and left in place, while mismatched objects stop the run instead of being overwritten.
+
+## Upload Order
+
+When upload work is explicitly requested later:
+
+1. Create the private R2 bucket.
+2. Create least-privilege R2 credentials for this archive.
+3. Run the dry-run manifest and save a reviewed manifest artifact.
+4. Upload `official_source_raw` objects first.
+5. Verify remote object size and SHA-256 metadata.
+6. Upload source manifests and checksum files.
+7. Decide whether to upload all `working_file` objects or regenerate them during ingestion.
+8. Upload private research evidence only after confirming access controls.
+
+Do not delete local source files until R2 upload and verification have passed.

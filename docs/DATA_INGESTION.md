@@ -184,22 +184,50 @@ Existing March 2026 dev rows remain `full_postgres` and are not eligible unless 
 
 ## Raw file storage
 
-Raw files should live in:
+Raw files should live in Cloudflare R2. The first private source archive bucket is:
 
-- Cloudflare R2, or
-- another S3-compatible object storage provider
+```txt
+duanera-source-archive
+```
+
+The bucket must remain private. Do not enable public bucket access, `r2.dev`, or a custom domain for source archives unless a later access-control decision explicitly allows it.
 
 For local research, use `data/sources/`.
 
 For object storage, use organized paths such as:
 
 ```txt
-raw/chile/aduana/datos-gob-cl/imports/2024/01/source-file.xlsx
-raw/chile/aduana/datos-gob-cl/exports/2024/01/source-file.xlsx
-raw/chile/aduana/aduana-cl/code-tables/2026/05/source-file.xlsx
+sources/cl/aduana/datos-gob-cl/imports/2024/01/raw/source-file.rar
+sources/cl/aduana/datos-gob-cl/imports/2024/01/working/source-file.txt
+sources/cl/aduana/datos-gob-cl/exports/2024/01/raw/source-file.zip
+sources/cl/aduana/aduana-cl/code-tables/2026/05/raw/source-file.xlsx
+manifests/cl/aduana/datos-gob-cl/source-files-manifest.csv
+research/cl/aduana/identity-validation/run-summary.json
 ```
 
 Exact naming can change after source review, but source domain, trade flow, period, and file role must remain clear.
+
+R2 object metadata should stay compact. The source manifest remains the authoritative metadata record. Recommended R2 custom metadata:
+
+- `country`
+- `source_domain`
+- `source_kind`
+- `file_role`
+- `trade_flow`
+- `period`
+- `sha256`
+- `manifest_local_path` or future `manifest_key`
+
+Use SHA-256 as Duanera's canonical integrity check. R2 and S3-compatible tools may expose ETags, but multipart ETags must not be treated as canonical checksums. Upload tooling should compute local SHA-256 before upload and verify remote object size plus stored SHA-256 metadata after upload.
+
+R2 lifecycle policy direction:
+
+- preserve official raw source files indefinitely
+- transition cold archive prefixes to Infrequent Access only after upload verification
+- abort incomplete multipart uploads after a short window such as 7 days
+- do not expire official raw sources
+
+Use `npm run archive:r2:plan` to generate a dry-run upload manifest from the ignored local `data/` archive. The planner does not upload files. Use `npm run archive:r2:verify` for read/list-only credential checks, and keep `npm run archive:r2:upload` in dry-run mode unless upload work has been explicitly confirmed.
 
 ---
 

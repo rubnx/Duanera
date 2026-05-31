@@ -10,7 +10,7 @@ Confirmed decisions:
 - Spanish-first.
 - Neon-hosted PostgreSQL as the MVP database provider.
 - Drizzle as database layer.
-- Raw source files in R2/S3-compatible object storage.
+- Raw source files in private Cloudflare R2 object storage.
 - Postgres-first MVP.
 - ClickHouse-ready architecture, but no ClickHouse dependency yet.
 - No database-provider auth/storage/realtime/edge functions/generated APIs by default.
@@ -29,7 +29,7 @@ Main unresolved items:
 - `scripts/research/chile_aduana_identity_validation.py` now implements the V1 historical identity validation pipeline. It writes outputs under `data/research/chile-aduana-identity-validation/`; the current sampled run found 4,627 anonymous fingerprints and 0 historical named fingerprints.
 - `scripts/research/chile_aduana_historical_acquisition.py` now acquires official historical datos.gob.cl resources for identity validation. January 2003, 2010, and 2015 imports and exports were downloaded, extracted, and manifest-preserved. Multipart RAR imports require `unar`; `bsdtar` alone can list some volumes but cannot reliably extract them. The downloader now resumes partial `.download` files after transient datos.gob.cl failures.
 - Auth provider is not chosen.
-- R2 vs another S3-compatible storage provider is not final.
+- Cloudflare R2 is the selected object storage provider for preserved source archives. The planned private bucket is `duanera-source-archive`.
 - ClickHouse timing depends on actual data volume and query needs.
 - Neon project `Duanera` now has a `dev` branch created from `production`. Local `.env.local` points at the dev branch; production should remain reserved for approved migrations and deployed app usage.
 - Drizzle foundation exists with an initial provenance-only schema and generated migration. The first migration creates `source_files`, `import_batches`, `source_layouts`, and `source_layout_fields` only.
@@ -54,6 +54,8 @@ Main unresolved items:
 - The full retention/pruning flow was smoke-tested on a tiny isolated Neon dev sample under source file `retention_prune_smoke_1779999316642.txt`. One successful `errors_and_warnings` row with a matching `trade_records` row was pruned; one failed row and one warning row kept payloads. Verification confirmed the pruned row still has source file, import batch, row number, row hash, parser metadata, payload hash, `payload_retained_reason = pruned_after_normalization`, and a matching trade record. The `/trade-records/5f9c1cad-3167-4494-936a-788802d66169` detail page returned 200 and displayed the pruned-payload state. All 548,540 March 2026 `full_postgres` rows still have payloads.
 - A read-only trade query service now exists at `src/trade/trade-records.ts`. It supports normalized filters over `trade_records` and joins provenance fields from source file, import batch, and raw row. A route-ready adapter exists at `src/trade/trade-record-search.ts`; it parses URL-style search params and returns API-shaped data/pagination/filter output. `npm run inspect:trade-records` prints a small import/export sample through this adapter.
 - A Next.js App Router shell now exists under `src/app`. The first API route is `GET /api/trade-records`, implemented in `src/app/api/trade-records/route.ts`, and wired to the trade search adapter. Tailwind + shadcn/ui are installed. Internal demo pages now exist at `/trade-records` and `/trade-records/[id]`, using the trade service layer and decoded code-table labels. Local dev server was smoke-tested on port 3001 because port 3000 was already in use.
+- `docs/R2_ARCHIVE_PLAN.md` defines the Cloudflare R2 source archive policy. `npm run archive:r2:plan` generates a local dry-run upload manifest for ignored `data/` files, classifies source/research/generated/disposable files, computes SHA-256 checksums, validates official raw files against source manifests, and proposes private R2 object keys. `npm run archive:r2:verify` performs read/list-only bucket access checks. `npm run archive:r2:upload` is dry-run by default and requires both `--confirm-upload` and `R2_UPLOAD_CONFIRM=upload` before it uploads.
+- The first R2 archive batches have been uploaded and verified in the private `duanera-source-archive` bucket: 45 official raw source objects under `sources/` totaling 640,587,765 bytes, 12 manifest/checksum objects under `manifests/` totaling 83,091 bytes, and 40 working-file objects under `sources/` totaling 2,444,558,267 bytes. Remote verification matched object sizes and stored SHA-256 metadata for every uploaded object. Research evidence and generated validation outputs have not been uploaded yet.
 
 ## Chile Aduana source archive context
 
@@ -81,6 +83,14 @@ data/sources/chile-aduana/
     manifests/
 ```
 
+Cloudflare R2 archive layout is planned around these prefixes:
+
+```txt
+sources/cl/aduana/{source-domain}/{group}/{yyyy/mm|historical}/{raw|working}/...
+manifests/cl/aduana/{source-domain}/...
+research/cl/aduana/...
+```
+
 Local source filenames are normalized to lowercase ASCII snake_case. Manifests preserve official filenames in `original_filename`, local raw names in `normalized_raw_filename`, and usable files in `normalized_working_filenames`. The old `raw-data/` staging tree was removed after all non-temporary files were confirmed by checksum to exist in `data/sources/chile-aduana/`.
 
 For `datos.gob.cl`, `imports/` and `exports/` should contain only actual monthly or yearly trade data resources. Shared dictionaries, metadata workbooks, schemas, methodology files, and similar non-trade-data references belong under `datos-gob-cl/references/`. Use `code-tables/` only for lookup tables that decode coded values such as countries, customs offices, operation codes, currencies, units, transport modes, or ports.
@@ -104,4 +114,5 @@ Manifest raw file roles:
 7. Inspect the internal search/detail UI for field quality, decoded labels, and obvious mapping mistakes before loading full files.
 8. Before loading additional months, run a small real-file dev validation with `RAW_ROW_PAYLOAD_RETENTION=errors_and_warnings`, then normalize and prune with tight limits. The synthetic smoke path passed, but the next check should use actual Aduana parsed rows without touching existing March `full_postgres` payloads.
 9. Keep company identity tables deferred until a separate evidence-backed identity pass is requested.
-10. Do not promote migrations or sample data to production until the dev sample is reviewed and accepted.
+10. Run `npm run archive:r2:plan -- --pretty > /tmp/duanera-r2-upload-plan.json` before any first R2 upload, review warnings, and keep the bucket private with no public `r2.dev` or custom-domain access.
+11. Do not promote migrations or sample data to production until the dev sample is reviewed and accepted.

@@ -37,7 +37,7 @@ The first version focuses on Chile. The product should ingest raw customs/trade 
 - UI: Tailwind + shadcn/ui
 - Database: Neon-hosted PostgreSQL
 - DB access: Drizzle
-- Raw file storage: Cloudflare R2 or S3-compatible object storage
+- Raw file storage: Cloudflare R2
 - Hosting: Vercel
 - Auth: Auth.js or Clerk, to be decided
 - Payments: Stripe, later
@@ -75,7 +75,7 @@ Browser
   -> Neon Postgres
 
 Raw source files
-  -> R2 / S3-compatible object storage
+  -> Cloudflare R2 private object storage
   -> import metadata in Postgres
 
 Future heavy analytics
@@ -103,7 +103,7 @@ Future heavy analytics
 
 ## Data layers
 
-### Object storage
+### Cloudflare R2 object storage
 
 Owns:
 
@@ -113,6 +113,7 @@ Owns:
 - future source snapshots
 
 Never mutate original source files.
+Keep source archive buckets private unless a later access-control decision explicitly changes that.
 
 ### Postgres operational layer
 

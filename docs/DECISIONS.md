@@ -3,7 +3,7 @@
 ## Topic Index
 
 - Architecture: `1`, `2`, `3`, `4`
-- Data/storage: `2`, `3`, `4`, `5`, `14`
+- Data/storage: `2`, `3`, `4`, `5`, `14`, `15`
 - Database provider strategy: `1`
 - ClickHouse strategy: `4`, `8`
 - Data model: `8`, `9`, `14`
@@ -126,3 +126,11 @@
 - **Options considered**: Keep all full row payloads in Postgres indefinitely, drop raw row payloads entirely after normalization, move all raw row payloads immediately to object storage, or keep Postgres row metadata while retaining full payloads selectively.
 - **Why chosen**: Selective payload retention preserves auditability and parser debugging while keeping Neon focused on structured metadata and normalized records. It also respects the existing rule that raw source files live outside Postgres and keeps the model portable for future ClickHouse migration.
 - **Consequences / follow-ups**: Do not delete existing dev payloads without an explicit pruning run. Future ingestion scripts should make payload retention mode explicit. The schema now supports retention metadata and nullable payload columns. Object-storage pointer usage and structured parse issue records remain deferred until needed.
+
+## 15) Cloudflare R2 is the source archive provider
+
+- **Decision**: Use Cloudflare R2 as Duanera's object storage provider for official source files, working extracts, manifests, and internal research evidence. The first private archive bucket is `duanera-source-archive`.
+- **Context**: Raw source files were removed from Git history after GitHub rejected large Aduana files. The local `data/` archive is now ignored, but official source files still need durable storage outside Git and Postgres. Existing manifests already preserve source URLs, original filenames, normalized filenames, file roles, sizes, and SHA-256 checksums.
+- **Options considered**: Keep files only on local disk, use Git LFS, use generic S3, use Cloudflare R2.
+- **Why chosen**: R2 satisfies the existing S3-compatible object storage decision, avoids putting large files in Git or Postgres, supports private buckets, custom metadata, upload integrity hashes, storage classes, lifecycle rules, and S3-compatible tooling.
+- **Consequences / follow-ups**: Keep R2 buckets private by default. Do not enable public bucket access, `r2.dev`, or custom domains for source archives. SHA-256 remains Duanera's canonical checksum; do not treat multipart ETags as canonical integrity proof. Upload tooling must default to dry-run or read/list verification and require explicit confirmation before uploading. Production ingestion and database backfills require separate explicit implementation work.

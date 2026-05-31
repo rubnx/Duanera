@@ -17,6 +17,9 @@
     "db:normalize:trade-sample": "tsx scripts/ingest/normalize-trade-record-sample.ts",
     "db:prune:raw-payloads": "tsx scripts/ingest/prune-raw-trade-row-payloads.ts",
     "db:studio": "drizzle-kit studio",
+    "archive:r2:plan": "tsx scripts/archive/r2-upload-plan.ts",
+    "archive:r2:verify": "tsx scripts/archive/r2-upload-archive.ts --verify-only",
+    "archive:r2:upload": "tsx scripts/archive/r2-upload-archive.ts",
     "inspect:trade-records": "tsx scripts/inspect/trade-records.ts",
     "test:trade-search": "tsx --test scripts/inspect/trade-record-search.test.ts",
     "test:raw-row-retention": "tsx --test scripts/ingest/raw-row-retention.test.ts",
@@ -24,6 +27,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1053.0",
     "@base-ui/react": "^1.5.0",
     "@neondatabase/serverless": "^1.1.0",
     "@tailwindcss/postcss": "^4.3.0",
