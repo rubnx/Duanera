@@ -517,8 +517,8 @@ const fieldMappingDefinitions: FieldMappingDefinition[] = [
     normalizedField: "cifValue",
     label: "CIF exportación",
     rawFields: ["VALORCIF"],
-    confidence: "needs_review",
-    note: "Campo fuente existe, pero FOB sigue siendo la lectura principal de exportación; no tratar ceros como defecto automático.",
+    confidence: "inferred",
+    note: "Campo fuente normalizado como contexto secundario; FOB sigue siendo la lectura principal de exportación y los ceros no son defecto automático.",
   },
   {
     id: "import_unit_price",

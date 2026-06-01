@@ -55,6 +55,7 @@ test("normalizes Aduana codes for label coverage comparisons", () => {
 test("computes coverage percentages with stable one-decimal precision", () => {
   assert.equal(coveragePercent(100, 100), 100);
   assert.equal(coveragePercent(1, 3), 33.3);
+  assert.equal(coveragePercent(999_999, 1_000_000), 99.9);
   assert.equal(coveragePercent(0, 0), 0);
 });
 
@@ -519,6 +520,98 @@ test("keeps load-readiness links internal and deduped", () => {
   ]);
 });
 
+function buildMinimalLoadReadinessReport({
+  codeSummary = {},
+  fieldRows = [],
+  fieldSummary = {},
+  remediationSummary = {},
+  sourceBatchStatus = "completed",
+}: {
+  codeSummary?: Partial<CodeTableRemediationReport["summary"]>;
+  fieldRows?: unknown[];
+  fieldSummary?: Partial<FieldMappingReport["summary"]>;
+  remediationSummary?: Partial<RemediationQueueReport["summary"]>;
+  sourceBatchStatus?: string;
+}) {
+  const dataQuality = {
+    totals: {
+      failedRows: 0,
+      parsedRows: 100,
+      rawRows: 100,
+      rawToTradeDelta: 0,
+      tradeRecords: 100,
+      warningRows: 0,
+    },
+    flows: [
+      {
+        failedRows: 0,
+        parsedRows: 100,
+        rawRows: 100,
+        rawToTradeDelta: 0,
+        status: "ok",
+        tradeFlow: "import",
+        tradeRecords: 100,
+        warningRows: 0,
+      },
+    ],
+    payloadCoverage: [],
+    sourceCoverage: [
+      {
+        batchStatus: sourceBatchStatus,
+        failedRows: 0,
+        filename: "import.zip",
+        importBatchId: "batch-1",
+        parsedRows: 100,
+        rawRows: 100,
+        sourceFileId: "source-1",
+        sourceHref: "/sources/source-1#batch-batch-1",
+        tradeFlow: "import",
+        tradeRecords: 100,
+        tradeRecordsHref: "/trade-records?sourceFileId=source-1",
+      },
+    ],
+  } as unknown as DataQualityReport;
+  const fieldMapping = {
+    rows: fieldRows,
+    summary: {
+      inferredMappings: 0,
+      reviewMappings: 0,
+      totalMappings: fieldRows.length,
+      verifiedMappings: 0,
+      warningMappings: 0,
+      ...fieldSummary,
+    },
+  } as unknown as FieldMappingReport;
+  const codeTables = {
+    summary: {
+      highPriorityGaps: 0,
+      lowPriorityGaps: 0,
+      mediumPriorityGaps: 0,
+      recordsWithUndecodedCodes: 0,
+      totalDimensions: 0,
+      ...codeSummary,
+    },
+  } as unknown as CodeTableRemediationReport;
+  const remediation = {
+    items: [],
+    summary: {
+      affectedRecordSignals: 0,
+      reviewItems: 0,
+      totalItems: 0,
+      visibleMvpItems: 0,
+      warningItems: 0,
+      ...remediationSummary,
+    },
+  } as unknown as RemediationQueueReport;
+
+  return buildLoadReadinessReport({
+    codeTables,
+    dataQuality,
+    fieldMapping,
+    remediation,
+  });
+}
+
 test("builds load-readiness report with no-go when blockers remain", () => {
   const dataQuality = {
     totals: {
@@ -570,7 +663,9 @@ test("builds load-readiness report with no-go when blockers remain", () => {
     rows: [
       {
         group: "commercial_values",
+        normalizedField: "grossWeightItem",
         status: "warning",
+        tradeFlow: "import",
       },
     ],
     summary: {
@@ -621,6 +716,45 @@ test("builds load-readiness report with no-go when blockers remain", () => {
         area.actions.some((action) => action.href === "/data-quality/field-mapping"),
     ),
   );
+});
+
+test("keeps secondary export CIF mapping review from becoming a load-readiness blocker", () => {
+  const report = buildMinimalLoadReadinessReport({
+    fieldRows: [
+      {
+        group: "commercial_values",
+        normalizedField: "cifValue",
+        status: "warning",
+        tradeFlow: "export",
+      },
+    ],
+    fieldSummary: {
+      reviewMappings: 1,
+      warningMappings: 1,
+    },
+  });
+  const fieldMappingArea = report.areas.find((area) => area.key === "field_mapping");
+
+  assert.equal(report.decision, "review-first");
+  assert.equal(fieldMappingArea?.status, "review");
+});
+
+test("keeps remediation queue warnings visible without duplicating blockers", () => {
+  const report = buildMinimalLoadReadinessReport({
+    remediationSummary: {
+      affectedRecordSignals: 25,
+      reviewItems: 1,
+      totalItems: 3,
+      visibleMvpItems: 2,
+      warningItems: 2,
+    },
+  });
+  const remediationArea = report.areas.find(
+    (area) => area.key === "march_remediation",
+  );
+
+  assert.equal(report.decision, "review-first");
+  assert.equal(remediationArea?.status, "review");
 });
 
 test("blocks load-readiness when source batches are incomplete", () => {

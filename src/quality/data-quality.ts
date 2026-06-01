@@ -286,7 +286,12 @@ export function coveragePercent(covered: number, total: number): number {
     return 0;
   }
 
-  return Math.round((covered / total) * 1000) / 10;
+  if (covered >= total) {
+    return 100;
+  }
+
+  const rounded = Math.round((covered / total) * 1000) / 10;
+  return rounded >= 100 ? 99.9 : rounded;
 }
 
 export function coverageStatus({

@@ -298,14 +298,22 @@ function parserFieldCountArea(report: DataQualityReport): LoadReadinessArea {
 }
 
 function fieldMappingArea(report: FieldMappingReport): LoadReadinessArea {
-  const highImpactReviewRows = report.rows.filter(
-    (row) =>
-      row.status === "warning" &&
-      (row.group === "commercial_values" ||
-        row.group === "quantity_weight" ||
-        row.group === "geography_logistics" ||
-        row.group === "hs_product"),
-  );
+  const highImpactReviewRows = report.rows.filter((row) => {
+    if (row.status !== "warning") {
+      return false;
+    }
+
+    if (row.tradeFlow === "export" && row.normalizedField === "cifValue") {
+      return false;
+    }
+
+    return (
+      row.group === "commercial_values" ||
+      row.group === "quantity_weight" ||
+      row.group === "geography_logistics" ||
+      row.group === "hs_product"
+    );
+  });
   const status = loadReadinessAreaStatusFromCounts({
     blockers: highImpactReviewRows.length,
     warnings: report.summary.reviewMappings + report.summary.warningMappings,
@@ -510,8 +518,8 @@ function queryPerformanceArea({
 
 function marchRemediationArea(report: RemediationQueueReport): LoadReadinessArea {
   const status = loadReadinessAreaStatusFromCounts({
-    blockers: report.summary.warningItems,
-    warnings: report.summary.reviewItems,
+    blockers: 0,
+    warnings: report.summary.warningItems + report.summary.reviewItems,
   });
 
   return {
@@ -519,9 +527,7 @@ function marchRemediationArea(report: RemediationQueueReport): LoadReadinessArea
     title: "Remediación March 2026 pendiente",
     status,
     summary:
-      status === "blocked"
-        ? "La cola March 2026 aún contiene items de riesgo; deben revisarse antes de usar otro mes como señal comercial."
-        : "La cola March 2026 no muestra blockers, pero las señales de revisión siguen siendo contexto operativo.",
+      "La cola March 2026 resume blockers y revisiones ya expuestos en las áreas anteriores; úsala como checklist operativo.",
     evidence: safeLoadReadinessLinks([
       {
         label: "Items priorizados",
@@ -546,9 +552,9 @@ function marchRemediationArea(report: RemediationQueueReport): LoadReadinessArea
     ]),
     actions: safeLoadReadinessLinks([
       {
-        label: "Resolver o documentar los items de riesgo en la cola de remediación antes de cargar otro mes.",
+        label: "Resolver o documentar los items de riesgo reales de la cola antes de cargar otro mes.",
         href: "/data-quality/remediation",
-        required: status === "blocked",
+        required: false,
       },
       {
         label: "Usar la cola como checklist durante la validación del siguiente mes.",
