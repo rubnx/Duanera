@@ -32,7 +32,14 @@ import {
   dedupeRemediationQueueItems,
   remediationQueueScore,
   type RemediationQueueItemInput,
+  type RemediationQueueReport,
 } from "../../src/quality/remediation-queue";
+import {
+  buildLoadReadinessReport,
+  loadReadinessAreaStatusFromCounts,
+  loadReadinessDecisionFromStatuses,
+  safeLoadReadinessLinks,
+} from "../../src/quality/load-readiness";
 import type { DataQualityReport } from "../../src/quality/data-quality";
 import type { FieldMappingReport } from "../../src/quality/field-mapping";
 import type { CodeTableRemediationReport } from "../../src/quality/code-table-remediation";
@@ -467,4 +474,243 @@ test("builds a remediation queue from existing QA reports", () => {
       item.links.some((link) => link.href === "/data-quality/code-tables"),
     ),
   );
+});
+
+test("classifies load-readiness statuses into overall decisions", () => {
+  assert.equal(loadReadinessDecisionFromStatuses(["ready", "ready"]), "go");
+  assert.equal(
+    loadReadinessDecisionFromStatuses(["ready", "review"]),
+    "review-first",
+  );
+  assert.equal(
+    loadReadinessDecisionFromStatuses(["ready", "blocked", "review"]),
+    "no-go",
+  );
+});
+
+test("classifies load-readiness area counts conservatively", () => {
+  assert.equal(
+    loadReadinessAreaStatusFromCounts({ blockers: 0, warnings: 0 }),
+    "ready",
+  );
+  assert.equal(
+    loadReadinessAreaStatusFromCounts({ blockers: 0, warnings: 4 }),
+    "review",
+  );
+  assert.equal(
+    loadReadinessAreaStatusFromCounts({ blockers: 1, warnings: 0 }),
+    "blocked",
+  );
+});
+
+test("keeps load-readiness links internal and deduped", () => {
+  const links = safeLoadReadinessLinks([
+    { href: "/data-quality", label: "Calidad" },
+    { href: "/data-quality", label: "Calidad" },
+    { href: "https://example.com", label: "Externo" },
+    { href: "/Users/ruben/data/raw.txt", label: "Ruta local" },
+    { href: "r2://duanera-source-archive/key", label: "R2" },
+    { label: "scripts/ingest/aduana-parser.test.ts" },
+  ]);
+
+  assert.deepEqual(links, [
+    { href: "/data-quality", label: "Calidad" },
+    { href: undefined, label: "scripts/ingest/aduana-parser.test.ts" },
+  ]);
+});
+
+test("builds load-readiness report with no-go when blockers remain", () => {
+  const dataQuality = {
+    totals: {
+      failedRows: 0,
+      parsedRows: 100,
+      rawRows: 100,
+      rawToTradeDelta: 0,
+      tradeRecords: 100,
+      warningRows: 0,
+    },
+    flows: [
+      {
+        failedRows: 0,
+        parsedRows: 100,
+        rawRows: 100,
+        rawToTradeDelta: 0,
+        status: "ok",
+        tradeFlow: "import",
+        tradeRecords: 100,
+        warningRows: 0,
+      },
+    ],
+    payloadCoverage: [
+      {
+        reconstructable: true,
+        retentionMode: "full_postgres",
+        rows: 100,
+        storageKind: "postgres",
+        tradeFlow: "import",
+      },
+    ],
+    sourceCoverage: [
+      {
+        batchStatus: "completed",
+        failedRows: 0,
+        filename: "import.zip",
+        importBatchId: "batch-1",
+        parsedRows: 100,
+        rawRows: 100,
+        sourceFileId: "source-1",
+        sourceHref: "/sources/source-1#batch-batch-1",
+        tradeFlow: "import",
+        tradeRecords: 100,
+        tradeRecordsHref: "/trade-records?sourceFileId=source-1",
+      },
+    ],
+  } as unknown as DataQualityReport;
+  const fieldMapping = {
+    rows: [
+      {
+        group: "commercial_values",
+        status: "warning",
+      },
+    ],
+    summary: {
+      inferredMappings: 0,
+      reviewMappings: 0,
+      totalMappings: 1,
+      verifiedMappings: 0,
+      warningMappings: 1,
+    },
+  } as unknown as FieldMappingReport;
+  const codeTables = {
+    summary: {
+      highPriorityGaps: 0,
+      lowPriorityGaps: 0,
+      mediumPriorityGaps: 0,
+      recordsWithUndecodedCodes: 0,
+      totalDimensions: 0,
+    },
+  } as unknown as CodeTableRemediationReport;
+  const remediation = {
+    items: [
+      {
+        impact: "visible_mvp",
+      },
+    ],
+    summary: {
+      affectedRecordSignals: 1,
+      reviewItems: 0,
+      totalItems: 1,
+      visibleMvpItems: 1,
+      warningItems: 1,
+    },
+  } as unknown as RemediationQueueReport;
+
+  const report = buildLoadReadinessReport({
+    codeTables,
+    dataQuality,
+    fieldMapping,
+    remediation,
+  });
+
+  assert.equal(report.decision, "no-go");
+  assert.ok(report.summary.blockedAreas >= 1);
+  assert.ok(
+    report.areas.some(
+      (area) =>
+        area.key === "field_mapping" &&
+        area.actions.some((action) => action.href === "/data-quality/field-mapping"),
+    ),
+  );
+});
+
+test("blocks load-readiness when source batches are incomplete", () => {
+  const dataQuality = {
+    totals: {
+      failedRows: 0,
+      parsedRows: 100,
+      rawRows: 100,
+      rawToTradeDelta: 0,
+      tradeRecords: 100,
+      warningRows: 0,
+    },
+    flows: [
+      {
+        failedRows: 0,
+        parsedRows: 100,
+        rawRows: 100,
+        rawToTradeDelta: 0,
+        status: "ok",
+        tradeFlow: "import",
+        tradeRecords: 100,
+        warningRows: 0,
+      },
+    ],
+    payloadCoverage: [
+      {
+        reconstructable: true,
+        retentionMode: "full_postgres",
+        rows: 100,
+        storageKind: "postgres",
+        tradeFlow: "import",
+      },
+    ],
+    sourceCoverage: [
+      {
+        batchStatus: "running",
+        failedRows: 0,
+        filename: "import.zip",
+        importBatchId: "batch-1",
+        parsedRows: 100,
+        rawRows: 100,
+        sourceFileId: "source-1",
+        sourceHref: "/sources/source-1#batch-batch-1",
+        tradeFlow: "import",
+        tradeRecords: 100,
+        tradeRecordsHref: "/trade-records?sourceFileId=source-1",
+      },
+    ],
+  } as unknown as DataQualityReport;
+  const fieldMapping = {
+    rows: [],
+    summary: {
+      inferredMappings: 0,
+      reviewMappings: 0,
+      totalMappings: 0,
+      verifiedMappings: 0,
+      warningMappings: 0,
+    },
+  } as unknown as FieldMappingReport;
+  const codeTables = {
+    summary: {
+      highPriorityGaps: 0,
+      lowPriorityGaps: 0,
+      mediumPriorityGaps: 0,
+      recordsWithUndecodedCodes: 0,
+      totalDimensions: 0,
+    },
+  } as unknown as CodeTableRemediationReport;
+  const remediation = {
+    items: [],
+    summary: {
+      affectedRecordSignals: 0,
+      reviewItems: 0,
+      totalItems: 0,
+      visibleMvpItems: 0,
+      warningItems: 0,
+    },
+  } as unknown as RemediationQueueReport;
+
+  const report = buildLoadReadinessReport({
+    codeTables,
+    dataQuality,
+    fieldMapping,
+    remediation,
+  });
+
+  const sourceArea = report.areas.find(
+    (area) => area.key === "source_archive_provenance",
+  );
+
+  assert.equal(report.decision, "no-go");
+  assert.equal(sourceArea?.status, "blocked");
 });

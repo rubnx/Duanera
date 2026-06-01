@@ -261,6 +261,12 @@ export default async function DataQualityRemediationPage() {
         </div>
         <div className="flex flex-wrap gap-3 text-sm">
           <Link
+            href="/data-quality/load-readiness"
+            className="font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+          >
+            Preparación carga
+          </Link>
+          <Link
             href="/data-quality"
             className="font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
           >
