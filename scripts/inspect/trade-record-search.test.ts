@@ -12,6 +12,11 @@ import {
   filtersToTradeRecordSearchParams,
 } from "../../src/trade/trade-record-links";
 import {
+  activeTradeRecordPresetId,
+  buildTradeRecordPresetHref,
+  tradeRecordPresets,
+} from "../../src/trade/trade-record-presets";
+import {
   buildTradeRecordRelatedGroupDefinitions,
   encodeTradeRecordCursor,
   type TradeRecordSummary,
@@ -369,6 +374,55 @@ test("converts related-record filters into search-link params", () => {
       port: "906",
       limit: "25",
     },
+  );
+});
+
+test("builds shareable trade record preset URLs with supported filters only", () => {
+  assert.equal(
+    buildTradeRecordPresetHref(tradeRecordPresets[0]),
+    "/trade-records?tradeFlow=import&periodFrom=2026-03&periodTo=2026-03&minItemValue=50000&sort=item_value_desc&limit=25",
+  );
+
+  for (const preset of tradeRecordPresets) {
+    const href = buildTradeRecordPresetHref(preset);
+    const url = new URL(href, "https://duanera.test");
+    const filters = parseTradeRecordSearchParams(url.searchParams);
+
+    assert.equal(url.pathname, "/trade-records");
+    assert.equal(url.searchParams.has("after"), false);
+    assert.equal(url.searchParams.has("offset"), false);
+    assert.equal(url.searchParams.has("importer"), false);
+    assert.equal(url.searchParams.has("exporter"), false);
+    assert.equal(filters.periodFrom, "2026-03");
+    assert.equal(filters.periodTo, "2026-03");
+    assert.ok(filters.tradeFlow === "import" || filters.tradeFlow === "export");
+  }
+});
+
+test("matches active trade record presets only when filters are exact", () => {
+  assert.equal(
+    activeTradeRecordPresetId({
+      tradeFlow: "import",
+      periodFrom: "2026-03",
+      periodTo: "2026-03",
+      minItemValue: "50000",
+      sort: "item_value_desc",
+      limit: 25,
+    }),
+    "high-value-imports",
+  );
+
+  assert.equal(
+    activeTradeRecordPresetId({
+      tradeFlow: "import",
+      periodFrom: "2026-03",
+      periodTo: "2026-03",
+      minItemValue: "50000",
+      maxItemValue: "100000",
+      sort: "item_value_desc",
+      limit: 25,
+    }),
+    null,
   );
 });
 
