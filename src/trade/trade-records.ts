@@ -110,6 +110,11 @@ export type TradeRecordSummary = {
   importBatchStatus: string;
   rawTradeRowId: string;
   rawRowNumber: number;
+  payloadRetentionMode: string;
+  payloadRetainedReason: string | null;
+  payloadReconstructable: boolean;
+  parserName: string;
+  parserVersion: string;
 };
 
 export type TradeRecordDetail = TradeRecordSummary & {
@@ -120,14 +125,9 @@ export type TradeRecordDetail = TradeRecordSummary & {
   unitPriceValue: string | null;
   rawText: string | null;
   rawValues: unknown | null;
-  payloadRetentionMode: string;
   payloadStorageKind: string;
   payloadHashSha256: string | null;
-  payloadRetainedReason: string | null;
   payloadPrunedAt: Date | string | null;
-  payloadReconstructable: boolean;
-  parserName: string;
-  parserVersion: string;
 };
 
 export type TradeRecordListResult = {
@@ -577,6 +577,11 @@ const summaryColumns = {
   importBatchStatus: importBatches.status,
   rawTradeRowId: tradeRecords.rawTradeRowId,
   rawRowNumber: rawTradeRows.rowNumber,
+  payloadRetentionMode: rawTradeRows.payloadRetentionMode,
+  payloadRetainedReason: rawTradeRows.payloadRetainedReason,
+  payloadReconstructable: rawTradeRows.payloadReconstructable,
+  parserName: tradeRecords.parserName,
+  parserVersion: tradeRecords.parserVersion,
 };
 
 function baseSummaryQuery(db: DbClient) {
@@ -1093,14 +1098,9 @@ export async function getTradeRecordById(
       unitPriceValue: tradeRecords.unitPriceValue,
       rawText: rawTradeRows.rawText,
       rawValues: rawTradeRows.rawValues,
-      payloadRetentionMode: rawTradeRows.payloadRetentionMode,
       payloadStorageKind: rawTradeRows.payloadStorageKind,
       payloadHashSha256: rawTradeRows.payloadHashSha256,
-      payloadRetainedReason: rawTradeRows.payloadRetainedReason,
       payloadPrunedAt: rawTradeRows.payloadPrunedAt,
-      payloadReconstructable: rawTradeRows.payloadReconstructable,
-      parserName: tradeRecords.parserName,
-      parserVersion: tradeRecords.parserVersion,
     })
     .from(tradeRecords)
     .innerJoin(sourceFiles, eq(tradeRecords.sourceFileId, sourceFiles.id))

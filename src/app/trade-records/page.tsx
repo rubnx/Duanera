@@ -21,6 +21,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { db } from "@/db/client";
+import {
+  sourceFilenameLabel,
+  sourceTradeRecordsHref,
+} from "@/sources/source-provenance";
 import { productDisplayFromRaw } from "@/trade/trade-record-display";
 import {
   loadTradeRecordFilterOptions,
@@ -43,6 +47,10 @@ import {
   searchTradeRecords,
   TradeRecordSearchError,
 } from "@/trade/trade-record-search";
+import {
+  formatPayloadRetainedReason,
+  formatPayloadRetentionMode,
+} from "@/trade/trade-record-provenance";
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 type TradeRecordsSearchResult = Awaited<ReturnType<typeof searchTradeRecords>>;
@@ -318,6 +326,41 @@ function participant(record: TradeRecordRow) {
       record.exporterSecondaryCorrelativeId ??
       "—",
   };
+}
+
+function formatImportBatchStatus(value: string) {
+  const labels: Record<string, string> = {
+    completed: "Lote completo",
+    failed: "Lote fallido",
+    running: "Lote en proceso",
+    pending: "Lote pendiente",
+  };
+
+  return labels[value] ?? `Lote ${value}`;
+}
+
+function compactPayloadRetentionLabel(record: TradeRecordRow) {
+  if (record.payloadRetainedReason === "pruned_after_normalization") {
+    return "Payload podado";
+  }
+
+  if (record.payloadRetentionMode === "full_postgres") {
+    return "Payload completo";
+  }
+
+  if (record.payloadRetentionMode === "errors_and_warnings") {
+    return "Payload selectivo";
+  }
+
+  return formatPayloadRetentionMode(record.payloadRetentionMode);
+}
+
+function payloadRetentionTitle(record: TradeRecordRow) {
+  const reason = record.payloadRetainedReason
+    ? ` · ${formatPayloadRetainedReason(record.payloadRetainedReason)}`
+    : "";
+
+  return `${formatPayloadRetentionMode(record.payloadRetentionMode)}${reason}`;
 }
 
 function LookupSelect({
@@ -1428,6 +1471,8 @@ export default async function TradeRecordsPage({
             {hasCursor
               ? " desde el cursor actual."
               : ` desde posición ${result.pagination.offset}.`}
+            {" "}La columna de fuente muestra trazabilidad segura sin rutas locales,
+            claves privadas ni URLs de bucket.
           </CardDescription>
         </CardHeader>
         <CardContent className="overflow-x-auto p-0">
@@ -1459,6 +1504,17 @@ export default async function TradeRecordsPage({
                   const country = countryForFlow(record);
                   const port = portForFlow(record);
                   const product = productDisplayFromRaw(record.productDescriptionRaw);
+                  const sourceFilename =
+                    sourceFilenameLabel(record.sourceFilename) ?? "Fuente sin nombre";
+                  const sourceHref = `/sources/${record.sourceFileId}`;
+                  const batchHref = `${sourceHref}#batch-${record.importBatchId}`;
+                  const sourceRecordsHref = sourceTradeRecordsHref({
+                    sourceFileId: record.sourceFileId,
+                  });
+                  const batchRecordsHref = sourceTradeRecordsHref({
+                    sourceFileId: record.sourceFileId,
+                    importBatchId: record.importBatchId,
+                  });
                   const period = `${record.periodYear}-${String(record.periodMonth).padStart(
                     2,
                     "0",
@@ -1644,8 +1700,62 @@ export default async function TradeRecordsPage({
                           ) : null}
                         </div>
                       </TableCell>
-                      <TableCell className="max-w-[220px] align-top whitespace-normal text-xs text-muted-foreground">
-                        {record.sourceFilename} · fila {record.rawRowNumber}
+                      <TableCell className="max-w-[280px] align-top whitespace-normal text-xs">
+                        <div className="flex flex-col gap-1.5">
+                          <Link
+                            href={sourceHref}
+                            className="break-words font-medium underline-offset-4 hover:underline"
+                          >
+                            {sourceFilename}
+                          </Link>
+                          <div className="font-mono text-xs text-muted-foreground">
+                            Fila cruda {record.rawRowNumber}
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            <FilterAction href={sourceRecordsHref}>
+                              Filtrar fuente
+                            </FilterAction>
+                            <FilterAction href={batchRecordsHref}>
+                              Filtrar lote
+                            </FilterAction>
+                            <FilterAction href={batchHref}>Ver lote</FilterAction>
+                          </div>
+                          <div className="flex flex-wrap gap-1.5 pt-0.5">
+                            <Badge
+                              variant="outline"
+                              className="w-fit text-[11px]"
+                              title={`Estado del lote: ${record.importBatchStatus}`}
+                            >
+                              {formatImportBatchStatus(record.importBatchStatus)}
+                            </Badge>
+                            <Badge
+                              variant="outline"
+                              className="w-fit text-[11px]"
+                              title={payloadRetentionTitle(record)}
+                            >
+                              {compactPayloadRetentionLabel(record)}
+                            </Badge>
+                            <Badge
+                              variant="outline"
+                              className="w-fit text-[11px]"
+                              title={
+                                record.payloadReconstructable
+                                  ? "La fila cruda puede reconstruirse desde la fuente preservada."
+                                  : "La fila cruda no está marcada como reconstruible."
+                              }
+                            >
+                              {record.payloadReconstructable
+                                ? "Reconstruible"
+                                : "No reconstruible"}
+                            </Badge>
+                          </div>
+                          <div className="break-words text-xs text-muted-foreground">
+                            Parser{" "}
+                            <span className="font-mono">
+                              {record.parserName} {record.parserVersion}
+                            </span>
+                          </div>
+                        </div>
                       </TableCell>
                     </TableRow>
                   );

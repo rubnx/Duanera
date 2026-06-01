@@ -21,6 +21,11 @@ import {
   encodeTradeRecordCursor,
   type TradeRecordSummary,
 } from "../../src/trade/trade-records";
+import {
+  formatPayloadRetainedReason,
+  formatPayloadRetentionMode,
+  formatPayloadStorageKind,
+} from "../../src/trade/trade-record-provenance";
 
 test("parses route-style trade search params", () => {
   const params = new URLSearchParams({
@@ -74,6 +79,18 @@ test("parses route-style trade search params", () => {
     limit: 25,
     offset: 10,
   });
+});
+
+test("formats trade record provenance payload labels in Spanish", () => {
+  assert.equal(
+    formatPayloadRetentionMode("full_postgres"),
+    "Completo en Postgres",
+  );
+  assert.equal(
+    formatPayloadRetainedReason("pending_post_normalization_prune"),
+    "Pendiente de poda posterior a normalización",
+  );
+  assert.equal(formatPayloadStorageKind("object_storage"), "Almacenamiento externo");
 });
 
 test("ignores blank params", () => {
