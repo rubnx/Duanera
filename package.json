@@ -22,6 +22,7 @@
     "archive:r2:upload": "tsx scripts/archive/r2-upload-archive.ts",
     "inspect:trade-records": "tsx scripts/inspect/trade-records.ts",
     "test:trade-search": "tsx --test scripts/inspect/trade-record-search.test.ts",
+    "test:source-provenance": "tsx --test scripts/inspect/source-provenance.test.ts",
     "test:raw-row-retention": "tsx --test scripts/ingest/raw-row-retention.test.ts",
     "test:parser": "tsx --test scripts/ingest/aduana-parser.test.ts",
     "typecheck": "tsc --noEmit"

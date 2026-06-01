@@ -25,7 +25,7 @@ export default function HomePage() {
         </p>
       </header>
 
-      <section className="grid gap-4 md:grid-cols-2">
+      <section className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader>
             <CardTitle>Buscador interno</CardTitle>
@@ -43,6 +43,26 @@ export default function HomePage() {
             <p className="text-sm text-muted-foreground">
               Los IDs de importador/exportador son correlativos anonimos de Aduana, no
               identidades legales verificadas.
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Fuentes y lotes</CardTitle>
+            <CardDescription>
+              Vista read-only de archivos fuente, lotes y conteos de trazabilidad.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3">
+            <Link
+              href="/sources"
+              className="inline-flex h-8 w-fit items-center rounded-lg border border-border px-2.5 text-sm font-medium hover:bg-muted"
+            >
+              Abrir fuentes
+            </Link>
+            <p className="text-sm text-muted-foreground">
+              No muestra rutas locales, credenciales ni claves privadas de almacenamiento.
             </p>
           </CardContent>
         </Card>

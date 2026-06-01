@@ -1127,12 +1127,20 @@ export default async function TradeRecordsPage({
             legales verificadas.
           </p>
         </div>
-        <Link
-          href="/"
-          className="text-sm font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-        >
-          Inicio
-        </Link>
+        <div className="flex flex-wrap gap-3 text-sm">
+          <Link
+            href="/sources"
+            className="font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+          >
+            Fuentes
+          </Link>
+          <Link
+            href="/"
+            className="font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+          >
+            Inicio
+          </Link>
+        </div>
       </header>
 
       <PresetViewsPanel activePresetId={activePresetId} />
