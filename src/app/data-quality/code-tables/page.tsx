@@ -187,6 +187,10 @@ function UndecodedCodes({ row }: { row: CodeTableRemediationRow }) {
   );
 }
 
+function decodableRecordCount(row: CodeTableRemediationRow) {
+  return row.recordsWithCode - row.recordsWithSpecialSourceCode;
+}
+
 function ActionLinks({ row }: { row: CodeTableRemediationRow }) {
   return (
     <div className="flex flex-col gap-1 text-xs">
@@ -289,7 +293,7 @@ function RemediationRowsTable({
                     {formatPercent(row.decodedPercent)}%
                     <div className="mt-1 text-muted-foreground">
                       {formatNumber(row.recordsWithDecodedCode)} /{" "}
-                      {formatNumber(row.recordsWithCode)} registros
+                      {formatNumber(decodableRecordCount(row))} registros decodificables
                     </div>
                     <div className="mt-2 text-muted-foreground">
                       Códigos {formatNumber(row.decodedCodes)} /{" "}
@@ -298,9 +302,20 @@ function RemediationRowsTable({
                     <div className="mt-1 text-muted-foreground">
                       Sin etiqueta: {formatNumber(row.undecodedCodes)}
                     </div>
+                    {row.recordsWithSpecialSourceCode > 0 ? (
+                      <div className="mt-1 text-muted-foreground">
+                        Valor especial fuente:{" "}
+                        {formatNumber(row.recordsWithSpecialSourceCode)}
+                      </div>
+                    ) : null}
                   </TableCell>
                   <TableCell className="max-w-[240px] align-top">
                     <UndecodedCodes row={row} />
+                    {row.sourceSpecialCodeNote ? (
+                      <p className="mt-2 text-xs leading-5 text-muted-foreground">
+                        {row.sourceSpecialCodeNote}
+                      </p>
+                    ) : null}
                   </TableCell>
                   <TableCell className="max-w-[320px] align-top text-sm text-muted-foreground">
                     {row.nextAction}

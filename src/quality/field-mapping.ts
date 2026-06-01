@@ -408,7 +408,7 @@ const fieldMappingDefinitions: FieldMappingDefinition[] = [
     label: "Peso bruto item",
     rawFields: [],
     confidence: "needs_review",
-    note: "El parser actual no encontró un campo item equivalente en DIN; esta ausencia explica el faltante QA.",
+    note: "El layout DIN March 2026 no contiene un campo de peso bruto por item; TOT_PESO es peso total y no debe usarse como aproximación automática.",
   },
   {
     id: "export_gross_weight_item",

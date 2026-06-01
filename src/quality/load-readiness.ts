@@ -298,12 +298,19 @@ function parserFieldCountArea(report: DataQualityReport): LoadReadinessArea {
 }
 
 function fieldMappingArea(report: FieldMappingReport): LoadReadinessArea {
+  const expectedSourceLimitations = report.rows.filter(
+    (row) => row.tradeFlow === "import" && row.normalizedField === "grossWeightItem",
+  );
   const highImpactReviewRows = report.rows.filter((row) => {
     if (row.status !== "warning") {
       return false;
     }
 
     if (row.tradeFlow === "export" && row.normalizedField === "cifValue") {
+      return false;
+    }
+
+    if (row.tradeFlow === "import" && row.normalizedField === "grossWeightItem") {
       return false;
     }
 
@@ -348,6 +355,11 @@ function fieldMappingArea(report: FieldMappingReport): LoadReadinessArea {
         value: formatNumber(report.summary.warningMappings),
         href: "/data-quality/field-mapping",
       },
+      {
+        label: "Limitaciones fuente esperadas",
+        value: formatNumber(expectedSourceLimitations.length),
+        href: "/data-quality/field-mapping",
+      },
     ]),
     actions: safeLoadReadinessLinks([
       {
@@ -356,7 +368,7 @@ function fieldMappingArea(report: FieldMappingReport): LoadReadinessArea {
         required: status === "blocked",
       },
       {
-        label: "Comparar ordinals/campos fuente del próximo mes contra las definiciones March 2026.",
+        label: "Comparar ordinals/campos fuente del próximo mes contra las definiciones March 2026 y confirmar si DIN sigue sin peso bruto item.",
         href: "/data-quality/field-mapping",
         required: true,
       },

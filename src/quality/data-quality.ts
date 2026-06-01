@@ -339,6 +339,25 @@ export function normalizeCodeForCoverage(value: string | null | undefined): stri
   return trimmed.toUpperCase();
 }
 
+export function isActionableUndecodedCode({
+  code,
+  codeSet,
+  ignoredSourceCodes = new Set<string>(),
+}: {
+  code: string | null | undefined;
+  codeSet: Set<string>;
+  ignoredSourceCodes?: Set<string>;
+}) {
+  const normalizedCode = normalizeCodeForCoverage(code);
+  return Boolean(
+    normalizedCode &&
+      !codeSet.has(normalizedCode) &&
+      !ignoredSourceCodes.has(normalizedCode),
+  );
+}
+
+const dusExportSpecialLogisticsCodes = new Set(["0"]);
+
 function marchRawWhere(flow?: TradeFlow): SQL {
   const conditions: SQL[] = [
     eq(rawTradeRows.periodYear, reportPeriod.year),
@@ -944,6 +963,7 @@ async function codeCountsForDimension(
 function labelCoverageFromRows({
   caveat,
   codeSet,
+  ignoredSourceCodes = new Set<string>(),
   key,
   label,
   rows,
@@ -951,6 +971,7 @@ function labelCoverageFromRows({
 }: {
   caveat: string;
   codeSet: Set<string>;
+  ignoredSourceCodes?: Set<string>;
   key: LabelDimensionKey;
   label: string;
   rows: CodeCountRow[];
@@ -969,6 +990,10 @@ function labelCoverageFromRows({
     }
 
     const records = toNumber(row.records);
+    if (ignoredSourceCodes.has(normalizedCode)) {
+      continue;
+    }
+
     distinctCodes.add(normalizedCode);
     recordsWithCode += records;
 
@@ -1070,6 +1095,7 @@ async function loadLabelCoverage(db: DbClient): Promise<DataQualityLabelCoverage
       label: "Puerto embarque",
       rows: exportPorts,
       tradeFlow: "export",
+      ignoredSourceCodes: dusExportSpecialLogisticsCodes,
     }),
     labelCoverageFromRows({
       caveat: "Vía de transporte registrada en el archivo fuente.",
@@ -1086,6 +1112,7 @@ async function loadLabelCoverage(db: DbClient): Promise<DataQualityLabelCoverage
       label: "Vía transporte",
       rows: exportTransport,
       tradeFlow: "export",
+      ignoredSourceCodes: dusExportSpecialLogisticsCodes,
     }),
   ];
 }
@@ -1290,6 +1317,7 @@ type UndecodedIssueConfig = {
   flows: Array<{
     tradeFlow: TradeFlow;
     expression: SQL<string>;
+    ignoredSourceCodes?: Set<string>;
     whereExpression: SQL<unknown>;
     searchFilter: (code: string) => TradeRecordFilters;
   }>;
@@ -1303,8 +1331,11 @@ async function undecodedIssueGroup(
     config.flows.map(async (flow) => {
       const rows = await codeCountsForDimension(db, flow.tradeFlow, flow.expression);
       const undecodedRows = rows.filter((row) => {
-        const normalizedCode = normalizeCodeForCoverage(row.code);
-        return Boolean(normalizedCode && !config.codeSet.has(normalizedCode));
+        return isActionableUndecodedCode({
+          code: row.code,
+          codeSet: config.codeSet,
+          ignoredSourceCodes: flow.ignoredSourceCodes,
+        });
       });
 
       return {
@@ -1462,6 +1493,7 @@ async function loadIssueGroups(db: DbClient): Promise<DataQualityIssueGroup[]> {
         {
           tradeFlow: "export",
           expression: sql<string>`${tradeRecords.embarkPortCode}`,
+          ignoredSourceCodes: dusExportSpecialLogisticsCodes,
           whereExpression: sql`${tradeRecords.embarkPortCode}`,
           searchFilter: (code) => ({
             ...marchFilters,
@@ -1492,6 +1524,7 @@ async function loadIssueGroups(db: DbClient): Promise<DataQualityIssueGroup[]> {
         {
           tradeFlow: "export",
           expression: sql<string>`${tradeRecords.transportModeCode}`,
+          ignoredSourceCodes: dusExportSpecialLogisticsCodes,
           whereExpression: sql`${tradeRecords.transportModeCode}`,
           searchFilter: (code) => ({
             ...marchFilters,
@@ -1719,6 +1752,7 @@ async function sourceBatchCodeCounts({
 function addUndecodedCounts({
   codeSet,
   field,
+  ignoredSourceCodes = new Set<string>(),
   remediationByKey,
   rows,
 }: {
@@ -1727,12 +1761,18 @@ function addUndecodedCounts({
     DataQualityRemediationIssueCounts,
     "undecodedCustomsOffice" | "undecodedPort" | "undecodedTransportMode"
   >;
+  ignoredSourceCodes?: Set<string>;
   remediationByKey: Map<string, DataQualitySourceBatchRemediation>;
   rows: SourceBatchCodeCountRow[];
 }) {
   for (const row of rows) {
-    const normalizedCode = normalizeCodeForCoverage(row.code);
-    if (!normalizedCode || codeSet.has(normalizedCode)) {
+    if (
+      !isActionableUndecodedCode({
+        code: row.code,
+        codeSet,
+        ignoredSourceCodes,
+      })
+    ) {
       continue;
     }
 
@@ -1844,13 +1884,27 @@ export async function getMarch2026SourceBatchRemediation(
     codeSet: codeSets.ports,
     field: "undecodedPort",
     remediationByKey,
-    rows: [...importPorts, ...exportPorts],
+    rows: importPorts,
+  });
+  addUndecodedCounts({
+    codeSet: codeSets.ports,
+    field: "undecodedPort",
+    ignoredSourceCodes: dusExportSpecialLogisticsCodes,
+    remediationByKey,
+    rows: exportPorts,
   });
   addUndecodedCounts({
     codeSet: codeSets.transportModes,
     field: "undecodedTransportMode",
     remediationByKey,
-    rows: [...importTransport, ...exportTransport],
+    rows: importTransport,
+  });
+  addUndecodedCounts({
+    codeSet: codeSets.transportModes,
+    field: "undecodedTransportMode",
+    ignoredSourceCodes: dusExportSpecialLogisticsCodes,
+    remediationByKey,
+    rows: exportTransport,
   });
 
   return finalizeRemediationRows(remediationRows).slice(0, options.limit ?? 8);

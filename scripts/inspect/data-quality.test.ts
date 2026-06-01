@@ -11,6 +11,7 @@ import {
   dataQualityRemediationStatus,
   dataQualityRemediationTotal,
   dataQualitySourceBatchKey,
+  isActionableUndecodedCode,
   normalizeCodeForCoverage,
 } from "../../src/quality/data-quality";
 import {
@@ -50,6 +51,24 @@ test("normalizes Aduana codes for label coverage comparisons", () => {
   assert.equal(normalizeCodeForCoverage(" cl "), "CL");
   assert.equal(normalizeCodeForCoverage(""), null);
   assert.equal(normalizeCodeForCoverage(null), null);
+});
+
+test("classifies actionable undecoded codes while ignoring source-special values", () => {
+  const codeSet = new Set(["1"]);
+  const ignoredSourceCodes = new Set(["0"]);
+
+  assert.equal(
+    isActionableUndecodedCode({ code: "001", codeSet, ignoredSourceCodes }),
+    false,
+  );
+  assert.equal(
+    isActionableUndecodedCode({ code: "000", codeSet, ignoredSourceCodes }),
+    false,
+  );
+  assert.equal(
+    isActionableUndecodedCode({ code: "817", codeSet, ignoredSourceCodes }),
+    true,
+  );
 });
 
 test("computes coverage percentages with stable one-decimal precision", () => {
@@ -282,6 +301,25 @@ test("ranks top undecoded code-table gaps by affected records", () => {
   );
 });
 
+test("keeps source-special code-table values out of actionable undecoded rankings", () => {
+  const result = codeTableTopUndecodedCodes({
+    codeRows: [
+      { code: "0", records: 100 },
+      { code: "817", records: 10 },
+      { code: "992", records: 25 },
+    ],
+    codeSet: new Set(["992"]),
+    definition: { filterKind: "port", tradeFlow: "export" },
+    ignoredSourceCodes: new Set(["0"]),
+    limit: 5,
+  });
+
+  assert.deepEqual(
+    result.map((row) => [row.normalizedCode, row.records]),
+    [["817", 10]],
+  );
+});
+
 test("labels and explains code-table remediation actions conservatively", () => {
   assert.equal(codeTableRemediationPriorityLabel("high"), "Alta");
   assert.match(
@@ -300,6 +338,16 @@ test("labels and explains code-table remediation actions conservatively", () => 
       recordsWithUndecodedCode: 5,
     }),
     /comparar unidades, moneda o valores agregados/,
+  );
+  assert.match(
+    codeTableRemediationNextAction({
+      codeTableKey: "chile_aduana:vias_de_transporte",
+      priority: "high",
+      recordsWithSpecialSourceCode: 100,
+      recordsWithUndecodedCode: 0,
+      sourceSpecialCodeNote: "Código 0 se conserva como valor fuente.",
+    }),
+    /Sin brecha de etiqueta accionable/,
   );
 });
 
@@ -663,7 +711,7 @@ test("builds load-readiness report with no-go when blockers remain", () => {
     rows: [
       {
         group: "commercial_values",
-        normalizedField: "grossWeightItem",
+        normalizedField: "itemCifValue",
         status: "warning",
         tradeFlow: "import",
       },
@@ -714,6 +762,32 @@ test("builds load-readiness report with no-go when blockers remain", () => {
       (area) =>
         area.key === "field_mapping" &&
         area.actions.some((action) => action.href === "/data-quality/field-mapping"),
+    ),
+  );
+});
+
+test("keeps DIN import item gross weight source limitation from becoming a load-readiness blocker", () => {
+  const report = buildMinimalLoadReadinessReport({
+    fieldRows: [
+      {
+        group: "quantity_weight",
+        normalizedField: "grossWeightItem",
+        status: "warning",
+        tradeFlow: "import",
+      },
+    ],
+    fieldSummary: {
+      reviewMappings: 1,
+      warningMappings: 1,
+    },
+  });
+  const fieldMappingArea = report.areas.find((area) => area.key === "field_mapping");
+
+  assert.equal(report.decision, "review-first");
+  assert.equal(fieldMappingArea?.status, "review");
+  assert.ok(
+    fieldMappingArea?.evidence.some(
+      (item) => item.label === "Limitaciones fuente esperadas" && item.value === "1",
     ),
   );
 });

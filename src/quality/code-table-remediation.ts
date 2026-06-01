@@ -76,6 +76,10 @@ type CodeTableRemediationDefinition = {
   filterKind?: CodeTableRemediationFilterKind;
   commercialUse: string;
   unsupportedReason?: string;
+  sourceSpecialCodes?: {
+    codes: string[];
+    note: string;
+  };
 };
 
 export type CodeTableSourceField = {
@@ -126,9 +130,11 @@ export type CodeTableRemediationRow = {
   undecodedCodes: number;
   recordsWithCode: number;
   recordsWithDecodedCode: number;
+  recordsWithSpecialSourceCode: number;
   recordsWithUndecodedCode: number;
   decodedPercent: number;
   topUndecodedCodes: TopUndecodedCode[];
+  sourceSpecialCodeNote: string | null;
   sourceContext: CodeTableSourceContext | null;
   dictionaryProvenance: CodeTableDictionaryProvenance | null;
   fieldMappingHref: string;
@@ -291,6 +297,10 @@ const remediationDefinitions: CodeTableRemediationDefinition[] = [
     priority: "high",
     filterKind: "port",
     commercialUse: "Puerto de salida usado por el filtro de puerto relevante.",
+    sourceSpecialCodes: {
+      codes: ["0"],
+      note: "Código 0 aparece en DUS como puerto sin glosa, principalmente junto a vía 0 y registros de servicios; se conserva como código fuente, no como brecha de diccionario accionable.",
+    },
   },
   {
     id: "export_disembark_port",
@@ -327,6 +337,10 @@ const remediationDefinitions: CodeTableRemediationDefinition[] = [
     priority: "high",
     filterKind: "transportMode",
     commercialUse: "Filtro y contexto logístico principal de exportaciones.",
+    sourceSpecialCodes: {
+      codes: ["0"],
+      note: "Código 0 aparece en DUS para registros sin vía aplicable o sin logística física clara; se conserva como código fuente, no como valor a agregar al diccionario sin evidencia oficial.",
+    },
   },
   {
     id: "import_quantity_unit",
@@ -495,12 +509,16 @@ export function codeTableRemediationNextAction({
   codeTableFound = true,
   priority,
   recordsWithUndecodedCode,
+  recordsWithSpecialSourceCode = 0,
+  sourceSpecialCodeNote,
   unsupportedReason,
 }: {
   codeTableKey: string;
   codeTableFound?: boolean;
   priority: CodeTableRemediationPriority;
   recordsWithUndecodedCode: number;
+  recordsWithSpecialSourceCode?: number;
+  sourceSpecialCodeNote?: string | null;
   unsupportedReason?: string;
 }) {
   if (!codeTableFound && recordsWithUndecodedCode > 0) {
@@ -508,20 +526,28 @@ export function codeTableRemediationNextAction({
   }
 
   if (recordsWithUndecodedCode === 0) {
+    if (recordsWithSpecialSourceCode > 0 && sourceSpecialCodeNote) {
+      return `Sin brecha de etiqueta accionable para los códigos restantes. ${sourceSpecialCodeNote}`;
+    }
+
     return unsupportedReason
       ? `Sin brecha de etiqueta detectada; mantener como contexto. ${unsupportedReason}`
       : "Sin brecha de etiqueta detectada en marzo 2026.";
   }
 
+  const specialSuffix = recordsWithSpecialSourceCode > 0 && sourceSpecialCodeNote
+    ? ` Mantener separado el valor especial: ${sourceSpecialCodeNote}`
+    : "";
+
   if (priority === "high") {
-    return `Priorizar contraste con diccionario/código oficial ${codeTableKey}; afecta filtros o rankings visibles.`;
+    return `Priorizar contraste con diccionario/código oficial ${codeTableKey}; afecta filtros o rankings visibles.${specialSuffix}`;
   }
 
   if (priority === "medium") {
-    return `Revisar ${codeTableKey} antes de comparar unidades, moneda o valores agregados.`;
+    return `Revisar ${codeTableKey} antes de comparar unidades, moneda o valores agregados.${specialSuffix}`;
   }
 
-  return `Registrar brecha para limpieza posterior; impacto bajo en el MVP actual.`;
+  return `Registrar brecha para limpieza posterior; impacto bajo en el MVP actual.${specialSuffix}`;
 }
 
 export function codeTableRemediationHref({
@@ -552,6 +578,7 @@ export function codeTableTopUndecodedCodes({
   codeRows,
   codeSet,
   definition,
+  ignoredSourceCodes = new Set<string>(),
   limit = 5,
 }: {
   codeRows: CodeTableCodeCountInput[];
@@ -560,6 +587,7 @@ export function codeTableTopUndecodedCodes({
     filterKind?: CodeTableRemediationFilterKind;
     tradeFlow: TradeFlow;
   };
+  ignoredSourceCodes?: Set<string>;
   limit?: number;
 }): TopUndecodedCode[] {
   const undecoded = new Map<string, TopUndecodedCode>();
@@ -567,7 +595,7 @@ export function codeTableTopUndecodedCodes({
   for (const row of codeRows) {
     const records = toNumber(row.records);
     const normalizedCode = normalizeCodeForCoverage(row.code);
-    if (!normalizedCode || codeSet.has(normalizedCode)) {
+    if (!normalizedCode || codeSet.has(normalizedCode) || ignoredSourceCodes.has(normalizedCode)) {
       continue;
     }
 
@@ -797,12 +825,23 @@ function remediationRowFromCounts({
   let decodedCodes = 0;
   let recordsWithCode = 0;
   let recordsWithDecodedCode = 0;
+  let recordsWithSpecialSourceCode = 0;
+  const specialCodeSet = new Set(
+    (definition.sourceSpecialCodes?.codes ?? [])
+      .map((code) => normalizeCodeForCoverage(code))
+      .filter((code): code is string => Boolean(code)),
+  );
 
   for (const row of codeRows) {
     const records = toNumber(row.records);
     recordsWithCode += records;
     const normalizedCode = normalizeCodeForCoverage(row.code);
     if (!normalizedCode) {
+      continue;
+    }
+
+    if (specialCodeSet.has(normalizedCode)) {
+      recordsWithSpecialSourceCode += records;
       continue;
     }
 
@@ -816,17 +855,22 @@ function remediationRowFromCounts({
     codeRows,
     codeSet,
     definition,
+    ignoredSourceCodes: specialCodeSet,
   });
-  const distinctCodes = codeRows.length;
+  const distinctCodes = codeRows.filter((row) => {
+    const normalizedCode = normalizeCodeForCoverage(row.code);
+    return normalizedCode ? !specialCodeSet.has(normalizedCode) : true;
+  }).length;
   const undecodedCodeSet = codeRows.reduce((set, row) => {
     const normalizedCode = normalizeCodeForCoverage(row.code);
-    if (normalizedCode && !codeSet.has(normalizedCode)) {
+    if (normalizedCode && !codeSet.has(normalizedCode) && !specialCodeSet.has(normalizedCode)) {
       set.add(normalizedCode);
     }
     return set;
   }, new Set<string>());
   const undecodedCodes = undecodedCodeSet.size;
-  const recordsWithUndecodedCode = recordsWithCode - recordsWithDecodedCode;
+  const recordsWithUndecodedCode =
+    recordsWithCode - recordsWithDecodedCode - recordsWithSpecialSourceCode;
   const codeTableFound = dictionaryProvenance !== null;
   const status = codeTableRemediationStatus({
     codeTableFound,
@@ -852,9 +896,14 @@ function remediationRowFromCounts({
     undecodedCodes,
     recordsWithCode,
     recordsWithDecodedCode,
-    recordsWithUndecodedCode: recordsWithCode - recordsWithDecodedCode,
-    decodedPercent: coveragePercent(recordsWithDecodedCode, recordsWithCode),
+    recordsWithSpecialSourceCode,
+    recordsWithUndecodedCode,
+    decodedPercent: coveragePercent(
+      recordsWithDecodedCode,
+      recordsWithCode - recordsWithSpecialSourceCode,
+    ),
     topUndecodedCodes,
+    sourceSpecialCodeNote: definition.sourceSpecialCodes?.note ?? null,
     sourceContext,
     dictionaryProvenance,
     fieldMappingHref: "/data-quality/field-mapping",
@@ -864,6 +913,8 @@ function remediationRowFromCounts({
       codeTableFound,
       priority: definition.priority,
       recordsWithUndecodedCode,
+      recordsWithSpecialSourceCode,
+      sourceSpecialCodeNote: definition.sourceSpecialCodes?.note,
       unsupportedReason: definition.unsupportedReason,
     }),
     commercialUse: definition.commercialUse,
