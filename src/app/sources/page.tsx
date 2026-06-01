@@ -45,6 +45,10 @@ function flowLabel(value: string | null) {
   return "Referencia";
 }
 
+function sourceTradeFlow(value: string | null) {
+  return value === "import" || value === "export" ? value : undefined;
+}
+
 function sourceTypeLabel(source: SourceProvenanceSummary) {
   const labels: Record<string, string> = {
     compressed_source_file: "Archivo oficial comprimido",
@@ -208,7 +212,10 @@ export default async function SourcesPage() {
                         </Link>
                         {source.tradeRecordCount > 0 ? (
                           <Link
-                            href={sourceTradeRecordsHref({ sourceFileId: source.id })}
+                            href={sourceTradeRecordsHref({
+                              sourceFileId: source.id,
+                              tradeFlow: sourceTradeFlow(source.tradeFlow),
+                            })}
                             className="font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
                           >
                             Ver registros

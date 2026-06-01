@@ -78,6 +78,10 @@ function flowLabel(value: string | null) {
   return "Referencia";
 }
 
+function sourceTradeFlow(value: string | null) {
+  return value === "import" || value === "export" ? value : undefined;
+}
+
 function fileRoleLabel(value: string) {
   const labels: Record<string, string> = {
     compressed_source_file: "Archivo oficial comprimido",
@@ -208,6 +212,7 @@ function BatchRows({
                       href={sourceTradeRecordsHref({
                         sourceFileId: source.id,
                         importBatchId: batch.id,
+                        tradeFlow: sourceTradeFlow(source.tradeFlow),
                       })}
                       className="text-xs font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
                     >
@@ -320,7 +325,10 @@ export default async function SourceDetailPage({ params }: PageProps) {
             <CardContent className="flex flex-col gap-3 text-sm">
               {source.tradeRecordCount > 0 ? (
                 <Link
-                  href={sourceTradeRecordsHref({ sourceFileId: source.id })}
+                  href={sourceTradeRecordsHref({
+                    sourceFileId: source.id,
+                    tradeFlow: sourceTradeFlow(source.tradeFlow),
+                  })}
                   className="inline-flex h-8 w-fit items-center rounded-lg bg-primary px-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
                 >
                   Ver registros de esta fuente

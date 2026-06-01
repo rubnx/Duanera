@@ -271,14 +271,20 @@ export function sourcePeriodLabel(
 export function sourceTradeRecordsHref({
   importBatchId,
   sourceFileId,
+  tradeFlow,
 }: {
   sourceFileId: string;
   importBatchId?: string;
+  tradeFlow?: "import" | "export";
 }) {
   const query = new URLSearchParams({
     sourceFileId,
     limit: "25",
   });
+
+  if (tradeFlow) {
+    query.set("tradeFlow", tradeFlow);
+  }
 
   if (importBatchId) {
     query.set("importBatchId", importBatchId);

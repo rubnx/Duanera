@@ -8,12 +8,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { isInternalResearchEnabled } from "@/research/internal-research-access";
+import { isInternalToolsEnabled } from "@/research/internal-research-access";
 
 export const dynamic = "force-dynamic";
 
 export default function HomePage() {
-  const showInternalResearch = isInternalResearchEnabled();
+  const showInternalTools = isInternalToolsEnabled();
 
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-[1120px] flex-col gap-5 px-4 py-8 lg:px-6">
@@ -86,7 +86,29 @@ export default function HomePage() {
           </CardContent>
         </Card>
 
-        {showInternalResearch ? (
+        {showInternalTools ? (
+          <Card>
+            <CardHeader>
+              <CardTitle>Calidad de datos</CardTitle>
+              <CardDescription>
+                Cobertura interna de marzo 2026 por flujo, fuente, campos y etiquetas.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-3">
+              <Link
+                href="/data-quality"
+                className="inline-flex h-8 w-fit items-center rounded-lg border border-border px-2.5 text-sm font-medium hover:bg-muted"
+              >
+                Abrir calidad
+              </Link>
+              <p className="text-sm text-muted-foreground">
+                Vista read-only para detectar riesgos de mapeo, cobertura y uso comercial.
+              </p>
+            </CardContent>
+          </Card>
+        ) : null}
+
+        {showInternalTools ? (
           <Card>
             <CardHeader>
               <CardTitle>Investigacion identidad</CardTitle>

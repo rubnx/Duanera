@@ -54,6 +54,10 @@ type RelatedGroupWithLabels = Omit<TradeRecordRelatedGroup, "records"> & {
   records: RelatedRecord[];
 };
 
+function recordTradeFlow(value: string) {
+  return value === "import" || value === "export" ? value : undefined;
+}
+
 function formatCodeLabel(code: string | null, label?: string) {
   if (!code && !label) {
     return "No informado";
@@ -264,10 +268,12 @@ function ProvenancePanel({ record }: { record: DetailRecord }) {
   const batchHref = `${sourceHref}#batch-${record.importBatchId}`;
   const sourceRecordsHref = sourceTradeRecordsHref({
     sourceFileId: record.sourceFileId,
+    tradeFlow: recordTradeFlow(record.tradeFlow),
   });
   const batchRecordsHref = sourceTradeRecordsHref({
     sourceFileId: record.sourceFileId,
     importBatchId: record.importBatchId,
+    tradeFlow: recordTradeFlow(record.tradeFlow),
   });
 
   return (

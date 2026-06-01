@@ -23,6 +23,19 @@ test("builds source-filtered trade record links without storage paths", () => {
   assert.equal(href.includes("data/sources"), false);
 });
 
+test("keeps source-filtered trade links flow-aware when the source flow is known", () => {
+  const href = sourceTradeRecordsHref({
+    sourceFileId: "source-1",
+    importBatchId: "batch-1",
+    tradeFlow: "export",
+  });
+
+  assert.equal(
+    href,
+    "/trade-records?sourceFileId=source-1&limit=25&tradeFlow=export&importBatchId=batch-1",
+  );
+});
+
 test("validates source provenance route ids before database lookup", () => {
   assert.equal(
     isSourceProvenanceId("5f657989-ef41-40a9-9cfd-219d920e5000"),

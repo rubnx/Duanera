@@ -66,6 +66,10 @@ const defaultSearchInput = {
   limit: "25",
 };
 
+function recordTradeFlow(value: string) {
+  return value === "import" || value === "export" ? value : undefined;
+}
+
 function firstValue(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
 }
@@ -1510,10 +1514,12 @@ export default async function TradeRecordsPage({
                   const batchHref = `${sourceHref}#batch-${record.importBatchId}`;
                   const sourceRecordsHref = sourceTradeRecordsHref({
                     sourceFileId: record.sourceFileId,
+                    tradeFlow: recordTradeFlow(record.tradeFlow),
                   });
                   const batchRecordsHref = sourceTradeRecordsHref({
                     sourceFileId: record.sourceFileId,
                     importBatchId: record.importBatchId,
+                    tradeFlow: recordTradeFlow(record.tradeFlow),
                   });
                   const period = `${record.periodYear}-${String(record.periodMonth).padStart(
                     2,

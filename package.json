@@ -24,6 +24,7 @@
     "research:identity-evidence": "tsx scripts/research/identity-evidence-report.ts",
     "test:trade-search": "tsx --test scripts/inspect/trade-record-search.test.ts",
     "test:identity-evidence": "tsx --test scripts/inspect/identity-evidence.test.ts",
+    "test:data-quality": "tsx --test scripts/inspect/data-quality.test.ts",
     "test:source-provenance": "tsx --test scripts/inspect/source-provenance.test.ts",
     "test:raw-row-retention": "tsx --test scripts/ingest/raw-row-retention.test.ts",
     "test:parser": "tsx --test scripts/ingest/aduana-parser.test.ts",
