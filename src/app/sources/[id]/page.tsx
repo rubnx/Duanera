@@ -163,7 +163,7 @@ function BatchRows({
             </TableRow>
           ) : (
             batches.map((batch) => (
-              <TableRow key={batch.id}>
+              <TableRow key={batch.id} id={`batch-${batch.id}`} className="scroll-mt-4">
                 <TableCell className="max-w-[220px] align-top font-mono text-xs">
                   {batch.id}
                 </TableCell>
