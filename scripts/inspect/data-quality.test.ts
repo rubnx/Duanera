@@ -4,6 +4,9 @@ import assert from "node:assert/strict";
 import {
   coveragePercent,
   coverageStatus,
+  dataQualityIssueRecordHref,
+  dataQualityIssueSearchHref,
+  dataQualityIssueStatus,
   normalizeCodeForCoverage,
 } from "../../src/quality/data-quality";
 
@@ -26,4 +29,24 @@ test("classifies coverage conservatively", () => {
   assert.equal(coverageStatus({ covered: 95, total: 100 }), "review");
   assert.equal(coverageStatus({ covered: 89, total: 100 }), "warning");
   assert.equal(coverageStatus({ covered: 0, total: 0 }), "review");
+});
+
+test("builds data-quality issue drilldown links through the trade-record parser contract", () => {
+  assert.equal(dataQualityIssueRecordHref("record-123"), "/trade-records/record-123");
+  assert.equal(
+    dataQualityIssueSearchHref({
+      tradeFlow: "export",
+      periodFrom: "2026-03",
+      periodTo: "2026-03",
+      transportModeCode: "1",
+      limit: 25,
+    }),
+    "/trade-records?tradeFlow=export&periodFrom=2026-03&periodTo=2026-03&transportMode=1&limit=25",
+  );
+});
+
+test("classifies issue groups by presence without hiding clean checks", () => {
+  assert.equal(dataQualityIssueStatus(0), "ok");
+  assert.equal(dataQualityIssueStatus(3), "review");
+  assert.equal(dataQualityIssueStatus(3, "warning"), "warning");
 });
