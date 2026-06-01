@@ -13,6 +13,13 @@ import {
   dataQualitySourceBatchKey,
   normalizeCodeForCoverage,
 } from "../../src/quality/data-quality";
+import {
+  fieldMappingConfidenceLabel,
+  fieldMappingCoverageStatus,
+  fieldMappingGroupLabel,
+  fieldMappingSearchHref,
+  fieldMappingSourceTradeHref,
+} from "../../src/quality/field-mapping";
 
 test("normalizes Aduana codes for label coverage comparisons", () => {
   assert.equal(normalizeCodeForCoverage("001"), "1");
@@ -93,4 +100,61 @@ test("builds stable source/batch remediation keys", () => {
     }),
     "source-1:batch-2:import",
   );
+});
+
+test("classifies field-mapping coverage conservatively", () => {
+  assert.equal(
+    fieldMappingCoverageStatus({
+      confidence: "verified",
+      normalizedTotalRows: 100,
+      normalizedPresentRows: 100,
+      rawFields: ["CIF-ITEM"],
+      rawSampleRows: 100,
+      rawPresentRows: 100,
+    }),
+    "ok",
+  );
+  assert.equal(
+    fieldMappingCoverageStatus({
+      confidence: "inferred",
+      normalizedTotalRows: 100,
+      normalizedPresentRows: 91,
+      rawFields: ["FECACEP"],
+      rawSampleRows: 100,
+      rawPresentRows: 100,
+    }),
+    "review",
+  );
+  assert.equal(
+    fieldMappingCoverageStatus({
+      confidence: "needs_review",
+      normalizedTotalRows: 100,
+      normalizedPresentRows: 0,
+      rawFields: [],
+      rawSampleRows: 100,
+      rawPresentRows: 0,
+    }),
+    "warning",
+  );
+});
+
+test("builds field-mapping links through safe route contracts", () => {
+  assert.equal(
+    fieldMappingSearchHref("export"),
+    "/trade-records?tradeFlow=export&periodYear=2026&periodMonth=3&limit=25",
+  );
+  assert.equal(
+    fieldMappingSourceTradeHref({
+      sourceFileId: "source-1",
+      importBatchId: "batch-2",
+      tradeFlow: "import",
+    }),
+    "/trade-records?sourceFileId=source-1&limit=25&tradeFlow=import&importBatchId=batch-2",
+  );
+});
+
+test("labels field-mapping groups and confidence in Spanish", () => {
+  assert.equal(fieldMappingGroupLabel("commercial_values"), "Valores comerciales");
+  assert.equal(fieldMappingConfidenceLabel("verified"), "Mapeo directo");
+  assert.equal(fieldMappingConfidenceLabel("needs_review"), "Requiere revisión");
 });
