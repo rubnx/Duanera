@@ -20,6 +20,13 @@ import {
   fieldMappingSearchHref,
   fieldMappingSourceTradeHref,
 } from "../../src/quality/field-mapping";
+import {
+  codeTableRemediationHref,
+  codeTableRemediationNextAction,
+  codeTableRemediationPriorityLabel,
+  codeTableRemediationStatus,
+  codeTableTopUndecodedCodes,
+} from "../../src/quality/code-table-remediation";
 
 test("normalizes Aduana codes for label coverage comparisons", () => {
   assert.equal(normalizeCodeForCoverage("001"), "1");
@@ -157,4 +164,124 @@ test("labels field-mapping groups and confidence in Spanish", () => {
   assert.equal(fieldMappingGroupLabel("commercial_values"), "Valores comerciales");
   assert.equal(fieldMappingConfidenceLabel("verified"), "Mapeo directo");
   assert.equal(fieldMappingConfidenceLabel("needs_review"), "Requiere revisión");
+});
+
+test("classifies code-table remediation coverage by commercial priority", () => {
+  assert.equal(
+    codeTableRemediationStatus({
+      decodedCodes: 3,
+      distinctCodes: 3,
+      priority: "high",
+      recordsWithCode: 100,
+    }),
+    "ok",
+  );
+  assert.equal(
+    codeTableRemediationStatus({
+      decodedCodes: 2,
+      distinctCodes: 3,
+      priority: "high",
+      recordsWithCode: 100,
+    }),
+    "warning",
+  );
+  assert.equal(
+    codeTableRemediationStatus({
+      decodedCodes: 2,
+      distinctCodes: 3,
+      priority: "medium",
+      recordsWithCode: 100,
+    }),
+    "review",
+  );
+  assert.equal(
+    codeTableRemediationStatus({
+      codeTableFound: false,
+      decodedCodes: 0,
+      distinctCodes: 3,
+      priority: "high",
+      recordsWithCode: 100,
+    }),
+    "warning",
+  );
+  assert.equal(
+    codeTableRemediationStatus({
+      decodedCodes: 0,
+      distinctCodes: 0,
+      priority: "low",
+      recordsWithCode: 0,
+    }),
+    "review",
+  );
+});
+
+test("builds code-table sample links through supported /trade-records filters", () => {
+  assert.equal(
+    codeTableRemediationHref({
+      code: "076",
+      definition: { filterKind: "originCountry", tradeFlow: "import" },
+    }),
+    "/trade-records?tradeFlow=import&periodYear=2026&periodMonth=3&originCountry=076&limit=25",
+  );
+  assert.equal(
+    codeTableRemediationHref({
+      code: "099",
+      definition: { tradeFlow: "export" },
+    }),
+    "/trade-records?tradeFlow=export&periodYear=2026&periodMonth=3&limit=25",
+  );
+});
+
+test("ranks top undecoded code-table gaps by affected records", () => {
+  const rows = [
+    { code: "001", records: 10 },
+    { code: "002", records: 40 },
+    { code: "0002", records: 5 },
+    { code: "003", records: 40 },
+    { code: "004", records: 1 },
+  ];
+
+  const result = codeTableTopUndecodedCodes({
+    codeRows: rows,
+    codeSet: new Set(["1"]),
+    definition: { filterKind: "customsOffice", tradeFlow: "import" },
+    limit: 2,
+  });
+
+  assert.deepEqual(
+    result.map((row) => [row.normalizedCode, row.records, row.tradeRecordsHref]),
+    [
+      [
+        "2",
+        45,
+        "/trade-records?tradeFlow=import&periodYear=2026&periodMonth=3&customsOffice=002&limit=25",
+      ],
+      [
+        "3",
+        40,
+        "/trade-records?tradeFlow=import&periodYear=2026&periodMonth=3&customsOffice=003&limit=25",
+      ],
+    ],
+  );
+});
+
+test("labels and explains code-table remediation actions conservatively", () => {
+  assert.equal(codeTableRemediationPriorityLabel("high"), "Alta");
+  assert.match(
+    codeTableRemediationNextAction({
+      codeTableKey: "chile_aduana:puertos",
+      codeTableFound: false,
+      priority: "high",
+      recordsWithUndecodedCode: 5,
+    }),
+    /no corregir valores sin evidencia oficial/,
+  );
+  assert.match(
+    codeTableRemediationNextAction({
+      codeTableKey: "chile_aduana:moneda",
+      priority: "medium",
+      recordsWithUndecodedCode: 5,
+    }),
+    /comparar unidades, moneda o valores agregados/,
+  );
 });
