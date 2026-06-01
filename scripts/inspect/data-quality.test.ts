@@ -7,6 +7,10 @@ import {
   dataQualityIssueRecordHref,
   dataQualityIssueSearchHref,
   dataQualityIssueStatus,
+  dataQualityRemediationNextStep,
+  dataQualityRemediationStatus,
+  dataQualityRemediationTotal,
+  dataQualitySourceBatchKey,
   normalizeCodeForCoverage,
 } from "../../src/quality/data-quality";
 
@@ -49,4 +53,44 @@ test("classifies issue groups by presence without hiding clean checks", () => {
   assert.equal(dataQualityIssueStatus(0), "ok");
   assert.equal(dataQualityIssueStatus(3), "review");
   assert.equal(dataQualityIssueStatus(3, "warning"), "warning");
+});
+
+test("summarizes source/batch remediation issue counts by priority", () => {
+  const cleanCounts = {
+    missingImportGrossWeightItem: 0,
+    undecodedCustomsOffice: 0,
+    undecodedPort: 0,
+    undecodedTransportMode: 0,
+    missingOrZeroItemValue: 0,
+    missingOrZeroDeclarationFob: 0,
+    quantityUnitValueReview: 0,
+  };
+  const weightCounts = {
+    ...cleanCounts,
+    missingImportGrossWeightItem: 12,
+    undecodedPort: 2,
+  };
+  const logisticsCounts = {
+    ...cleanCounts,
+    undecodedCustomsOffice: 1,
+    undecodedTransportMode: 3,
+  };
+
+  assert.equal(dataQualityRemediationTotal(weightCounts), 14);
+  assert.equal(dataQualityRemediationStatus(cleanCounts), "ok");
+  assert.equal(dataQualityRemediationStatus(logisticsCounts), "review");
+  assert.equal(dataQualityRemediationStatus(weightCounts), "warning");
+  assert.match(dataQualityRemediationNextStep(weightCounts), /peso bruto item/);
+  assert.match(dataQualityRemediationNextStep(logisticsCounts), /tablas de códigos/);
+});
+
+test("builds stable source/batch remediation keys", () => {
+  assert.equal(
+    dataQualitySourceBatchKey({
+      sourceFileId: "source-1",
+      importBatchId: "batch-2",
+      tradeFlow: "import",
+    }),
+    "source-1:batch-2:import",
+  );
 });

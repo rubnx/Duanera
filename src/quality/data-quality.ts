@@ -155,6 +155,33 @@ export type DataQualityIssueGroup = {
   samples: DataQualityIssueSample[];
 };
 
+export type DataQualityRemediationIssueCounts = {
+  missingImportGrossWeightItem: number;
+  undecodedCustomsOffice: number;
+  undecodedPort: number;
+  undecodedTransportMode: number;
+  missingOrZeroItemValue: number;
+  missingOrZeroDeclarationFob: number;
+  quantityUnitValueReview: number;
+};
+
+export type DataQualitySourceBatchRemediation = {
+  sourceFileId: string;
+  importBatchId: string;
+  tradeFlow: TradeFlow;
+  filename: string;
+  parserName: string;
+  parserVersion: string;
+  batchStatus: string;
+  tradeRecords: number;
+  issueCounts: DataQualityRemediationIssueCounts;
+  totalIssueSignals: number;
+  status: DataQualityStatus;
+  nextStep: string;
+  sourceHref: string;
+  tradeRecordsHref: string;
+};
+
 export type DataQualityReport = {
   period: typeof reportPeriod;
   totals: {
@@ -171,6 +198,7 @@ export type DataQualityReport = {
   labelCoverage: DataQualityLabelCoverage[];
   payloadCoverage: DataQualityPayloadCoverage[];
   issueGroups: DataQualityIssueGroup[];
+  sourceBatchRemediation: DataQualitySourceBatchRemediation[];
   findings: DataQualityFinding[];
 };
 
@@ -218,6 +246,30 @@ type IssueSampleRow = {
   originalFilename: string;
   normalizedRawFilename: string | null;
   rawRowNumber: number;
+};
+
+type SourceBatchRemediationBaseRow = {
+  sourceFileId: string;
+  importBatchId: string;
+  tradeFlow: string;
+  originalFilename: string;
+  normalizedRawFilename: string | null;
+  parserName: string;
+  parserVersion: string;
+  batchStatus: string;
+  tradeRecords: CountValue;
+  missingImportGrossWeightItem: CountValue;
+  missingOrZeroItemValue: CountValue;
+  missingOrZeroDeclarationFob: CountValue;
+  quantityUnitValueReview: CountValue;
+};
+
+type SourceBatchCodeCountRow = {
+  sourceFileId: string;
+  importBatchId: string;
+  tradeFlow: string;
+  code: string | null;
+  records: CountValue;
 };
 
 function toNumber(value: CountValue): number {
@@ -348,6 +400,72 @@ export function dataQualityIssueStatus(
   statusWhenPresent: DataQualityStatus = "review",
 ): DataQualityStatus {
   return count > 0 ? statusWhenPresent : "ok";
+}
+
+export function dataQualitySourceBatchKey({
+  importBatchId,
+  sourceFileId,
+  tradeFlow,
+}: {
+  sourceFileId: string;
+  importBatchId: string;
+  tradeFlow: string;
+}) {
+  return `${sourceFileId}:${importBatchId}:${tradeFlow}`;
+}
+
+export function dataQualityRemediationTotal(
+  counts: DataQualityRemediationIssueCounts,
+) {
+  return (
+    counts.missingImportGrossWeightItem +
+    counts.undecodedCustomsOffice +
+    counts.undecodedPort +
+    counts.undecodedTransportMode +
+    counts.missingOrZeroItemValue +
+    counts.missingOrZeroDeclarationFob +
+    counts.quantityUnitValueReview
+  );
+}
+
+export function dataQualityRemediationStatus(
+  counts: DataQualityRemediationIssueCounts,
+): DataQualityStatus {
+  if (
+    counts.missingImportGrossWeightItem > 0 ||
+    counts.missingOrZeroItemValue > 0 ||
+    counts.missingOrZeroDeclarationFob > 0
+  ) {
+    return "warning";
+  }
+
+  return dataQualityRemediationTotal(counts) > 0 ? "review" : "ok";
+}
+
+export function dataQualityRemediationNextStep(
+  counts: DataQualityRemediationIssueCounts,
+) {
+  if (counts.missingOrZeroItemValue > 0 || counts.missingOrZeroDeclarationFob > 0) {
+    return "Revisar mapeo de valores comerciales contra el archivo fuente antes de usar agregados.";
+  }
+
+  if (counts.missingImportGrossWeightItem > 0) {
+    return "Revisar parser/mapeo de peso bruto item para importaciones; comparar contra peso total y metadatos fuente.";
+  }
+
+  if (
+    counts.undecodedCustomsOffice > 0 ||
+    counts.undecodedPort > 0 ||
+    counts.undecodedTransportMode > 0
+  ) {
+    return "Validar tablas de códigos Aduana cargadas y confirmar si los códigos fuente son nuevos, especiales o mal normalizados.";
+  }
+
+  if (counts.quantityUnitValueReview > 0) {
+    return "Revisar normalización de cantidad, unidad y precio unitario antes de comparar unidades.";
+  }
+
+  return "Sin señales QA priorizadas para este lote en marzo 2026.";
 }
 
 async function loadFlowSummaries(db: DbClient): Promise<DataQualityFlowSummary[]> {
@@ -1428,6 +1546,311 @@ async function loadIssueGroups(db: DbClient): Promise<DataQualityIssueGroup[]> {
   ]);
 }
 
+const emptyRemediationCounts: DataQualityRemediationIssueCounts = {
+  missingImportGrossWeightItem: 0,
+  undecodedCustomsOffice: 0,
+  undecodedPort: 0,
+  undecodedTransportMode: 0,
+  missingOrZeroItemValue: 0,
+  missingOrZeroDeclarationFob: 0,
+  quantityUnitValueReview: 0,
+};
+
+function remediationCountsFromRow(
+  row: SourceBatchRemediationBaseRow,
+): DataQualityRemediationIssueCounts {
+  return {
+    ...emptyRemediationCounts,
+    missingImportGrossWeightItem: toNumber(row.missingImportGrossWeightItem),
+    missingOrZeroItemValue: toNumber(row.missingOrZeroItemValue),
+    missingOrZeroDeclarationFob: toNumber(row.missingOrZeroDeclarationFob),
+    quantityUnitValueReview: toNumber(row.quantityUnitValueReview),
+  };
+}
+
+function sourceBatchRemediationFromRow(
+  row: SourceBatchRemediationBaseRow,
+): DataQualitySourceBatchRemediation | null {
+  if (row.tradeFlow !== "import" && row.tradeFlow !== "export") {
+    return null;
+  }
+
+  const issueCounts = remediationCountsFromRow(row);
+  const totalIssueSignals = dataQualityRemediationTotal(issueCounts);
+
+  return {
+    sourceFileId: row.sourceFileId,
+    importBatchId: row.importBatchId,
+    tradeFlow: row.tradeFlow,
+    filename: sourceDisplayFilename({
+      originalFilename: row.originalFilename,
+      normalizedRawFilename: row.normalizedRawFilename,
+    }),
+    parserName: row.parserName,
+    parserVersion: row.parserVersion,
+    batchStatus: row.batchStatus,
+    tradeRecords: toNumber(row.tradeRecords),
+    issueCounts,
+    totalIssueSignals,
+    status: dataQualityRemediationStatus(issueCounts),
+    nextStep: dataQualityRemediationNextStep(issueCounts),
+    sourceHref: sourceHref(row.sourceFileId, row.importBatchId),
+    tradeRecordsHref: sourceTradeRecordsHref({
+      sourceFileId: row.sourceFileId,
+      importBatchId: row.importBatchId,
+      tradeFlow: row.tradeFlow,
+    }),
+  };
+}
+
+function sourceBatchRemediationWhere(sourceFileId?: string): SQL {
+  const conditions = [marchTradeWhere()];
+
+  if (sourceFileId) {
+    conditions.push(eq(tradeRecords.sourceFileId, sourceFileId));
+  }
+
+  return and(...conditions) ?? sql`true`;
+}
+
+async function loadSourceBatchRemediationBaseRows({
+  db,
+  sourceFileId,
+}: {
+  db: DbClient;
+  sourceFileId?: string;
+}): Promise<SourceBatchRemediationBaseRow[]> {
+  const where = sourceBatchRemediationWhere(sourceFileId);
+  const itemValueMissingOrZero = sql`
+    (
+      (${tradeRecords.tradeFlow} = 'import' and (${tradeRecords.itemCifValue} is null or ${tradeRecords.itemCifValue} <= 0))
+      or (${tradeRecords.tradeFlow} = 'export' and (${tradeRecords.itemFobValue} is null or ${tradeRecords.itemFobValue} <= 0))
+    )
+  `;
+  const positiveItemValue = sql`
+    (
+      (${tradeRecords.tradeFlow} = 'import' and ${tradeRecords.itemCifValue} > 0)
+      or (${tradeRecords.tradeFlow} = 'export' and ${tradeRecords.itemFobValue} > 0)
+    )
+  `;
+
+  return db
+    .select({
+      sourceFileId: tradeRecords.sourceFileId,
+      importBatchId: tradeRecords.importBatchId,
+      tradeFlow: tradeRecords.tradeFlow,
+      originalFilename: sourceFiles.originalFilename,
+      normalizedRawFilename: sourceFiles.normalizedRawFilename,
+      parserName: importBatches.parserName,
+      parserVersion: importBatches.parserVersion,
+      batchStatus: importBatches.status,
+      tradeRecords: count(),
+      missingImportGrossWeightItem: sql<number>`count(*) filter (where ${tradeRecords.tradeFlow} = 'import' and ${tradeRecords.grossWeightItem} is null)`,
+      missingOrZeroItemValue: sql<number>`count(*) filter (where ${itemValueMissingOrZero})`,
+      missingOrZeroDeclarationFob: sql<number>`count(*) filter (where ${tradeRecords.declarationFobValue} is null or ${tradeRecords.declarationFobValue} <= 0)`,
+      quantityUnitValueReview: sql<number>`count(*) filter (where (
+        (${tradeRecords.quantity} is not null and ${tradeRecords.quantityUnitCode} is null)
+        or (${tradeRecords.quantity} is null and ${tradeRecords.quantityUnitCode} is not null)
+        or (${tradeRecords.quantity} <= 0 and ${positiveItemValue})
+        or (${tradeRecords.unitPriceValue} is null and ${tradeRecords.quantity} > 0 and ${positiveItemValue})
+        or (${tradeRecords.unitPriceValue} <= 0 and ${positiveItemValue})
+      ))`,
+    })
+    .from(tradeRecords)
+    .innerJoin(sourceFiles, eq(tradeRecords.sourceFileId, sourceFiles.id))
+    .innerJoin(importBatches, eq(tradeRecords.importBatchId, importBatches.id))
+    .where(where)
+    .groupBy(
+      tradeRecords.sourceFileId,
+      tradeRecords.importBatchId,
+      tradeRecords.tradeFlow,
+      sourceFiles.originalFilename,
+      sourceFiles.normalizedRawFilename,
+      importBatches.parserName,
+      importBatches.parserVersion,
+      importBatches.status,
+    );
+}
+
+async function sourceBatchCodeCounts({
+  db,
+  expression,
+  sourceFileId,
+  tradeFlow,
+}: {
+  db: DbClient;
+  expression: SQL<string>;
+  sourceFileId?: string;
+  tradeFlow: TradeFlow;
+}): Promise<SourceBatchCodeCountRow[]> {
+  const conditions = [
+    marchTradeWhere(tradeFlow),
+    sql`${expression} is not null`,
+    sql`${expression} <> ''`,
+  ];
+
+  if (sourceFileId) {
+    conditions.push(eq(tradeRecords.sourceFileId, sourceFileId));
+  }
+
+  return db
+    .select({
+      sourceFileId: tradeRecords.sourceFileId,
+      importBatchId: tradeRecords.importBatchId,
+      tradeFlow: tradeRecords.tradeFlow,
+      code: expression,
+      records: count(),
+    })
+    .from(tradeRecords)
+    .where(and(...conditions))
+    .groupBy(
+      tradeRecords.sourceFileId,
+      tradeRecords.importBatchId,
+      tradeRecords.tradeFlow,
+      expression,
+    );
+}
+
+function addUndecodedCounts({
+  codeSet,
+  field,
+  remediationByKey,
+  rows,
+}: {
+  codeSet: Set<string>;
+  field: keyof Pick<
+    DataQualityRemediationIssueCounts,
+    "undecodedCustomsOffice" | "undecodedPort" | "undecodedTransportMode"
+  >;
+  remediationByKey: Map<string, DataQualitySourceBatchRemediation>;
+  rows: SourceBatchCodeCountRow[];
+}) {
+  for (const row of rows) {
+    const normalizedCode = normalizeCodeForCoverage(row.code);
+    if (!normalizedCode || codeSet.has(normalizedCode)) {
+      continue;
+    }
+
+    const remediation = remediationByKey.get(dataQualitySourceBatchKey(row));
+    if (!remediation) {
+      continue;
+    }
+
+    remediation.issueCounts[field] += toNumber(row.records);
+  }
+}
+
+function finalizeRemediationRows(rows: DataQualitySourceBatchRemediation[]) {
+  return rows
+    .map((row) => {
+      const totalIssueSignals = dataQualityRemediationTotal(row.issueCounts);
+      return {
+        ...row,
+        totalIssueSignals,
+        status: dataQualityRemediationStatus(row.issueCounts),
+        nextStep: dataQualityRemediationNextStep(row.issueCounts),
+      };
+    })
+    .filter((row) => row.totalIssueSignals > 0)
+    .sort((a, b) => {
+      if (a.totalIssueSignals !== b.totalIssueSignals) {
+        return b.totalIssueSignals - a.totalIssueSignals;
+      }
+
+      return a.filename.localeCompare(b.filename);
+    });
+}
+
+export async function getMarch2026SourceBatchRemediation(
+  db: DbClient,
+  options: {
+    limit?: number;
+    sourceFileId?: string;
+  } = {},
+): Promise<DataQualitySourceBatchRemediation[]> {
+  const [baseRows, codeSets] = await Promise.all([
+    loadSourceBatchRemediationBaseRows({
+      db,
+      sourceFileId: options.sourceFileId,
+    }),
+    loadCodeValueSets(db),
+  ]);
+
+  const remediationRows = baseRows
+    .map(sourceBatchRemediationFromRow)
+    .filter((row): row is DataQualitySourceBatchRemediation => Boolean(row));
+  const remediationByKey = new Map(
+    remediationRows.map((row) => [dataQualitySourceBatchKey(row), row]),
+  );
+
+  const [
+    importCustoms,
+    exportCustoms,
+    importPorts,
+    exportPorts,
+    importTransport,
+    exportTransport,
+  ] = await Promise.all([
+    sourceBatchCodeCounts({
+      db,
+      expression: sql<string>`${tradeRecords.customsOfficeCode}`,
+      sourceFileId: options.sourceFileId,
+      tradeFlow: "import",
+    }),
+    sourceBatchCodeCounts({
+      db,
+      expression: sql<string>`${tradeRecords.customsOfficeCode}`,
+      sourceFileId: options.sourceFileId,
+      tradeFlow: "export",
+    }),
+    sourceBatchCodeCounts({
+      db,
+      expression: sql<string>`${tradeRecords.disembarkPortCode}`,
+      sourceFileId: options.sourceFileId,
+      tradeFlow: "import",
+    }),
+    sourceBatchCodeCounts({
+      db,
+      expression: sql<string>`${tradeRecords.embarkPortCode}`,
+      sourceFileId: options.sourceFileId,
+      tradeFlow: "export",
+    }),
+    sourceBatchCodeCounts({
+      db,
+      expression: sql<string>`${tradeRecords.transportModeCode}`,
+      sourceFileId: options.sourceFileId,
+      tradeFlow: "import",
+    }),
+    sourceBatchCodeCounts({
+      db,
+      expression: sql<string>`${tradeRecords.transportModeCode}`,
+      sourceFileId: options.sourceFileId,
+      tradeFlow: "export",
+    }),
+  ]);
+
+  addUndecodedCounts({
+    codeSet: codeSets.customsOffices,
+    field: "undecodedCustomsOffice",
+    remediationByKey,
+    rows: [...importCustoms, ...exportCustoms],
+  });
+  addUndecodedCounts({
+    codeSet: codeSets.ports,
+    field: "undecodedPort",
+    remediationByKey,
+    rows: [...importPorts, ...exportPorts],
+  });
+  addUndecodedCounts({
+    codeSet: codeSets.transportModes,
+    field: "undecodedTransportMode",
+    remediationByKey,
+    rows: [...importTransport, ...exportTransport],
+  });
+
+  return finalizeRemediationRows(remediationRows).slice(0, options.limit ?? 8);
+}
+
 function buildFindings({
   fieldCoverage,
   flows,
@@ -1517,7 +1940,10 @@ export async function getMarch2026DataQualityReport(
       loadLabelCoverage(db),
       loadPayloadCoverage(db),
     ]);
-  const issueGroups = await loadIssueGroups(db);
+  const [issueGroups, sourceBatchRemediation] = await Promise.all([
+    loadIssueGroups(db),
+    getMarch2026SourceBatchRemediation(db),
+  ]);
 
   const totals = flows.reduce(
     (summary, flow) => ({
@@ -1547,6 +1973,7 @@ export async function getMarch2026DataQualityReport(
     labelCoverage,
     payloadCoverage,
     issueGroups,
+    sourceBatchRemediation,
     findings: buildFindings({
       fieldCoverage,
       flows,
