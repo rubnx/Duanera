@@ -27,6 +27,15 @@ import {
   codeTableRemediationStatus,
   codeTableTopUndecodedCodes,
 } from "../../src/quality/code-table-remediation";
+import {
+  buildDataQualityRemediationQueueReport,
+  dedupeRemediationQueueItems,
+  remediationQueueScore,
+  type RemediationQueueItemInput,
+} from "../../src/quality/remediation-queue";
+import type { DataQualityReport } from "../../src/quality/data-quality";
+import type { FieldMappingReport } from "../../src/quality/field-mapping";
+import type { CodeTableRemediationReport } from "../../src/quality/code-table-remediation";
 
 test("normalizes Aduana codes for label coverage comparisons", () => {
   assert.equal(normalizeCodeForCoverage("001"), "1");
@@ -283,5 +292,179 @@ test("labels and explains code-table remediation actions conservatively", () => 
       recordsWithUndecodedCode: 5,
     }),
     /comparar unidades, moneda o valores agregados/,
+  );
+});
+
+function remediationItem(
+  overrides: Partial<RemediationQueueItemInput>,
+): RemediationQueueItemInput {
+  return {
+    affectedRecords: 1,
+    confidence: "verified_signal",
+    dedupeKey: "base",
+    description: "Descripción",
+    id: "base",
+    impact: "internal_context",
+    importBatchId: null,
+    issueType: "qa_drilldown",
+    links: [{ href: "/data-quality", label: "Calidad" }],
+    nextAction: "Revisar",
+    sourceFileId: null,
+    sourceLabel: null,
+    status: "review",
+    title: "Base",
+    tradeFlow: "import",
+    ...overrides,
+  };
+}
+
+test("scores remediation queue items by severity, visible MVP impact, and records", () => {
+  const visibleWarning = remediationItem({
+    affectedRecords: 10,
+    impact: "visible_mvp",
+    status: "warning",
+  });
+  const largeReview = remediationItem({
+    affectedRecords: 999_999,
+    impact: "commercial_values",
+    status: "review",
+  });
+
+  assert.ok(remediationQueueScore(visibleWarning) > remediationQueueScore(largeReview));
+});
+
+test("dedupes remediation queue items without double-counting duplicate signals", () => {
+  const rows = dedupeRemediationQueueItems([
+    remediationItem({
+      affectedRecords: 10,
+      dedupeKey: "duplicate",
+      id: "low",
+      links: [{ href: "/data-quality", label: "Calidad" }],
+      status: "review",
+      title: "B",
+    }),
+    remediationItem({
+      affectedRecords: 4,
+      dedupeKey: "duplicate",
+      id: "high",
+      impact: "visible_mvp",
+      links: [
+        { href: "/data-quality", label: "Calidad" },
+        { href: "/trade-records?tradeFlow=import", label: "Registros" },
+      ],
+      status: "warning",
+      title: "A",
+    }),
+  ]);
+
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0]?.id, "high");
+  assert.equal(rows[0]?.affectedRecords, 10);
+  assert.deepEqual(
+    rows[0]?.links.map((link) => link.href),
+    ["/data-quality", "/trade-records?tradeFlow=import"],
+  );
+});
+
+test("builds a remediation queue from existing QA reports", () => {
+  const dataQuality = {
+    fieldCoverage: [
+      {
+        caveat: "Valor comercial usado por la tabla.",
+        covered: 80,
+        key: "itemValue",
+        label: "Valor item",
+        percent: 80,
+        status: "warning",
+        total: 100,
+        tradeFlow: "import",
+      },
+    ],
+    issueGroups: [
+      {
+        count: 7,
+        description: "Códigos de puerto sin etiqueta.",
+        key: "undecoded_port",
+        sampleLimit: 5,
+        samples: [
+          {
+            importBatchId: "batch-1",
+            recordHref: "/trade-records/record-1",
+            sourceFileId: "source-1",
+            sourceFilename: "import.zip",
+            sourceHref: "/sources/source-1#batch-batch-1",
+            tradeFlow: "import",
+          },
+        ],
+        status: "warning",
+        title: "Puertos sin etiqueta",
+        tradeRecordsHref: "/trade-records?tradeFlow=import&port=999",
+      },
+    ],
+    payloadCoverage: [
+      {
+        reconstructable: true,
+        retentionMode: "full_postgres",
+        rows: 100,
+        storageKind: "postgres",
+        tradeFlow: "import",
+      },
+    ],
+    sourceBatchRemediation: [],
+  } as unknown as DataQualityReport;
+  const fieldMapping = {
+    rows: [
+      {
+        confidence: "needs_review",
+        group: "commercial_values",
+        label: "CIF item",
+        normalizedField: "itemCifValue",
+        normalizedPresentRows: 0,
+        note: "Requiere revisión",
+        sourceHref: "/sources/source-1",
+        sourceLabel: "import.zip",
+        status: "warning",
+        totalRows: 100,
+        tradeFlow: "import",
+        tradeRecordsHref: "/trade-records?tradeFlow=import",
+      },
+    ],
+  } as unknown as FieldMappingReport;
+  const codeTables = {
+    rows: [
+      {
+        codeTableFound: true,
+        commercialUse: "Filtro visible.",
+        importBatchId: "batch-1",
+        label: "Puerto relevante importación",
+        nextAction: "Revisar tabla oficial.",
+        normalizedField: "disembarkPortCode",
+        priority: "high",
+        recordsWithUndecodedCode: 7,
+        sourceContext: {
+          importBatchId: "batch-1",
+          sourceFileId: "source-1",
+          sourceHref: "/sources/source-1#batch-batch-1",
+          sourceLabel: "import.zip",
+        },
+        status: "warning",
+        tradeFlow: "import",
+        tradeRecordsHref: "/trade-records?tradeFlow=import&port=999",
+      },
+    ],
+  } as unknown as CodeTableRemediationReport;
+
+  const report = buildDataQualityRemediationQueueReport({
+    codeTables,
+    dataQuality,
+    fieldMapping,
+  });
+
+  assert.equal(report.summary.warningItems, 4);
+  assert.equal(report.items[0]?.impact, "visible_mvp");
+  assert.ok(
+    report.items.some((item) =>
+      item.links.some((link) => link.href === "/data-quality/code-tables"),
+    ),
   );
 });

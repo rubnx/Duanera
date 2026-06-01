@@ -350,6 +350,12 @@ export default async function CodeTablesPage() {
             Calidad
           </Link>
           <Link
+            href="/data-quality/remediation"
+            className="font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+          >
+            Remediación
+          </Link>
+          <Link
             href="/data-quality/field-mapping"
             className="font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
           >

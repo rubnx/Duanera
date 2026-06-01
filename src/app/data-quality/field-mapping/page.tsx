@@ -291,6 +291,12 @@ export default async function FieldMappingPage() {
             Calidad
           </Link>
           <Link
+            href="/data-quality/remediation"
+            className="font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+          >
+            Remediación
+          </Link>
+          <Link
             href="/data-quality/code-tables"
             className="font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
           >
