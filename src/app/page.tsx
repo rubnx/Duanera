@@ -8,8 +8,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { isInternalResearchEnabled } from "@/research/internal-research-access";
+
+export const dynamic = "force-dynamic";
 
 export default function HomePage() {
+  const showInternalResearch = isInternalResearchEnabled();
+
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-[1120px] flex-col gap-5 px-4 py-8 lg:px-6">
       <header className="flex flex-col gap-3 border-b pb-5">
@@ -25,7 +30,7 @@ export default function HomePage() {
         </p>
       </header>
 
-      <section className="grid gap-4 md:grid-cols-3">
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <Card>
           <CardHeader>
             <CardTitle>Buscador interno</CardTitle>
@@ -80,6 +85,29 @@ export default function HomePage() {
             </code>
           </CardContent>
         </Card>
+
+        {showInternalResearch ? (
+          <Card>
+            <CardHeader>
+              <CardTitle>Investigacion identidad</CardTitle>
+              <CardDescription>
+                Revision interna de pistas textuales para correlativos anonimos.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-3">
+              <Link
+                href="/research/identity-inference"
+                className="inline-flex h-8 w-fit items-center rounded-lg border border-border px-2.5 text-sm font-medium hover:bg-muted"
+              >
+                Abrir investigacion
+              </Link>
+              <p className="text-sm text-muted-foreground">
+                Muestra evidencia no verificada; no crea nombres legales ni perfiles de
+                empresa.
+              </p>
+            </CardContent>
+          </Card>
+        ) : null}
       </section>
     </main>
   );
