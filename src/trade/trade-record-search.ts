@@ -4,9 +4,12 @@ import {
   type TradeRecordWithLabels,
 } from "./trade-record-labels";
 import {
+  compareTradeRecordGroups,
   decodeTradeRecordCursor,
+  emptyTradeRecordComparison,
   listTradeRecords,
   summarizeTradeRecords,
+  type TradeRecordComparison,
   type TradeRecordIntelligenceSummary,
   type TradeFlow,
   type TradeRecordFilters,
@@ -29,6 +32,7 @@ export type TradeRecordSearchResponse = {
   };
   filters: TradeRecordFilters;
   summary: TradeRecordIntelligenceSummary;
+  comparison: TradeRecordComparison;
   meta: {
     timingMs: TradeRecordSearchTiming;
     performanceWarnings: TradeRecordPerformanceWarning[];
@@ -39,6 +43,7 @@ export type TradeRecordSearchTiming = {
   total: number;
   list: number;
   summary: number;
+  comparison: number;
   labels: number;
 };
 
@@ -213,6 +218,10 @@ function hasNarrowingFilter(filters: TradeRecordFilters) {
   );
 }
 
+export function shouldSkipTradeRecordComparison(filters: TradeRecordFilters) {
+  return !hasNarrowingFilter(filters);
+}
+
 function roundMilliseconds(value: number) {
   return Math.max(0, Math.round(value));
 }
@@ -364,18 +373,27 @@ export async function searchTradeRecords(
 ): Promise<TradeRecordSearchResponse> {
   const totalStartedAt = performance.now();
   const filters = parseTradeRecordSearchParams(input);
-  const [listResult, summaryResult] = await Promise.all([
+  const skipComparison = shouldSkipTradeRecordComparison(filters);
+  const [listResult, summaryResult, comparisonResult] = await Promise.all([
     timed(() => listTradeRecords(db, filters)),
     timed(() => summarizeTradeRecords(db, filters)),
+    skipComparison
+      ? Promise.resolve({
+          durationMs: 0,
+          value: emptyTradeRecordComparison("broad_result_set"),
+        })
+      : timed(() => compareTradeRecordGroups(db, filters)),
   ]);
   const result = listResult.value;
   const summary = summaryResult.value;
+  const comparison = comparisonResult.value;
   const labelsResult = await timed(() => enrichTradeRecordsWithLabels(db, result.records));
   const records = labelsResult.value;
   const timingMs = {
     total: roundMilliseconds(performance.now() - totalStartedAt),
     list: listResult.durationMs,
     summary: summaryResult.durationMs,
+    comparison: comparisonResult.durationMs,
     labels: labelsResult.durationMs,
   };
 
@@ -390,12 +408,13 @@ export async function searchTradeRecords(
     },
     filters,
     summary,
+    comparison,
     meta: {
       timingMs,
       performanceWarnings: classifyTradeRecordPerformanceWarnings({
         filters,
         pagination: result,
-        summaryMs: timingMs.summary,
+        summaryMs: timingMs.summary + timingMs.comparison,
       }),
     },
   };

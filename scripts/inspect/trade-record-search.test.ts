@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import {
   classifyTradeRecordPerformanceWarnings,
   parseTradeRecordSearchParams,
+  shouldSkipTradeRecordComparison,
   TradeRecordSearchError,
 } from "../../src/trade/trade-record-search";
 import {
@@ -266,6 +267,37 @@ test("classifies trade search performance warnings", () => {
       summaryMs: 1500,
     }).map((warning) => warning.code),
     ["offset_pagination", "slow_summary"],
+  );
+});
+
+test("skips comparison aggregation only for broad searches", () => {
+  assert.equal(
+    shouldSkipTradeRecordComparison({
+      tradeFlow: "import",
+      periodFrom: "2026-03",
+      periodTo: "2026-03",
+    }),
+    true,
+  );
+
+  assert.equal(
+    shouldSkipTradeRecordComparison({
+      tradeFlow: "import",
+      periodFrom: "2026-03",
+      periodTo: "2026-03",
+      hsCodePrefix: "020130",
+    }),
+    false,
+  );
+
+  assert.equal(
+    shouldSkipTradeRecordComparison({
+      tradeFlow: "export",
+      periodFrom: "2026-03",
+      periodTo: "2026-03",
+      minItemValue: "1000",
+    }),
+    false,
   );
 });
 
