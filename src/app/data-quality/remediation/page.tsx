@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { Badge } from "@/components/ui/badge";
+import { DataQualityStatusBadge } from "@/components/data-quality-status-badge";
 import {
   Card,
   CardContent,
@@ -18,7 +19,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { db } from "@/db/client";
-import type { DataQualityStatus } from "@/quality/data-quality";
 import { formatIntegerEsCl } from "@/lib/format";
 import {
   getMarch2026RemediationQueueReport,
@@ -48,36 +48,6 @@ function flowLabel(value: TradeFlow | "mixed" | null) {
   }
 
   return "Sin flujo único";
-}
-
-function statusLabel(value: DataQualityStatus) {
-  const labels: Record<DataQualityStatus, string> = {
-    ok: "Confiable",
-    review: "Revisar",
-    warning: "Riesgo",
-  };
-
-  return labels[value];
-}
-
-function statusClasses(value: DataQualityStatus) {
-  const classes: Record<DataQualityStatus, string> = {
-    ok: "border-emerald-600/30 bg-emerald-50 text-emerald-900",
-    review: "border-amber-600/30 bg-amber-50 text-amber-900",
-    warning: "border-red-600/30 bg-red-50 text-red-900",
-  };
-
-  return classes[value];
-}
-
-function StatusBadge({ status }: { status: DataQualityStatus }) {
-  return (
-    <span
-      className={`inline-flex w-fit items-center rounded-md border px-2 py-0.5 text-xs font-medium ${statusClasses(status)}`}
-    >
-      {statusLabel(status)}
-    </span>
-  );
 }
 
 function issueTypeLabel(value: RemediationQueueIssueType) {
@@ -190,7 +160,7 @@ function QueueTable({ items }: { items: RemediationQueueItem[] }) {
                         {item.description}
                       </p>
                       <div className="mt-2 flex flex-wrap gap-2">
-                        <StatusBadge status={item.status} />
+                        <DataQualityStatusBadge status={item.status} />
                         <Badge variant="outline">{confidenceLabel(item.confidence)}</Badge>
                       </div>
                     </TableCell>

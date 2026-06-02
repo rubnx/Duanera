@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { Badge } from "@/components/ui/badge";
+import { DataQualityStatusBadge } from "@/components/data-quality-status-badge";
 import {
   Card,
   CardContent,
@@ -26,7 +27,6 @@ import {
   type FieldMappingGroup,
   type FieldMappingRow,
 } from "@/quality/field-mapping";
-import type { DataQualityStatus } from "@/quality/data-quality";
 import { formatIntegerEsCl, formatPercentEsCl } from "@/lib/format";
 import { isInternalToolsEnabled } from "@/research/internal-research-access";
 import type { TradeFlow } from "@/trade/trade-records";
@@ -40,26 +40,6 @@ function flowLabel(value: TradeFlow) {
   return value === "import" ? "Importaciones" : "Exportaciones";
 }
 
-function statusLabel(value: DataQualityStatus) {
-  const labels: Record<DataQualityStatus, string> = {
-    ok: "Confiable",
-    review: "Revisar",
-    warning: "Riesgo",
-  };
-
-  return labels[value];
-}
-
-function statusClasses(value: DataQualityStatus) {
-  const classes: Record<DataQualityStatus, string> = {
-    ok: "border-emerald-600/30 bg-emerald-50 text-emerald-900",
-    review: "border-amber-600/30 bg-amber-50 text-amber-900",
-    warning: "border-red-600/30 bg-red-50 text-red-900",
-  };
-
-  return classes[value];
-}
-
 function confidenceClasses(value: FieldMappingConfidence) {
   const classes: Record<FieldMappingConfidence, string> = {
     verified: "border-emerald-600/30 bg-emerald-50 text-emerald-900",
@@ -68,16 +48,6 @@ function confidenceClasses(value: FieldMappingConfidence) {
   };
 
   return classes[value];
-}
-
-function StatusBadge({ status }: { status: DataQualityStatus }) {
-  return (
-    <span
-      className={`inline-flex w-fit items-center rounded-md border px-2 py-0.5 text-xs font-medium ${statusClasses(status)}`}
-    >
-      {statusLabel(status)}
-    </span>
-  );
 }
 
 function ConfidenceBadge({ confidence }: { confidence: FieldMappingConfidence }) {
@@ -207,7 +177,7 @@ function MappingRowsTable({
                     )}
                   </TableCell>
                   <TableCell className="align-top">
-                    <StatusBadge status={row.status} />
+                    <DataQualityStatusBadge status={row.status} />
                   </TableCell>
                   <TableCell className="max-w-[360px] align-top text-sm text-muted-foreground">
                     <p className="leading-6">{row.note}</p>

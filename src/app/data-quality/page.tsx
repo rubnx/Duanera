@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { Badge } from "@/components/ui/badge";
+import { DataQualityStatusBadge } from "@/components/data-quality-status-badge";
 import {
   Card,
   CardContent,
@@ -59,36 +60,6 @@ function flowLabel(value: TradeFlow | "unknown") {
   return "Sin flujo";
 }
 
-function statusLabel(value: DataQualityStatus) {
-  const labels: Record<DataQualityStatus, string> = {
-    ok: "Confiable",
-    review: "Revisar",
-    warning: "Riesgo",
-  };
-
-  return labels[value];
-}
-
-function statusClasses(value: DataQualityStatus) {
-  const classes: Record<DataQualityStatus, string> = {
-    ok: "border-emerald-600/30 bg-emerald-50 text-emerald-900",
-    review: "border-amber-600/30 bg-amber-50 text-amber-900",
-    warning: "border-red-600/30 bg-red-50 text-red-900",
-  };
-
-  return classes[value];
-}
-
-function StatusBadge({ status }: { status: DataQualityStatus }) {
-  return (
-    <span
-      className={`inline-flex w-fit items-center rounded-md border px-2 py-0.5 text-xs font-medium ${statusClasses(status)}`}
-    >
-      {statusLabel(status)}
-    </span>
-  );
-}
-
 function Metric({
   help,
   label,
@@ -104,7 +75,7 @@ function Metric({
     <div className="min-w-0 rounded-lg border border-border bg-background px-3 py-2">
       <div className="flex items-start justify-between gap-2">
         <div className="text-xs text-muted-foreground">{label}</div>
-        {status ? <StatusBadge status={status} /> : null}
+        {status ? <DataQualityStatusBadge status={status} /> : null}
       </div>
       <div className="mt-1 break-words font-mono text-sm font-medium">{value}</div>
       {help ? <div className="mt-1 text-xs leading-5 text-muted-foreground">{help}</div> : null}
@@ -175,7 +146,7 @@ function FieldCoverageTable({
                     {formatNumber(field.covered)} / {formatNumber(field.total)}
                   </TableCell>
                   <TableCell className="align-top">
-                    <StatusBadge status={field.status} />
+                    <DataQualityStatusBadge status={field.status} />
                   </TableCell>
                   <TableCell className="max-w-[360px] align-top text-sm text-muted-foreground">
                     {field.caveat}
@@ -232,7 +203,7 @@ function LabelCoverageTable({ rows }: { rows: DataQualityLabelCoverage[] }) {
                     </div>
                   </TableCell>
                   <TableCell className="align-top">
-                    <StatusBadge status={row.status} />
+                    <DataQualityStatusBadge status={row.status} />
                   </TableCell>
                   <TableCell className="max-w-[280px] align-top font-mono text-xs">
                     {row.undecodedCodes.length > 0
@@ -382,7 +353,7 @@ function SourceBatchRemediationTable({
                         {formatNumber(row.totalIssueSignals)}
                       </div>
                       <div className="mt-1">
-                        <StatusBadge status={row.status} />
+                        <DataQualityStatusBadge status={row.status} />
                       </div>
                     </TableCell>
                     <TableCell className="max-w-[300px] align-top text-sm text-muted-foreground">
@@ -531,7 +502,7 @@ function IssueGroupCard({ group }: { group: DataQualityIssueGroup }) {
       <div className="flex flex-col gap-3 border-b p-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <StatusBadge status={group.status} />
+            <DataQualityStatusBadge status={group.status} />
             <span className="font-mono text-xs text-muted-foreground">
               {formatNumber(group.count)} registros
             </span>
@@ -693,7 +664,7 @@ export default async function DataQualityPage() {
                     Cobertura raw a registro normalizado para {report.period.label}.
                   </CardDescription>
                 </div>
-                <StatusBadge status={flow.status} />
+                <DataQualityStatusBadge status={flow.status} />
               </div>
             </CardHeader>
             <CardContent className="grid gap-3 pt-4 sm:grid-cols-2">
@@ -753,7 +724,7 @@ export default async function DataQualityPage() {
                       {formatNumber(row.tradeRecords)}
                     </TableCell>
                     <TableCell className="align-top">
-                      <StatusBadge status={sourceRowStatus(row)} />
+                      <DataQualityStatusBadge status={sourceRowStatus(row)} />
                     </TableCell>
                     <TableCell className="align-top">
                       <div className="flex flex-col gap-1 text-xs">
@@ -806,7 +777,7 @@ export default async function DataQualityPage() {
               className="rounded-lg border border-border bg-background p-3"
             >
               <div className="flex flex-wrap items-center gap-2">
-                <StatusBadge status={finding.status} />
+                <DataQualityStatusBadge status={finding.status} />
                 <span className="text-xs font-medium text-muted-foreground">
                   {findingLead(finding)}
                 </span>

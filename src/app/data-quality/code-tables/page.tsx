@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { Badge } from "@/components/ui/badge";
+import { DataQualityStatusBadge } from "@/components/data-quality-status-badge";
 import {
   Card,
   CardContent,
@@ -18,7 +19,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { db } from "@/db/client";
-import type { DataQualityStatus } from "@/quality/data-quality";
 import { formatIntegerEsCl, formatPercentEsCl } from "@/lib/format";
 import {
   codeTableRemediationDimensionLabel,
@@ -39,26 +39,6 @@ function flowLabel(value: TradeFlow) {
   return value === "import" ? "Importaciones" : "Exportaciones";
 }
 
-function statusLabel(value: DataQualityStatus) {
-  const labels: Record<DataQualityStatus, string> = {
-    ok: "Confiable",
-    review: "Revisar",
-    warning: "Riesgo",
-  };
-
-  return labels[value];
-}
-
-function statusClasses(value: DataQualityStatus) {
-  const classes: Record<DataQualityStatus, string> = {
-    ok: "border-emerald-600/30 bg-emerald-50 text-emerald-900",
-    review: "border-amber-600/30 bg-amber-50 text-amber-900",
-    warning: "border-red-600/30 bg-red-50 text-red-900",
-  };
-
-  return classes[value];
-}
-
 function priorityClasses(value: CodeTableRemediationPriority) {
   const classes: Record<CodeTableRemediationPriority, string> = {
     high: "border-red-600/30 bg-red-50 text-red-900",
@@ -67,16 +47,6 @@ function priorityClasses(value: CodeTableRemediationPriority) {
   };
 
   return classes[value];
-}
-
-function StatusBadge({ status }: { status: DataQualityStatus }) {
-  return (
-    <span
-      className={`inline-flex w-fit items-center rounded-md border px-2 py-0.5 text-xs font-medium ${statusClasses(status)}`}
-    >
-      {statusLabel(status)}
-    </span>
-  );
 }
 
 function PriorityBadge({ priority }: { priority: CodeTableRemediationPriority }) {
@@ -264,7 +234,7 @@ function RemediationRowsTable({
                       {codeTableRemediationDimensionLabel(row.dimension)}
                     </div>
                     <div className="mt-2 flex flex-wrap gap-2">
-                      <StatusBadge status={row.status} />
+                      <DataQualityStatusBadge status={row.status} />
                       <PriorityBadge priority={row.priority} />
                     </div>
                     <p className="mt-2 text-xs leading-5 text-muted-foreground">

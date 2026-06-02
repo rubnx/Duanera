@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { Badge } from "@/components/ui/badge";
+import { DataQualityStatusBadge } from "@/components/data-quality-status-badge";
 import {
   Card,
   CardContent,
@@ -22,7 +23,6 @@ import { db } from "@/db/client";
 import {
   getMarch2026SourceBatchRemediation,
   type DataQualitySourceBatchRemediation,
-  type DataQualityStatus,
 } from "@/quality/data-quality";
 import { formatNullableIntegerEsCl } from "@/lib/format";
 import {
@@ -101,36 +101,6 @@ function statusLabel(value: string) {
   };
 
   return labels[value] ?? value;
-}
-
-function qaStatusLabel(value: DataQualityStatus) {
-  const labels: Record<DataQualityStatus, string> = {
-    ok: "Confiable",
-    review: "Revisar",
-    warning: "Riesgo",
-  };
-
-  return labels[value];
-}
-
-function qaStatusClasses(value: DataQualityStatus) {
-  const classes: Record<DataQualityStatus, string> = {
-    ok: "border-emerald-600/30 bg-emerald-50 text-emerald-900",
-    review: "border-amber-600/30 bg-amber-50 text-amber-900",
-    warning: "border-red-600/30 bg-red-50 text-red-900",
-  };
-
-  return classes[value];
-}
-
-function QaStatusBadge({ status }: { status: DataQualityStatus }) {
-  return (
-    <span
-      className={`inline-flex w-fit items-center rounded-md border px-2 py-0.5 text-xs font-medium ${qaStatusClasses(status)}`}
-    >
-      {qaStatusLabel(status)}
-    </span>
-  );
 }
 
 function periodLabelForCoverage(coverage: SourceFlowCoverage) {
@@ -226,7 +196,7 @@ function SourceQaContext({
                 className="rounded-lg border border-border bg-background p-3"
               >
                 <div className="flex flex-wrap items-center gap-2">
-                  <QaStatusBadge status={row.status} />
+                  <DataQualityStatusBadge status={row.status} />
                   <span className="font-mono text-xs text-muted-foreground">
                     {formatNumber(row.totalIssueSignals)} señales
                   </span>
