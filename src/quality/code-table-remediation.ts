@@ -1,21 +1,4 @@
-import {
-  and,
-  asc,
-  count,
-  desc,
-  eq,
-  inArray,
-} from "drizzle-orm";
-
 import type { DbClient } from "@/db/client";
-import {
-  codeTables,
-  codeValues,
-  sourceFiles,
-  sourceLayoutFields,
-  sourceLayouts,
-  tradeRecords,
-} from "@/db/schema";
 import { sourceDisplayFilename, sourceTradeRecordsHref } from "@/sources/source-provenance";
 import type { TradeFlow } from "@/trade/trade-records";
 import {
@@ -29,16 +12,19 @@ import {
   normalizeCodeForCoverage,
   type DataQualityStatus,
 } from "@/quality/coverage";
+import { march2026ReportPeriod } from "@/quality/march-2026";
+import { countValueToNumber } from "@/db/count-values";
+import { type SupportedNormalizedCodeField } from "@/quality/code-table-remediation-fields";
 import {
-  march2026ReportPeriod,
-  march2026TradeRecordsWhere,
-  presentTrimmedTextCondition,
-} from "@/quality/march-2026";
-import { countValueToNumber, type CountValue } from "@/db/count-values";
-import {
-  codeTableCodeExpression,
-  type SupportedNormalizedCodeField,
-} from "@/quality/code-table-remediation-fields";
+  codeCountsForDefinition,
+  loadCodeTableValues,
+  loadDictionaryProvenance,
+  loadLayoutFields,
+  sourceContextForDefinition,
+  type DictionaryRow,
+  type LayoutFieldRow,
+  type SourceCountRow,
+} from "@/quality/code-table-remediation-loaders";
 import {
   codeTableRemediationHref,
   codeTableRemediationNextAction,
@@ -144,36 +130,7 @@ export type CodeTableCodeCountInput = {
   records: number | string | null | undefined;
 };
 
-type SourceCountRow = {
-  sourceFileId: string;
-  importBatchId: string;
-  originalFilename: string;
-  normalizedRawFilename: string | null;
-  records: CountValue;
-};
-
-type LayoutFieldRow = {
-  tradeFlow: string | null;
-  sourceFieldName: string;
-  fieldOrdinal: number;
-  isCoded: boolean;
-  codeTableKey: string | null;
-};
-
-type DictionaryRow = {
-  codeTableKey: string;
-  tableName: string | null;
-  sourceSheetName: string | null;
-  reviewStatus: string;
-  sourceFileId: string | null;
-  originalFilename: string | null;
-  normalizedRawFilename: string | null;
-};
-
-
 const toNumber = countValueToNumber;
-const marchTradeWhere = march2026TradeRecordsWhere;
-const presentCondition = presentTrimmedTextCondition;
 
 function decodedCodeSet(rows: Array<{ codeValue: string; labelEs: string | null }>) {
   const values = new Set<string>();
@@ -204,113 +161,6 @@ function sourceFieldsForDefinition(
       layoutCodeTableKey: field?.codeTableKey ?? null,
     };
   });
-}
-
-async function loadLayoutFields(db: DbClient) {
-  return db
-    .select({
-      tradeFlow: sourceLayouts.tradeFlow,
-      sourceFieldName: sourceLayoutFields.sourceFieldName,
-      fieldOrdinal: sourceLayoutFields.fieldOrdinal,
-      isCoded: sourceLayoutFields.isCoded,
-      codeTableKey: sourceLayoutFields.codeTableKey,
-    })
-    .from(sourceLayoutFields)
-    .innerJoin(sourceLayouts, eq(sourceLayoutFields.sourceLayoutId, sourceLayouts.id))
-    .where(
-      and(
-        eq(sourceLayouts.countryCode, "CL"),
-        eq(sourceLayouts.sourceSystem, "chile_aduana"),
-        eq(sourceLayouts.sourceDomain, "datos.gob.cl"),
-        eq(sourceLayouts.recordRole, "main_data"),
-      ),
-    )
-    .orderBy(asc(sourceLayouts.tradeFlow), asc(sourceLayoutFields.fieldOrdinal));
-}
-
-async function loadCodeTableValues(db: DbClient) {
-  const keys = [...new Set(remediationDefinitions.map((definition) => definition.codeTableKey))];
-  const rows = await db
-    .select({
-      codeTableKey: codeTables.codeTableKey,
-      codeValue: codeValues.codeValue,
-      labelEs: codeValues.labelEs,
-    })
-    .from(codeValues)
-    .innerJoin(codeTables, eq(codeValues.codeTableId, codeTables.id))
-    .where(inArray(codeTables.codeTableKey, keys));
-
-  const rowsByKey = new Map<string, Array<{ codeValue: string; labelEs: string | null }>>();
-  for (const row of rows) {
-    const existing = rowsByKey.get(row.codeTableKey) ?? [];
-    existing.push({ codeValue: row.codeValue, labelEs: row.labelEs });
-    rowsByKey.set(row.codeTableKey, existing);
-  }
-
-  return rowsByKey;
-}
-
-async function loadDictionaryProvenance(db: DbClient) {
-  const keys = [...new Set(remediationDefinitions.map((definition) => definition.codeTableKey))];
-  const rows = await db
-    .select({
-      codeTableKey: codeTables.codeTableKey,
-      tableName: codeTables.tableName,
-      sourceSheetName: codeTables.sourceSheetName,
-      reviewStatus: codeTables.reviewStatus,
-      sourceFileId: codeTables.sourceFileId,
-      originalFilename: sourceFiles.originalFilename,
-      normalizedRawFilename: sourceFiles.normalizedRawFilename,
-    })
-    .from(codeTables)
-    .leftJoin(sourceFiles, eq(codeTables.sourceFileId, sourceFiles.id))
-    .where(inArray(codeTables.codeTableKey, keys));
-
-  return new Map(rows.map((row) => [row.codeTableKey, row]));
-}
-
-async function codeCountsForDefinition(
-  db: DbClient,
-  definition: CodeTableRemediationDefinition,
-) {
-  const expression = codeTableCodeExpression(definition.normalizedField);
-
-  return db
-    .select({
-      code: expression,
-      records: count(),
-    })
-    .from(tradeRecords)
-    .where(and(marchTradeWhere(definition.tradeFlow), presentCondition(expression)))
-    .groupBy(expression);
-}
-
-async function sourceContextForDefinition(
-  db: DbClient,
-  definition: CodeTableRemediationDefinition,
-) {
-  const expression = codeTableCodeExpression(definition.normalizedField);
-  const [row] = await db
-    .select({
-      sourceFileId: tradeRecords.sourceFileId,
-      importBatchId: tradeRecords.importBatchId,
-      originalFilename: sourceFiles.originalFilename,
-      normalizedRawFilename: sourceFiles.normalizedRawFilename,
-      records: count(),
-    })
-    .from(tradeRecords)
-    .innerJoin(sourceFiles, eq(tradeRecords.sourceFileId, sourceFiles.id))
-    .where(and(marchTradeWhere(definition.tradeFlow), presentCondition(expression)))
-    .groupBy(
-      tradeRecords.sourceFileId,
-      tradeRecords.importBatchId,
-      sourceFiles.originalFilename,
-      sourceFiles.normalizedRawFilename,
-    )
-    .orderBy(desc(count()))
-    .limit(1);
-
-  return row;
 }
 
 function dictionaryProvenanceFromRow(
