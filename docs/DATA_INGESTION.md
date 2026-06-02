@@ -83,6 +83,8 @@ These scripts use the March 2026 main import/export files already preserved unde
 
 They are not full ingestion. They do not import complete files, production data, legal company identities, export companion bultos, or transport-document files.
 
+`db:seed:code-tables` reseeds workbook-backed rows only. Reviewed official-update rows in `code_values` are preserved so later evidence-backed remediation, such as Aduana port rows absent from the baseline workbook, is not deleted by rerunning the workbook seed.
+
 The raw-row and normalization scripts are batched/chunked so they can be used for larger dev-only validation by increasing their limits. After the Neon project was upgraded from the 512 MB free storage limit, a full March 2026 dev load completed on May 28, 2026: 439,353 import rows and 109,187 export rows were loaded into `raw_trade_rows` and normalized into `trade_records` with 0 parse failures.
 
 This is still a dev validation path, not production ingestion. Full-month raw row storage increased the dev database to roughly 2 GB, so storage strategy and query performance should be reviewed before loading more months.

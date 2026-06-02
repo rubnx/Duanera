@@ -1,15 +1,11 @@
 import ExcelJS from "exceljs";
 import { config } from "dotenv";
-import { eq } from "drizzle-orm";
+import { and, eq, ne } from "drizzle-orm";
+import { pathToFileURL } from "node:url";
 
+import type { DbClient } from "../../src/db/client";
 import { assertDevDatabaseTarget } from "../../src/db/dev-guard";
 import { codeTables, codeValues, sourceFiles } from "../../src/db/schema";
-
-config({ path: ".env.local" });
-config();
-assertDevDatabaseTarget("code-tables seed");
-
-const { db } = await import("../../src/db/client");
 
 type SheetSeed = {
   key: string;
@@ -17,6 +13,16 @@ type SheetSeed = {
   tableName: string;
   headerRow: number;
   notes: string;
+};
+
+type CodeValueSeedRow = {
+  codeTableId: string;
+  codeValue: string;
+  labelEs: string | null;
+  normalizedLabelEs: string | null;
+  sortOrder: number;
+  metadata: Record<string, string>;
+  reviewStatus: "seeded";
 };
 
 const workbookPath =
@@ -159,7 +165,14 @@ function metadataFor(headers: string[], values: unknown[]): Record<string, strin
   return metadata;
 }
 
-async function getSourceFileId(): Promise<string> {
+export function filterSeedRowsForPreservedValues<T extends { codeValue: string }>(
+  rows: T[],
+  preservedCodeValues: Set<string>,
+): T[] {
+  return rows.filter((row) => !preservedCodeValues.has(row.codeValue));
+}
+
+async function getSourceFileId(db: DbClient): Promise<string> {
   const rows = await db
     .select({ id: sourceFiles.id })
     .from(sourceFiles)
@@ -175,7 +188,7 @@ async function getSourceFileId(): Promise<string> {
   return rows[0].id;
 }
 
-async function upsertCodeTable(seed: SheetSeed, sourceFileId: string): Promise<string> {
+async function upsertCodeTable(db: DbClient, seed: SheetSeed, sourceFileId: string): Promise<string> {
   const values = {
     codeTableKey: seed.key,
     countryCode: "CL",
@@ -209,60 +222,102 @@ async function upsertCodeTable(seed: SheetSeed, sourceFileId: string): Promise<s
   return inserted.id;
 }
 
-const workbook = new ExcelJS.Workbook();
-await workbook.xlsx.readFile(workbookPath);
-const sourceFileId = await getSourceFileId();
-let tableCount = 0;
-let valueCount = 0;
+async function preservedCodeValueSet(db: DbClient, codeTableId: string): Promise<Set<string>> {
+  const preservedRows = await db
+    .select({ codeValue: codeValues.codeValue })
+    .from(codeValues)
+    .where(and(eq(codeValues.codeTableId, codeTableId), ne(codeValues.reviewStatus, "seeded")));
 
-for (const seed of sheetSeeds) {
-  const worksheet = workbook.getWorksheet(seed.sheetName);
-  if (!worksheet) {
-    throw new Error(`Worksheet ${seed.sheetName} not found in ${workbookPath}.`);
-  }
-
-  const headerRawValues = rowValues(worksheet.getRow(seed.headerRow));
-  const firstHeaderIndex = headerRawValues.findIndex((value) => cellText(value) !== null);
-  if (firstHeaderIndex < 0) {
-    throw new Error(`Worksheet ${seed.sheetName} has no header row at ${seed.headerRow}.`);
-  }
-
-  const seenHeaders = new Map<string, number>();
-  const headers = headerRawValues.slice(firstHeaderIndex).map((value, index) => {
-    const fallback = `column_${index + 1}`;
-    return uniqueHeader(cellText(value) ?? fallback, seenHeaders);
-  });
-
-  const codeTableId = await upsertCodeTable(seed, sourceFileId);
-  await db.delete(codeValues).where(eq(codeValues.codeTableId, codeTableId));
-
-  const rowsToInsert = [];
-  for (let rowNumber = seed.headerRow + 1; rowNumber <= worksheet.rowCount; rowNumber += 1) {
-    const values = rowValues(worksheet.getRow(rowNumber)).slice(firstHeaderIndex);
-    const codeValue = cellText(values[0]);
-    if (!codeValue) {
-      continue;
-    }
-
-    const labelEs = cellText(values[1]);
-    rowsToInsert.push({
-      codeTableId,
-      codeValue,
-      labelEs,
-      normalizedLabelEs: normalizeLabel(labelEs),
-      sortOrder: rowNumber - seed.headerRow,
-      metadata: metadataFor(headers, values),
-      reviewStatus: "seeded",
-    });
-  }
-
-  if (rowsToInsert.length > 0) {
-    await db.insert(codeValues).values(rowsToInsert);
-  }
-
-  tableCount += 1;
-  valueCount += rowsToInsert.length;
-  console.log(`Seeded ${seed.tableName}: ${rowsToInsert.length} values.`);
+  return new Set(preservedRows.map((row) => row.codeValue));
 }
 
-console.log(`Code table seed complete. Seeded ${tableCount} tables and ${valueCount} values.`);
+export async function runCodeTableSeed(db: DbClient) {
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.readFile(workbookPath);
+  const sourceFileId = await getSourceFileId(db);
+  let tableCount = 0;
+  let valueCount = 0;
+  let preservedValueCount = 0;
+
+  for (const seed of sheetSeeds) {
+    const worksheet = workbook.getWorksheet(seed.sheetName);
+    if (!worksheet) {
+      throw new Error(`Worksheet ${seed.sheetName} not found in ${workbookPath}.`);
+    }
+
+    const headerRawValues = rowValues(worksheet.getRow(seed.headerRow));
+    const firstHeaderIndex = headerRawValues.findIndex((value) => cellText(value) !== null);
+    if (firstHeaderIndex < 0) {
+      throw new Error(`Worksheet ${seed.sheetName} has no header row at ${seed.headerRow}.`);
+    }
+
+    const seenHeaders = new Map<string, number>();
+    const headers = headerRawValues.slice(firstHeaderIndex).map((value, index) => {
+      const fallback = `column_${index + 1}`;
+      return uniqueHeader(cellText(value) ?? fallback, seenHeaders);
+    });
+
+    const codeTableId = await upsertCodeTable(db, seed, sourceFileId);
+    const preservedCodeValues = await preservedCodeValueSet(db, codeTableId);
+    await db
+      .delete(codeValues)
+      .where(and(eq(codeValues.codeTableId, codeTableId), eq(codeValues.reviewStatus, "seeded")));
+
+    const workbookRows: CodeValueSeedRow[] = [];
+    for (let rowNumber = seed.headerRow + 1; rowNumber <= worksheet.rowCount; rowNumber += 1) {
+      const values = rowValues(worksheet.getRow(rowNumber)).slice(firstHeaderIndex);
+      const codeValue = cellText(values[0]);
+      if (!codeValue) {
+        continue;
+      }
+
+      const labelEs = cellText(values[1]);
+      workbookRows.push({
+        codeTableId,
+        codeValue,
+        labelEs,
+        normalizedLabelEs: normalizeLabel(labelEs),
+        sortOrder: rowNumber - seed.headerRow,
+        metadata: metadataFor(headers, values),
+        reviewStatus: "seeded",
+      });
+    }
+
+    const rowsToInsert = filterSeedRowsForPreservedValues(workbookRows, preservedCodeValues);
+    const skippedPreservedRows = workbookRows.length - rowsToInsert.length;
+
+    if (rowsToInsert.length > 0) {
+      await db.insert(codeValues).values(rowsToInsert);
+    }
+
+    tableCount += 1;
+    valueCount += rowsToInsert.length;
+    preservedValueCount += skippedPreservedRows;
+    process.stdout.write(
+      `Seeded ${seed.tableName}: ${rowsToInsert.length} values, preserved ${skippedPreservedRows} reviewed values.\n`,
+    );
+  }
+
+  process.stdout.write(
+    `Code table seed complete. Seeded ${tableCount} tables and ${valueCount} values; preserved ${preservedValueCount} reviewed values.\n`,
+  );
+
+  return { tableCount, valueCount, preservedValueCount };
+}
+
+async function main() {
+  config({ path: ".env.local" });
+  config();
+  assertDevDatabaseTarget("code-tables seed");
+
+  const { db } = await import("../../src/db/client");
+  await runCodeTableSeed(db);
+}
+
+if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
+  main().catch((error: unknown) => {
+    const message = error instanceof Error ? error.message : String(error);
+    process.stderr.write(`Code table seed failed: ${message}\n`);
+    process.exitCode = 1;
+  });
+}
