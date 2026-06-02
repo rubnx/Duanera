@@ -27,12 +27,11 @@ import {
   type DataQualityStatus,
 } from "@/quality/data-quality";
 import {
-  countValueToNumber,
   march2026ReportPeriod,
   march2026TradeRecordsWhere,
   presentTrimmedTextCondition,
-  type CountValue,
 } from "@/quality/march-2026";
+import { countValueToNumber, type CountValue } from "@/db/count-values";
 
 const reportPeriod = march2026ReportPeriod;
 

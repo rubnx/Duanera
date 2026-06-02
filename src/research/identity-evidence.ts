@@ -1,6 +1,7 @@
 import { and, desc, eq, or, sql, type SQL } from "drizzle-orm";
 
 import type { DbClient } from "@/db/client";
+import { countValueToNumber } from "@/db/count-values";
 import { queryResultRows } from "@/db/query-result";
 import { rawTradeRows, tradeRecords } from "@/db/schema";
 import { productDisplayFromRaw } from "@/trade/trade-record-display";
@@ -103,14 +104,7 @@ const productAttributeLabels: Record<string, string> = {
   attribute6: "Atributo fuente 6",
 };
 
-function toNumber(value: number | string | null | undefined) {
-  if (value === null || value === undefined) {
-    return 0;
-  }
-
-  const numericValue = Number(value);
-  return Number.isFinite(numericValue) ? numericValue : 0;
-}
+const toNumber = countValueToNumber;
 
 export function normalizeIdentityEvidenceValue(value: unknown) {
   if (value === null || value === undefined) {

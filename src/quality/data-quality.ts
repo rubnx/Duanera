@@ -25,12 +25,11 @@ import {
 } from "@/trade/trade-record-links";
 import type { TradeFlow, TradeRecordFilters } from "@/trade/trade-records";
 import {
-  countValueToNumber,
   march2026RawTradeRowsWhere,
   march2026ReportPeriod,
   march2026TradeRecordsWhere,
-  type CountValue,
 } from "@/quality/march-2026";
+import { countValueToNumber, type CountValue } from "@/db/count-values";
 
 const reportPeriod = march2026ReportPeriod;
 

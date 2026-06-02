@@ -7,6 +7,7 @@ import {
   sourceFiles,
   tradeRecords,
 } from "../db/schema";
+import { countValueToNumber } from "../db/count-values";
 import { isUuid } from "../lib/ids";
 
 type SourceFileRow = typeof sourceFiles.$inferSelect;
@@ -100,14 +101,7 @@ const emptyCount: SourceCount = {
   failed: 0,
 };
 
-function toNumber(value: number | string | null | undefined) {
-  if (value === null || value === undefined) {
-    return 0;
-  }
-
-  const numberValue = Number(value);
-  return Number.isFinite(numberValue) ? numberValue : 0;
-}
+const toNumber = countValueToNumber;
 
 export function sourceFilenameLabel(filename: string | null | undefined) {
   if (!filename) {
