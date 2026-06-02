@@ -18,6 +18,10 @@ import {
   type DataQualityStatus,
 } from "@/quality/coverage";
 import {
+  fieldCoverageRows,
+  type DataQualityFieldCoverage,
+} from "@/quality/field-coverage";
+import {
   codeTables,
   codeValues,
   importBatches,
@@ -58,6 +62,7 @@ export {
   normalizeCodeForCoverage,
   type DataQualityStatus,
 } from "@/quality/coverage";
+export { type DataQualityFieldCoverage } from "@/quality/field-coverage";
 export {
   dataQualityRemediationNextStep,
   dataQualityRemediationStatus,
@@ -106,17 +111,6 @@ export type DataQualitySourceCoverage = {
   tradeRecords: number;
   sourceHref: string;
   tradeRecordsHref: string | null;
-};
-
-export type DataQualityFieldCoverage = {
-  tradeFlow: TradeFlow;
-  key: string;
-  label: string;
-  covered: number;
-  total: number;
-  percent: number;
-  status: DataQualityStatus;
-  caveat: string;
 };
 
 export type DataQualityLabelCoverage = {
@@ -412,45 +406,6 @@ async function loadSourceCoverage(db: DbClient): Promise<DataQualitySourceCovera
         }),
       };
     });
-}
-
-type FieldDefinition = {
-  key: string;
-  label: string;
-  covered: CountValue;
-  caveat: string;
-  okAt?: number;
-  warningBelow?: number;
-};
-
-function fieldCoverageRows({
-  fields,
-  total,
-  tradeFlow,
-}: {
-  fields: FieldDefinition[];
-  total: number;
-  tradeFlow: TradeFlow;
-}): DataQualityFieldCoverage[] {
-  return fields.map((field) => {
-    const covered = toNumber(field.covered);
-
-    return {
-      tradeFlow,
-      key: field.key,
-      label: field.label,
-      covered,
-      total,
-      percent: coveragePercent(covered, total),
-      status: coverageStatus({
-        covered,
-        total,
-        okAt: field.okAt ?? 99,
-        warningBelow: field.warningBelow ?? 90,
-      }),
-      caveat: field.caveat,
-    };
-  });
 }
 
 async function loadImportFieldCoverage(db: DbClient): Promise<DataQualityFieldCoverage[]> {
