@@ -20,6 +20,7 @@
     "db:remediate:aduana-ports": "tsx scripts/remediation/aduana-port-code-remediation.ts",
     "db:studio": "drizzle-kit studio",
     "archive:r2:plan": "tsx scripts/archive/r2-upload-plan.ts",
+    "archive:r2:preflight": "tsx scripts/archive/r2-archive-preflight.ts",
     "archive:r2:verify": "tsx scripts/archive/r2-upload-archive.ts --verify-only",
     "archive:r2:upload": "tsx scripts/archive/r2-upload-archive.ts",
     "inspect:trade-records": "tsx scripts/inspect/trade-records.ts",

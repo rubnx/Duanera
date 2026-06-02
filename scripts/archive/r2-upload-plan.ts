@@ -58,6 +58,27 @@ type Args = {
   pretty: boolean;
 };
 
+export type ArchiveUploadCandidate = UploadCandidate;
+
+export type ArchiveUploadPlan = {
+  version: 1;
+  generatedAt: string;
+  mode: "dry-run";
+  uploadAttempted: false;
+  bucket: string;
+  dataDir: string;
+  policy: {
+    provider: "Cloudflare R2";
+    publicAccess: "disabled";
+    canonicalChecksum: "sha256";
+    firstUploadPriority: "official_source_raw";
+  };
+  summary: Summary;
+  errors: string[];
+  warnings: string[];
+  objects: UploadCandidate[];
+};
+
 const defaultBucket = "duanera-source-archive";
 const repoRoot = process.cwd();
 
@@ -258,26 +279,31 @@ function summarize(candidates: UploadCandidate[]): Summary {
   return summary;
 }
 
-async function main() {
-  const args = parseArgs(process.argv.slice(2));
-  const dataDir = resolveArchiveDataDirPath(args.dataDir);
-  assertArchiveDataDirExists(dataDir);
-  const sourceRows = readSourceManifestRows(dataDir, { repoRelativePath, walkFiles });
+export async function buildArchiveUploadPlan({
+  bucket,
+  dataDir,
+}: {
+  bucket: string;
+  dataDir: string;
+}): Promise<ArchiveUploadPlan> {
+  const resolvedDataDir = resolveArchiveDataDirPath(dataDir);
+  assertArchiveDataDirExists(resolvedDataDir);
+  const sourceRows = readSourceManifestRows(resolvedDataDir, { repoRelativePath, walkFiles });
   const references = buildManifestReferences(sourceRows);
   const candidates = [];
 
-  for (const filePath of walkFiles(dataDir)) {
-    candidates.push(await buildCandidate(filePath, args.bucket, references));
+  for (const filePath of walkFiles(resolvedDataDir)) {
+    candidates.push(await buildCandidate(filePath, bucket, references));
   }
 
   const validation = validateCandidates(candidates);
-  const output = {
+  return {
     version: 1,
     generatedAt: new Date().toISOString(),
     mode: "dry-run",
     uploadAttempted: false,
-    bucket: args.bucket,
-    dataDir: toPosix(path.relative(repoRoot, dataDir)),
+    bucket,
+    dataDir: toPosix(path.relative(repoRoot, resolvedDataDir)),
     policy: {
       provider: "Cloudflare R2",
       publicAccess: "disabled",
@@ -289,15 +315,23 @@ async function main() {
     warnings: validation.warnings,
     objects: candidates,
   };
+}
+
+async function main() {
+  const args = parseArgs(process.argv.slice(2));
+  const output = await buildArchiveUploadPlan({
+    bucket: args.bucket,
+    dataDir: args.dataDir,
+  });
 
   process.stdout.write(JSON.stringify(output, null, args.pretty ? 2 : 0));
   process.stdout.write("\n");
 
   process.stderr.write(
-    `R2 archive dry run: ${output.summary.uploadCandidates} upload candidates, ${output.summary.excludedFiles} excluded, ${validation.errors.length} errors, ${validation.warnings.length} warnings.\n`,
+    `R2 archive dry run: ${output.summary.uploadCandidates} upload candidates, ${output.summary.excludedFiles} excluded, ${output.errors.length} errors, ${output.warnings.length} warnings.\n`,
   );
 
-  if (validation.errors.length > 0) {
+  if (output.errors.length > 0) {
     process.exitCode = 1;
   }
 }

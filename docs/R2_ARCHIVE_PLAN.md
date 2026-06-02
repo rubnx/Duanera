@@ -60,7 +60,7 @@ manifest_local_path=data/sources/chile-aduana/datos-gob-cl/manifests/...
 Generate a dry-run manifest:
 
 ```bash
-npm run archive:r2:plan -- --pretty > /tmp/duanera-r2-upload-plan.json
+npm --silent run archive:r2:plan -- --pretty > /tmp/duanera-r2-upload-plan.json
 ```
 
 The command:
@@ -73,6 +73,33 @@ The command:
 - does not upload or write files
 
 The command exits non-zero if an official raw file lacks a manifest reference, file role, checksum, proposed R2 key, or has a checksum mismatch.
+
+## Archive Preflight
+
+Use the read-only preflight before any upload batch:
+
+```bash
+npm run archive:r2:preflight -- --pretty
+```
+
+The command:
+
+- verifies required R2 environment variables without printing secret values
+- checks private bucket read/list access
+- builds the local upload plan from ignored `data/`
+- compares each planned upload object against R2 by object key, byte size, and stored SHA-256 metadata
+- groups results by file class: `official_source_raw`, `working_file`, `source_manifest`, `research_evidence`, `generated_validation`, and `disposable`
+- highlights April 2026 objects so newly acquired months are visible
+- prints the guarded upload commands for safe missing batches
+- does not upload, delete, overwrite, mutate metadata, write local files, or touch the database
+
+The preflight exits non-zero if it finds plan errors, checksum mismatches, remote size/SHA mismatches, or unsafe upload candidates. Missing objects are not errors by themselves; they identify what is ready for an explicit upload pass. Private research evidence and generated validation outputs are reported as missing but require manual review before upload.
+
+If you need a machine-readable report, run the command directly or use npm's silent mode so stdout remains valid JSON:
+
+```bash
+npm --silent run archive:r2:preflight -- --pretty > /tmp/duanera-r2-preflight.json
+```
 
 ## Credential And Bucket Verification
 
