@@ -16,6 +16,7 @@ import {
 } from "drizzle-orm";
 
 import type { DbClient } from "../db/client";
+import { queryResultRows } from "../db/query-result";
 import {
   importBatches,
   rawTradeRows,
@@ -687,12 +688,6 @@ function decimalSumExpression(expression: SQL<string>): SQL<string | null> {
   return sql<string | null>`sum(${expression})::text`;
 }
 
-type QueryResult<T> = { rows?: T[] };
-
-function rowsFrom<T>(result: unknown): T[] {
-  return ((result as QueryResult<T>).rows ?? []) as T[];
-}
-
 async function rankedSummary(
   db: DbClient,
   filters: TradeRecordFilters,
@@ -938,7 +933,10 @@ export async function compareTradeRecordGroups(
     order by dimension, dimension_rank;
   `);
 
-  const rows = rowsFrom<TradeRecordComparisonQueryRow>(result);
+  const rows = queryResultRows<TradeRecordComparisonQueryRow>(
+    result,
+    "trade record comparison query result",
+  );
   const byDimension: TradeRecordComparison["groups"] = {
     products: [],
     countries: [],

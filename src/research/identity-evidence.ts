@@ -1,6 +1,7 @@
 import { and, desc, eq, or, sql, type SQL } from "drizzle-orm";
 
 import type { DbClient } from "@/db/client";
+import { queryResultRows } from "@/db/query-result";
 import { rawTradeRows, tradeRecords } from "@/db/schema";
 import { productDisplayFromRaw } from "@/trade/trade-record-display";
 import { buildTradeRecordSearchHref } from "@/trade/trade-record-links";
@@ -50,8 +51,6 @@ export type IdentityEvidenceGroup = {
   evidenceSummary: string;
   records: IdentityEvidenceRecord[];
 };
-
-type QueryResult<T> = { rows?: T[] };
 
 type IdentityEvidenceGroupRow = {
   correlativeId: string;
@@ -103,10 +102,6 @@ const productAttributeLabels: Record<string, string> = {
   attribute5: "Atributo fuente 5",
   attribute6: "Atributo fuente 6",
 };
-
-function rowsFrom<T>(result: unknown): T[] {
-  return ((result as QueryResult<T>).rows ?? []) as T[];
-}
 
 function toNumber(value: number | string | null | undefined) {
   if (value === null || value === undefined) {
@@ -408,7 +403,10 @@ async function listGroupRows(
       limit ${options.groupLimit};
     `);
 
-    return rowsFrom<IdentityEvidenceGroupRow>(result);
+    return queryResultRows<IdentityEvidenceGroupRow>(
+      result,
+      "export identity evidence group query result",
+    );
   }
 
   const result = await db.execute(sql`
@@ -432,7 +430,10 @@ async function listGroupRows(
     limit ${options.groupLimit};
   `);
 
-  return rowsFrom<IdentityEvidenceGroupRow>(result);
+  return queryResultRows<IdentityEvidenceGroupRow>(
+    result,
+    "import identity evidence group query result",
+  );
 }
 
 async function sampleRecordsForGroup(

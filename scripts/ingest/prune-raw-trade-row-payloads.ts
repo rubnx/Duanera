@@ -4,11 +4,8 @@ import { pathToFileURL } from "node:url";
 
 import type { DbClient } from "../../src/db/client";
 import { assertDevDatabaseTarget } from "../../src/db/dev-guard";
+import { queryResultRows } from "../../src/db/query-result";
 import { positiveIntegerEnvValue } from "../../src/lib/env";
-
-type QueryResult<T> = {
-  rows?: T[];
-};
 
 type PruneCounts = {
   candidate_rows: number;
@@ -105,10 +102,6 @@ function flowFilter(flow: "import" | "export" | null) {
   return sql`and r.trade_flow = ${flow}`;
 }
 
-function rowsFrom<T>(result: unknown): T[] {
-  return ((result as QueryResult<T>).rows ?? []) as T[];
-}
-
 export async function runRawRowPayloadPruner({
   argv,
   db,
@@ -168,7 +161,10 @@ export async function runRawRowPayloadPruner({
       (select count(*)::int from already_pruned) as already_pruned_rows
   `);
 
-  const counts = rowsFrom<PruneCounts>(countsResult)[0] ?? {
+  const counts = queryResultRows<PruneCounts>(
+    countsResult,
+    "raw row payload prune count query result",
+  )[0] ?? {
     candidate_rows: 0,
     eligible_rows: 0,
     blocked_rows: 0,
@@ -227,7 +223,10 @@ export async function runRawRowPayloadPruner({
       returning r.id
     `);
 
-    const prunedRows = rowsFrom<PrunedRow>(updateResult);
+    const prunedRows = queryResultRows<PrunedRow>(
+      updateResult,
+      "raw row payload prune update query result",
+    );
     pruned += prunedRows.length;
     process.stdout.write(`Pruned ${prunedRows.length} rows in batch; ${pruned} total.\n`);
 

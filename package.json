@@ -25,6 +25,7 @@
     "research:identity-evidence": "tsx scripts/research/identity-evidence-report.ts",
     "test:trade-record-inspect": "tsx --test scripts/inspect/trade-records.test.ts",
     "test:trade-search": "tsx --test scripts/inspect/trade-record-search.test.ts",
+    "test:query-result": "tsx --test scripts/inspect/query-result.test.ts",
     "test:identity-evidence": "tsx --test scripts/inspect/identity-evidence.test.ts",
     "test:identity-evidence-report": "tsx --test scripts/research/identity-evidence-report.test.ts",
     "test:data-quality": "tsx --test scripts/inspect/data-quality.test.ts",
