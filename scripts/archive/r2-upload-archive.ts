@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { createReadStream, existsSync, statSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import { config } from "dotenv";
 import {
   HeadObjectCommand,
@@ -10,7 +11,7 @@ import {
   S3Client,
 } from "@aws-sdk/client-s3";
 
-type PlanObject = {
+export type PlanObject = {
   localPath: string;
   r2Bucket: string;
   r2Key: string | null;
@@ -210,8 +211,19 @@ function selectObjects(plan: ArchivePlan, args: Args, env: Env) {
   return args.limit ? selected.slice(0, args.limit) : selected;
 }
 
-function verifyLocalFile(object: PlanObject) {
-  const absolutePath = path.resolve(repoRoot, object.localPath);
+export function resolvePlanLocalPath(localPath: string) {
+  const absolutePath = path.resolve(repoRoot, localPath);
+  const relativePath = path.relative(repoRoot, absolutePath);
+
+  if (relativePath.startsWith("..") || path.isAbsolute(relativePath)) {
+    throw new Error(`${localPath}: local path must stay inside the repository.`);
+  }
+
+  return absolutePath;
+}
+
+export function verifyLocalFile(object: PlanObject) {
+  const absolutePath = resolvePlanLocalPath(object.localPath);
   if (!existsSync(absolutePath)) {
     throw new Error(`${object.localPath}: local file is missing.`);
   }
@@ -388,8 +400,10 @@ async function main() {
   }
 }
 
-main().catch((error: unknown) => {
-  const message = error instanceof Error ? error.message : String(error);
-  process.stderr.write(`R2 archive upload workflow failed: ${message}\n`);
-  process.exitCode = 1;
-});
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch((error: unknown) => {
+    const message = error instanceof Error ? error.message : String(error);
+    process.stderr.write(`R2 archive upload workflow failed: ${message}\n`);
+    process.exitCode = 1;
+  });
+}
