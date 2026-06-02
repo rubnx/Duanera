@@ -348,11 +348,13 @@ function sourceBatchItems(report: DataQualityReport): RemediationQueueItemInput[
         sourceLabel: row.filename,
       }),
       nextAction: row.nextStep,
-      links: [
+      links: safeLinks([
         { href: row.sourceHref, label: "Ver fuente/lote" },
-        { href: row.tradeRecordsHref, label: "Ver registros del lote" },
+        row.tradeRecordsHref
+          ? { href: row.tradeRecordsHref, label: "Ver registros del lote" }
+          : null,
         { href: "/data-quality", label: "Ver dashboard QA" },
-      ],
+      ].filter((link): link is RemediationQueueLink => Boolean(link))),
       dedupeKey: `source-batch:${row.sourceFileId}:${row.importBatchId}:${row.tradeFlow}`,
     }));
 }

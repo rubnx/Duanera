@@ -214,12 +214,14 @@ function ActionLinks({ row }: { row: CodeTableRemediationRow }) {
           >
             Ver fuente/lote
           </Link>
-          <Link
-            href={row.sourceContext.tradeRecordsHref}
-            className="font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-          >
-            Registros del lote
-          </Link>
+          {row.sourceContext.tradeRecordsHref ? (
+            <Link
+              href={row.sourceContext.tradeRecordsHref}
+              className="font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+            >
+              Registros del lote
+            </Link>
+          ) : null}
         </>
       ) : null}
     </div>

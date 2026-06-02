@@ -257,12 +257,14 @@ function SourceQaContext({
                   >
                     Ir al lote
                   </Link>
-                  <Link
-                    href={row.tradeRecordsHref}
-                    className="font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-                  >
-                    Ver registros filtrados
-                  </Link>
+                  {row.tradeRecordsHref ? (
+                    <Link
+                      href={row.tradeRecordsHref}
+                      className="font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+                    >
+                      Ver registros filtrados
+                    </Link>
+                  ) : null}
                 </div>
               </article>
             ))}
@@ -303,64 +305,68 @@ function BatchRows({
               </TableCell>
             </TableRow>
           ) : (
-            batches.map((batch) => (
-              <TableRow key={batch.id} id={`batch-${batch.id}`} className="scroll-mt-4">
-                <TableCell className="max-w-[220px] align-top font-mono text-xs">
-                  {batch.id}
-                </TableCell>
-                <TableCell className="align-top">
-                  <div>{batch.parserName}</div>
-                  <div className="mt-1 font-mono text-xs text-muted-foreground">
-                    {batch.parserVersion}
-                  </div>
-                </TableCell>
-                <TableCell className="align-top">
-                  <Badge variant={batch.status === "completed" ? "secondary" : "outline"}>
-                    {statusLabel(batch.status)}
-                  </Badge>
-                  {batch.warningSummary || batch.errorSummary ? (
-                    <div className="mt-2 max-w-[240px] text-xs text-muted-foreground">
-                      {batch.warningSummary ?? batch.errorSummary}
+            batches.map((batch) => {
+              const batchRecordsHref = sourceTradeRecordsHref({
+                sourceFileId: source.id,
+                importBatchId: batch.id,
+                tradeFlow: sourceTradeFlow(source.tradeFlow),
+              });
+
+              return (
+                <TableRow key={batch.id} id={`batch-${batch.id}`} className="scroll-mt-4">
+                  <TableCell className="max-w-[220px] align-top font-mono text-xs">
+                    {batch.id}
+                  </TableCell>
+                  <TableCell className="align-top">
+                    <div>{batch.parserName}</div>
+                    <div className="mt-1 font-mono text-xs text-muted-foreground">
+                      {batch.parserVersion}
                     </div>
-                  ) : null}
-                </TableCell>
-                <TableCell className="align-top text-right font-mono text-xs">
-                  {formatNumber(batch.rowsTotal)}
-                </TableCell>
-                <TableCell className="align-top text-right font-mono text-xs">
-                  {formatNumber(batch.rawRowCount)}
-                  <div className="mt-1 text-muted-foreground">
-                    Parseadas {formatNumber(batch.parsedRawRowCount)} · Fallidas{" "}
-                    {formatNumber(batch.failedRawRowCount)}
-                  </div>
-                </TableCell>
-                <TableCell className="align-top text-right font-mono text-xs">
-                  {formatNumber(batch.tradeRecordCount)}
-                </TableCell>
-                <TableCell className="align-top text-xs">
-                  <div>Inicio {formatDateTime(batch.startedAt)}</div>
-                  <div className="mt-1 text-muted-foreground">
-                    Fin {formatDateTime(batch.completedAt)}
-                  </div>
-                </TableCell>
-                <TableCell className="align-top">
-                  {batch.tradeRecordCount > 0 ? (
-                    <Link
-                      href={sourceTradeRecordsHref({
-                        sourceFileId: source.id,
-                        importBatchId: batch.id,
-                        tradeFlow: sourceTradeFlow(source.tradeFlow),
-                      })}
-                      className="text-xs font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-                    >
-                      Ver registros
-                    </Link>
-                  ) : (
-                    <span className="text-xs text-muted-foreground">Sin registros</span>
-                  )}
-                </TableCell>
-              </TableRow>
-            ))
+                  </TableCell>
+                  <TableCell className="align-top">
+                    <Badge variant={batch.status === "completed" ? "secondary" : "outline"}>
+                      {statusLabel(batch.status)}
+                    </Badge>
+                    {batch.warningSummary || batch.errorSummary ? (
+                      <div className="mt-2 max-w-[240px] text-xs text-muted-foreground">
+                        {batch.warningSummary ?? batch.errorSummary}
+                      </div>
+                    ) : null}
+                  </TableCell>
+                  <TableCell className="align-top text-right font-mono text-xs">
+                    {formatNumber(batch.rowsTotal)}
+                  </TableCell>
+                  <TableCell className="align-top text-right font-mono text-xs">
+                    {formatNumber(batch.rawRowCount)}
+                    <div className="mt-1 text-muted-foreground">
+                      Parseadas {formatNumber(batch.parsedRawRowCount)} · Fallidas{" "}
+                      {formatNumber(batch.failedRawRowCount)}
+                    </div>
+                  </TableCell>
+                  <TableCell className="align-top text-right font-mono text-xs">
+                    {formatNumber(batch.tradeRecordCount)}
+                  </TableCell>
+                  <TableCell className="align-top text-xs">
+                    <div>Inicio {formatDateTime(batch.startedAt)}</div>
+                    <div className="mt-1 text-muted-foreground">
+                      Fin {formatDateTime(batch.completedAt)}
+                    </div>
+                  </TableCell>
+                  <TableCell className="align-top">
+                    {batch.tradeRecordCount > 0 && batchRecordsHref ? (
+                      <Link
+                        href={batchRecordsHref}
+                        className="text-xs font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+                      >
+                        Ver registros
+                      </Link>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">Sin registros</span>
+                    )}
+                  </TableCell>
+                </TableRow>
+              );
+            })
           )}
         </TableBody>
       </Table>
@@ -377,6 +383,10 @@ export default async function SourceDetailPage({ params }: PageProps) {
   }
 
   const publicSourcePageUrl = safeSourcePageUrl(source.sourcePageUrl);
+  const sourceRecordsHref = sourceTradeRecordsHref({
+    sourceFileId: source.id,
+    tradeFlow: sourceTradeFlow(source.tradeFlow),
+  });
   const qaRemediation = await getMarch2026SourceBatchRemediation(db, {
     limit: 6,
     sourceFileId: source.id,
@@ -466,12 +476,9 @@ export default async function SourceDetailPage({ params }: PageProps) {
               <CardDescription>Enlaces seguros desde la trazabilidad.</CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col gap-3 text-sm">
-              {source.tradeRecordCount > 0 ? (
+              {source.tradeRecordCount > 0 && sourceRecordsHref ? (
                 <Link
-                  href={sourceTradeRecordsHref({
-                    sourceFileId: source.id,
-                    tradeFlow: sourceTradeFlow(source.tradeFlow),
-                  })}
+                  href={sourceRecordsHref}
                   className="inline-flex h-8 w-fit items-center rounded-lg bg-primary px-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
                 >
                   Ver registros de esta fuente

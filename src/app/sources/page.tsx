@@ -167,64 +167,68 @@ export default async function SourcesPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {sources.map((source) => (
-                  <TableRow key={source.id}>
-                    <TableCell className="max-w-[320px] align-top">
-                      <Link
-                        href={`/sources/${source.id}`}
-                        className="block break-words font-medium underline-offset-4 hover:underline"
-                      >
-                        {sourceDisplayFilename(source)}
-                      </Link>
-                      <div className="mt-1 text-xs text-muted-foreground">
-                        {source.sourceDomain}
-                        {source.sourceName ? ` · ${source.sourceName}` : ""}
-                      </div>
-                    </TableCell>
-                    <TableCell className="align-top">
-                      <div>{sourceTypeLabel(source)}</div>
-                      <div className="mt-1 text-xs text-muted-foreground">
-                        Estado {statusLabel(source.processingStatus)}
-                      </div>
-                    </TableCell>
-                    <TableCell className="align-top">
-                      <div>{flowLabel(source.tradeFlow)}</div>
-                      <div className="mt-1 font-mono text-xs text-muted-foreground">
-                        {sourcePeriodLabel(source)}
-                      </div>
-                    </TableCell>
-                    <TableCell className="align-top text-right font-mono text-xs">
-                      {formatNumber(source.rawRowCount)}
-                    </TableCell>
-                    <TableCell className="align-top text-right font-mono text-xs">
-                      {formatNumber(source.tradeRecordCount)}
-                    </TableCell>
-                    <TableCell className="align-top text-sm">
-                      {formatNumber(source.importBatchCount)}
-                    </TableCell>
-                    <TableCell className="align-top">
-                      <div className="flex flex-col gap-1 text-xs">
+                {sources.map((source) => {
+                  const sourceRecordsHref = sourceTradeRecordsHref({
+                    sourceFileId: source.id,
+                    tradeFlow: sourceTradeFlow(source.tradeFlow),
+                  });
+
+                  return (
+                    <TableRow key={source.id}>
+                      <TableCell className="max-w-[320px] align-top">
                         <Link
                           href={`/sources/${source.id}`}
-                          className="font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+                          className="block break-words font-medium underline-offset-4 hover:underline"
                         >
-                          Ver fuente
+                          {sourceDisplayFilename(source)}
                         </Link>
-                        {source.tradeRecordCount > 0 ? (
+                        <div className="mt-1 text-xs text-muted-foreground">
+                          {source.sourceDomain}
+                          {source.sourceName ? ` · ${source.sourceName}` : ""}
+                        </div>
+                      </TableCell>
+                      <TableCell className="align-top">
+                        <div>{sourceTypeLabel(source)}</div>
+                        <div className="mt-1 text-xs text-muted-foreground">
+                          Estado {statusLabel(source.processingStatus)}
+                        </div>
+                      </TableCell>
+                      <TableCell className="align-top">
+                        <div>{flowLabel(source.tradeFlow)}</div>
+                        <div className="mt-1 font-mono text-xs text-muted-foreground">
+                          {sourcePeriodLabel(source)}
+                        </div>
+                      </TableCell>
+                      <TableCell className="align-top text-right font-mono text-xs">
+                        {formatNumber(source.rawRowCount)}
+                      </TableCell>
+                      <TableCell className="align-top text-right font-mono text-xs">
+                        {formatNumber(source.tradeRecordCount)}
+                      </TableCell>
+                      <TableCell className="align-top text-sm">
+                        {formatNumber(source.importBatchCount)}
+                      </TableCell>
+                      <TableCell className="align-top">
+                        <div className="flex flex-col gap-1 text-xs">
                           <Link
-                            href={sourceTradeRecordsHref({
-                              sourceFileId: source.id,
-                              tradeFlow: sourceTradeFlow(source.tradeFlow),
-                            })}
+                            href={`/sources/${source.id}`}
                             className="font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
                           >
-                            Ver registros
+                            Ver fuente
                           </Link>
-                        ) : null}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                          {source.tradeRecordCount > 0 && sourceRecordsHref ? (
+                            <Link
+                              href={sourceRecordsHref}
+                              className="font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+                            >
+                              Ver registros
+                            </Link>
+                          ) : null}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </div>

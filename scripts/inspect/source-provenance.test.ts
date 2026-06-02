@@ -10,30 +10,44 @@ import {
   sourceTradeRecordsHref,
 } from "../../src/sources/source-provenance";
 
+const sourceFileId = "00000000-0000-4000-8000-0000000000aa";
+const importBatchId = "00000000-0000-4000-8000-0000000000bb";
+
 test("builds source-filtered trade record links without storage paths", () => {
   const href = sourceTradeRecordsHref({
-    sourceFileId: "source-1",
-    importBatchId: "batch-1",
+    sourceFileId,
+    importBatchId,
   });
 
   assert.equal(
     href,
-    "/trade-records?sourceFileId=source-1&limit=25&importBatchId=batch-1",
+    `/trade-records?sourceFileId=${sourceFileId}&limit=25&importBatchId=${importBatchId}`,
   );
-  assert.equal(href.includes("storage"), false);
-  assert.equal(href.includes("data/sources"), false);
+  assert.equal(href?.includes("storage"), false);
+  assert.equal(href?.includes("data/sources"), false);
 });
 
 test("keeps source-filtered trade links flow-aware when the source flow is known", () => {
   const href = sourceTradeRecordsHref({
-    sourceFileId: "source-1",
-    importBatchId: "batch-1",
+    sourceFileId,
+    importBatchId,
     tradeFlow: "export",
   });
 
   assert.equal(
     href,
-    "/trade-records?sourceFileId=source-1&limit=25&tradeFlow=export&importBatchId=batch-1",
+    `/trade-records?sourceFileId=${sourceFileId}&limit=25&tradeFlow=export&importBatchId=${importBatchId}`,
+  );
+});
+
+test("does not build source-filtered trade links with invalid ids", () => {
+  assert.equal(sourceTradeRecordsHref({ sourceFileId: "source-1" }), null);
+  assert.equal(
+    sourceTradeRecordsHref({
+      sourceFileId,
+      importBatchId: "batch-1",
+    }),
+    null,
   );
 });
 

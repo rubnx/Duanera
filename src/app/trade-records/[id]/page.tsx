@@ -311,18 +311,22 @@ function ProvenancePanel({ record }: { record: DetailRecord }) {
             >
               Ver lote
             </Link>
-            <Link
-              href={sourceRecordsHref}
-              className="font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-            >
-              Registros de la fuente
-            </Link>
-            <Link
-              href={batchRecordsHref}
-              className="font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-            >
-              Registros del lote
-            </Link>
+            {sourceRecordsHref ? (
+              <Link
+                href={sourceRecordsHref}
+                className="font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+              >
+                Registros de la fuente
+              </Link>
+            ) : null}
+            {batchRecordsHref ? (
+              <Link
+                href={batchRecordsHref}
+                className="font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+              >
+                Registros del lote
+              </Link>
+            ) : null}
           </div>
         </div>
 

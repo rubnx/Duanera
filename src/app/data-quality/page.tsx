@@ -411,12 +411,14 @@ function SourceBatchRemediationTable({
                         >
                           Ver fuente/lote
                         </Link>
-                        <Link
-                          href={row.tradeRecordsHref}
-                          className="font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-                        >
-                          Ver registros filtrados
-                        </Link>
+                        {row.tradeRecordsHref ? (
+                          <Link
+                            href={row.tradeRecordsHref}
+                            className="font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+                          >
+                            Ver registros filtrados
+                          </Link>
+                        ) : null}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -515,12 +517,14 @@ function IssueSampleTable({ samples }: { samples: DataQualityIssueSample[] }) {
                 <div className="mt-1 font-mono text-muted-foreground">
                   Lote {sample.importBatchId.slice(0, 8)}
                 </div>
-                <Link
-                  href={sample.sourceTradeRecordsHref}
-                  className="mt-2 inline-flex font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-                >
-                  Ver registros de la fuente
-                </Link>
+                {sample.sourceTradeRecordsHref ? (
+                  <Link
+                    href={sample.sourceTradeRecordsHref}
+                    className="mt-2 inline-flex font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+                  >
+                    Ver registros de la fuente
+                  </Link>
+                ) : null}
               </TableCell>
             </TableRow>
           ))}
@@ -768,12 +772,14 @@ export default async function DataQualityPage() {
                         >
                           Ver fuente/lote
                         </Link>
-                        <Link
-                          href={row.tradeRecordsHref}
-                          className="font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-                        >
-                          Ver registros
-                        </Link>
+                        {row.tradeRecordsHref ? (
+                          <Link
+                            href={row.tradeRecordsHref}
+                            className="font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+                          >
+                            Ver registros
+                          </Link>
+                        ) : null}
                       </div>
                     </TableCell>
                   </TableRow>

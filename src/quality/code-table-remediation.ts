@@ -101,7 +101,7 @@ export type CodeTableSourceContext = {
   importBatchId: string;
   sourceLabel: string;
   sourceHref: string;
-  tradeRecordsHref: string;
+  tradeRecordsHref: string | null;
   records: number;
 };
 

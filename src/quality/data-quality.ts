@@ -64,7 +64,7 @@ export type DataQualitySourceCoverage = {
   failedRows: number;
   tradeRecords: number;
   sourceHref: string;
-  tradeRecordsHref: string;
+  tradeRecordsHref: string | null;
 };
 
 export type DataQualityFieldCoverage = {
@@ -141,7 +141,7 @@ export type DataQualityIssueSample = {
   evidence: string;
   recordHref: string;
   sourceHref: string;
-  sourceTradeRecordsHref: string;
+  sourceTradeRecordsHref: string | null;
 };
 
 export type DataQualityIssueGroup = {
@@ -179,7 +179,7 @@ export type DataQualitySourceBatchRemediation = {
   status: DataQualityStatus;
   nextStep: string;
   sourceHref: string;
-  tradeRecordsHref: string;
+  tradeRecordsHref: string | null;
 };
 
 export type DataQualityReport = {

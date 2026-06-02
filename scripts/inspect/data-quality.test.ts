@@ -189,9 +189,20 @@ test("classifies field-mapping coverage conservatively", () => {
 });
 
 test("builds field-mapping links through safe route contracts", () => {
+  const sourceFileId = "00000000-0000-4000-8000-0000000000aa";
+  const importBatchId = "00000000-0000-4000-8000-0000000000bb";
+
   assert.equal(
     fieldMappingSearchHref("export"),
     "/trade-records?tradeFlow=export&periodYear=2026&periodMonth=3&limit=25",
+  );
+  assert.equal(
+    fieldMappingSourceTradeHref({
+      sourceFileId,
+      importBatchId,
+      tradeFlow: "import",
+    }),
+    `/trade-records?sourceFileId=${sourceFileId}&limit=25&tradeFlow=import&importBatchId=${importBatchId}`,
   );
   assert.equal(
     fieldMappingSourceTradeHref({
@@ -199,7 +210,7 @@ test("builds field-mapping links through safe route contracts", () => {
       importBatchId: "batch-2",
       tradeFlow: "import",
     }),
-    "/trade-records?sourceFileId=source-1&limit=25&tradeFlow=import&importBatchId=batch-2",
+    null,
   );
 });
 

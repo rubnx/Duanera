@@ -290,8 +290,12 @@ export function sourceTradeRecordsHref({
   importBatchId?: string;
   tradeFlow?: "import" | "export";
 }) {
+  if (!isUuid(sourceFileId) || (importBatchId && !isUuid(importBatchId))) {
+    return null;
+  }
+
   const query = new URLSearchParams({
-    sourceFileId,
+    sourceFileId: sourceFileId.toLowerCase(),
     limit: "25",
   });
 
@@ -300,7 +304,7 @@ export function sourceTradeRecordsHref({
   }
 
   if (importBatchId) {
-    query.set("importBatchId", importBatchId);
+    query.set("importBatchId", importBatchId.toLowerCase());
   }
 
   return `/trade-records?${query.toString()}`;
