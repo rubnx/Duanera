@@ -10,21 +10,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { db } from "@/db/client";
 import { isInternalToolsEnabled } from "@/research/internal-research-access";
 import {
   getMarch2026DataQualityReport,
   type DataQualityFinding,
   type DataQualityStatus,
-  type DataQualitySourceCoverage,
 } from "@/quality/data-quality";
 import { formatIntegerEsCl } from "@/lib/format";
 import type { TradeFlow } from "@/trade/trade-records";
@@ -32,6 +23,7 @@ import {
   FieldCoverageTable,
   LabelCoverageTable,
   PayloadCoverageTable,
+  SourceCoverageTable,
   SourceBatchRemediationTable,
 } from "./coverage-tables";
 import { IssueGroupsSection } from "./issue-groups-section";
@@ -73,18 +65,6 @@ function Metric({
       {help ? <div className="mt-1 text-xs leading-5 text-muted-foreground">{help}</div> : null}
     </div>
   );
-}
-
-function sourceRowStatus(row: DataQualitySourceCoverage): DataQualityStatus {
-  if (row.failedRows > 0 || row.rawRows !== row.tradeRecords) {
-    return "warning";
-  }
-
-  if (row.batchStatus !== "completed") {
-    return "review";
-  }
-
-  return "ok";
 }
 
 function findingLead(finding: DataQualityFinding) {
@@ -226,80 +206,7 @@ export default async function DataQualityPage() {
         ))}
       </section>
 
-      <Card>
-        <CardHeader className="border-b">
-          <CardTitle>Fuentes y lotes</CardTitle>
-          <CardDescription>
-            Cada fila enlaza a la fuente/lote y a los registros filtrados por esos IDs.
-            Los nombres mostrados son nombres de archivo saneados, no rutas locales.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <Table className="min-w-[1040px]">
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Fuente</TableHead>
-                  <TableHead>Flujo</TableHead>
-                  <TableHead className="text-right">Crudas</TableHead>
-                  <TableHead className="text-right">Parseadas</TableHead>
-                  <TableHead className="text-right">Registros</TableHead>
-                  <TableHead>Estado</TableHead>
-                  <TableHead>Acciones</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {report.sourceCoverage.map((row) => (
-                  <TableRow key={`${row.sourceFileId}:${row.importBatchId}:${row.tradeFlow}`}>
-                    <TableCell className="max-w-[340px] align-top">
-                      <Link
-                        href={row.sourceHref}
-                        className="block break-words font-medium underline-offset-4 hover:underline"
-                      >
-                        {row.filename}
-                      </Link>
-                      <div className="mt-1 font-mono text-xs text-muted-foreground">
-                        Lote {row.importBatchId.slice(0, 8)}
-                      </div>
-                    </TableCell>
-                    <TableCell className="align-top">{flowLabel(row.tradeFlow)}</TableCell>
-                    <TableCell className="align-top text-right font-mono text-xs">
-                      {formatNumber(row.rawRows)}
-                    </TableCell>
-                    <TableCell className="align-top text-right font-mono text-xs">
-                      {formatNumber(row.parsedRows)}
-                    </TableCell>
-                    <TableCell className="align-top text-right font-mono text-xs">
-                      {formatNumber(row.tradeRecords)}
-                    </TableCell>
-                    <TableCell className="align-top">
-                      <DataQualityStatusBadge status={sourceRowStatus(row)} />
-                    </TableCell>
-                    <TableCell className="align-top">
-                      <div className="flex flex-col gap-1 text-xs">
-                        <Link
-                          href={row.sourceHref}
-                          className="font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-                        >
-                          Ver fuente/lote
-                        </Link>
-                        {row.tradeRecordsHref ? (
-                          <Link
-                            href={row.tradeRecordsHref}
-                            className="font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-                          >
-                            Ver registros
-                          </Link>
-                        ) : null}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
+      <SourceCoverageTable rows={report.sourceCoverage} />
 
       <section className="grid gap-4 xl:grid-cols-2">
         <FieldCoverageTable fields={importFields} title="Cobertura importaciones" />

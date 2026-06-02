@@ -21,6 +21,7 @@ import {
   type DataQualityLabelCoverage,
   type DataQualityPayloadCoverage,
   type DataQualitySourceBatchRemediation,
+  type DataQualitySourceCoverage,
 } from "@/quality/data-quality";
 import { formatIntegerEsCl, formatPercentEsCl } from "@/lib/format";
 import type { TradeFlow } from "@/trade/trade-records";
@@ -186,6 +187,97 @@ export function PayloadCoverageTable({ rows }: { rows: DataQualityPayloadCoverag
                   <TableCell>{row.reconstructable ? "Sí" : "No"}</TableCell>
                   <TableCell className="text-right font-mono text-xs">
                     {formatNumber(row.rows)}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function sourceRowStatus(row: DataQualitySourceCoverage) {
+  if (row.failedRows > 0 || row.rawRows !== row.tradeRecords) {
+    return "warning";
+  }
+
+  if (row.batchStatus !== "completed") {
+    return "review";
+  }
+
+  return "ok";
+}
+
+export function SourceCoverageTable({ rows }: { rows: DataQualitySourceCoverage[] }) {
+  return (
+    <Card>
+      <CardHeader className="border-b">
+        <CardTitle>Fuentes y lotes</CardTitle>
+        <CardDescription>
+          Cada fila enlaza a la fuente/lote y a los registros filtrados por esos IDs.
+          Los nombres mostrados son nombres de archivo saneados, no rutas locales.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="p-0">
+        <div className="overflow-x-auto">
+          <Table className="min-w-[1040px]">
+            <TableHeader>
+              <TableRow>
+                <TableHead>Fuente</TableHead>
+                <TableHead>Flujo</TableHead>
+                <TableHead className="text-right">Crudas</TableHead>
+                <TableHead className="text-right">Parseadas</TableHead>
+                <TableHead className="text-right">Registros</TableHead>
+                <TableHead>Estado</TableHead>
+                <TableHead>Acciones</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rows.map((row) => (
+                <TableRow key={`${row.sourceFileId}:${row.importBatchId}:${row.tradeFlow}`}>
+                  <TableCell className="max-w-[340px] align-top">
+                    <Link
+                      href={row.sourceHref}
+                      className="block break-words font-medium underline-offset-4 hover:underline"
+                    >
+                      {row.filename}
+                    </Link>
+                    <div className="mt-1 font-mono text-xs text-muted-foreground">
+                      Lote {row.importBatchId.slice(0, 8)}
+                    </div>
+                  </TableCell>
+                  <TableCell className="align-top">{flowLabel(row.tradeFlow)}</TableCell>
+                  <TableCell className="align-top text-right font-mono text-xs">
+                    {formatNumber(row.rawRows)}
+                  </TableCell>
+                  <TableCell className="align-top text-right font-mono text-xs">
+                    {formatNumber(row.parsedRows)}
+                  </TableCell>
+                  <TableCell className="align-top text-right font-mono text-xs">
+                    {formatNumber(row.tradeRecords)}
+                  </TableCell>
+                  <TableCell className="align-top">
+                    <DataQualityStatusBadge status={sourceRowStatus(row)} />
+                  </TableCell>
+                  <TableCell className="align-top">
+                    <div className="flex flex-col gap-1 text-xs">
+                      <Link
+                        href={row.sourceHref}
+                        className="font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+                      >
+                        Ver fuente/lote
+                      </Link>
+                      {row.tradeRecordsHref ? (
+                        <Link
+                          href={row.tradeRecordsHref}
+                          className="font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+                        >
+                          Ver registros
+                        </Link>
+                      ) : null}
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
