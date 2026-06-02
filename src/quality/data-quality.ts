@@ -55,6 +55,12 @@ import {
   type DataQualityIssueKind,
   type DataQualityIssueSample,
 } from "@/quality/data-quality-issues";
+import {
+  flowSummariesFromRows,
+  sourceCoverageRows,
+  type DataQualityFlowSummary,
+  type DataQualitySourceCoverage,
+} from "@/quality/source-coverage";
 import { countValueToNumber, type CountValue } from "@/db/count-values";
 
 const reportPeriod = march2026ReportPeriod;
@@ -83,6 +89,10 @@ export {
   type DataQualityIssueKind,
   type DataQualityIssueSample,
 } from "@/quality/data-quality-issues";
+export {
+  type DataQualityFlowSummary,
+  type DataQualitySourceCoverage,
+} from "@/quality/source-coverage";
 
 const codeTableKeys = {
   countries: "chile_aduana:paises",
@@ -90,31 +100,6 @@ const codeTableKeys = {
   ports: "chile_aduana:puertos",
   transportModes: "chile_aduana:vias_de_transporte",
 } satisfies Record<DataQualityLabelDimensionKey, string>;
-
-export type DataQualityFlowSummary = {
-  tradeFlow: TradeFlow;
-  rawRows: number;
-  parsedRows: number;
-  failedRows: number;
-  warningRows: number;
-  tradeRecords: number;
-  rawToTradeDelta: number;
-  status: DataQualityStatus;
-};
-
-export type DataQualitySourceCoverage = {
-  sourceFileId: string;
-  importBatchId: string;
-  tradeFlow: TradeFlow;
-  filename: string;
-  batchStatus: string;
-  rawRows: number;
-  parsedRows: number;
-  failedRows: number;
-  tradeRecords: number;
-  sourceHref: string;
-  tradeRecordsHref: string | null;
-};
 
 export type DataQualityPayloadCoverage = {
   tradeFlow: TradeFlow | "unknown";
@@ -165,15 +150,6 @@ export type DataQualityReport = {
   issueGroups: DataQualityIssueGroup[];
   sourceBatchRemediation: DataQualitySourceBatchRemediation[];
   findings: DataQualityFinding[];
-};
-
-type FlowCountRow = {
-  tradeFlow: string | null;
-  rawRows?: CountValue;
-  parsedRows?: CountValue;
-  failedRows?: CountValue;
-  warningRows?: CountValue;
-  tradeRecords?: CountValue;
 };
 
 type CodeValueSetMap = Record<DataQualityLabelDimensionKey, Set<string>>;
@@ -252,18 +228,6 @@ function countAnyPresent(expressions: SQL<unknown>[]) {
   return sql<number>`count(*) filter (where ${joined})`;
 }
 
-function statusForFlow(rawRows: number, failedRows: number, rawToTradeDelta: number) {
-  if (failedRows > 0 || rawToTradeDelta !== 0) {
-    return "warning" satisfies DataQualityStatus;
-  }
-
-  if (rawRows === 0) {
-    return "review" satisfies DataQualityStatus;
-  }
-
-  return "ok" satisfies DataQualityStatus;
-}
-
 async function loadFlowSummaries(db: DbClient): Promise<DataQualityFlowSummary[]> {
   const [rawRows, tradeRows] = await Promise.all([
     db
@@ -287,28 +251,7 @@ async function loadFlowSummaries(db: DbClient): Promise<DataQualityFlowSummary[]
       .groupBy(tradeRecords.tradeFlow),
   ]);
 
-  const rawByFlow = new Map(rawRows.map((row) => [row.tradeFlow, row]));
-  const tradeByFlow = new Map(tradeRows.map((row) => [row.tradeFlow, row]));
-
-  return (["import", "export"] satisfies TradeFlow[]).map((tradeFlow) => {
-    const raw = rawByFlow.get(tradeFlow) as FlowCountRow | undefined;
-    const trade = tradeByFlow.get(tradeFlow) as FlowCountRow | undefined;
-    const rawCount = toNumber(raw?.rawRows);
-    const failedRows = toNumber(raw?.failedRows);
-    const tradeRecordCount = toNumber(trade?.tradeRecords);
-    const rawToTradeDelta = rawCount - tradeRecordCount;
-
-    return {
-      tradeFlow,
-      rawRows: rawCount,
-      parsedRows: toNumber(raw?.parsedRows),
-      failedRows,
-      warningRows: toNumber(raw?.warningRows),
-      tradeRecords: tradeRecordCount,
-      rawToTradeDelta,
-      status: statusForFlow(rawCount, failedRows, rawToTradeDelta),
-    };
-  });
+  return flowSummariesFromRows({ rawRows, tradeRows });
 }
 
 async function loadSourceCoverage(db: DbClient): Promise<DataQualitySourceCoverage[]> {
@@ -354,42 +297,7 @@ async function loadSourceCoverage(db: DbClient): Promise<DataQualitySourceCovera
       ),
   ]);
 
-  const tradeCountByBatch = new Map(
-    tradeRows.map((row) => [
-      `${row.sourceFileId}:${row.importBatchId}:${row.tradeFlow}`,
-      toNumber(row.tradeRecords),
-    ]),
-  );
-
-  return rawRows
-    .filter((row) => row.tradeFlow === "import" || row.tradeFlow === "export")
-    .map((row) => {
-      const tradeFlow = row.tradeFlow as TradeFlow;
-      const importBatchId = row.importBatchId;
-      const sourceFileId = row.sourceFileId;
-
-      return {
-        sourceFileId,
-        importBatchId,
-        tradeFlow,
-        filename: sourceDisplayFilename({
-          originalFilename: row.originalFilename,
-          normalizedRawFilename: row.normalizedRawFilename,
-        }),
-        batchStatus: row.batchStatus,
-        rawRows: toNumber(row.rawRows),
-        parsedRows: toNumber(row.parsedRows),
-        failedRows: toNumber(row.failedRows),
-        tradeRecords:
-          tradeCountByBatch.get(`${sourceFileId}:${importBatchId}:${tradeFlow}`) ?? 0,
-        sourceHref: `/sources/${sourceFileId}#batch-${importBatchId}`,
-        tradeRecordsHref: sourceTradeRecordsHref({
-          sourceFileId,
-          importBatchId,
-          tradeFlow,
-        }),
-      };
-    });
+  return sourceCoverageRows({ rawRows, tradeRows });
 }
 
 async function loadImportFieldCoverage(db: DbClient): Promise<DataQualityFieldCoverage[]> {
