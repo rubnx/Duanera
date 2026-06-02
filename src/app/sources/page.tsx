@@ -21,7 +21,11 @@ import { formatIntegerEsCl } from "@/lib/format";
 import {
   listSourceProvenance,
   sourceDisplayFilename,
+  sourceFileRoleLabel,
   sourcePeriodLabel,
+  sourceProcessingStatusLabel,
+  sourceTradeFlow,
+  sourceTradeFlowLabel,
   sourceTradeRecordsHref,
   type SourceProvenanceSummary,
 } from "@/sources/source-provenance";
@@ -29,44 +33,6 @@ import {
 export const dynamic = "force-dynamic";
 
 const formatNumber = formatIntegerEsCl;
-
-function flowLabel(value: string | null) {
-  if (value === "import") {
-    return "Importaciones";
-  }
-
-  if (value === "export") {
-    return "Exportaciones";
-  }
-
-  return "Referencia";
-}
-
-function sourceTradeFlow(value: string | null) {
-  return value === "import" || value === "export" ? value : undefined;
-}
-
-function sourceTypeLabel(source: SourceProvenanceSummary) {
-  const labels: Record<string, string> = {
-    compressed_source_file: "Archivo oficial comprimido",
-    direct_source_file: "Archivo directo",
-    reference_file: "Referencia oficial",
-  };
-
-  return labels[source.fileRole] ?? source.fileRole;
-}
-
-function statusLabel(value: string) {
-  const labels: Record<string, string> = {
-    completed: "Completado",
-    failed: "Fallido",
-    metadata_seeded: "Metadatos cargados",
-    partial: "Parcial",
-    pending: "Pendiente",
-  };
-
-  return labels[value] ?? value;
-}
 
 function countSummary(sources: SourceProvenanceSummary[]) {
   return sources.reduce(
@@ -185,13 +151,13 @@ export default async function SourcesPage() {
                         </div>
                       </TableCell>
                       <TableCell className="align-top">
-                        <div>{sourceTypeLabel(source)}</div>
+                        <div>{sourceFileRoleLabel(source.fileRole)}</div>
                         <div className="mt-1 text-xs text-muted-foreground">
-                          Estado {statusLabel(source.processingStatus)}
+                          Estado {sourceProcessingStatusLabel(source.processingStatus)}
                         </div>
                       </TableCell>
                       <TableCell className="align-top">
-                        <div>{flowLabel(source.tradeFlow)}</div>
+                        <div>{sourceTradeFlowLabel(source.tradeFlow)}</div>
                         <div className="mt-1 font-mono text-xs text-muted-foreground">
                           {sourcePeriodLabel(source)}
                         </div>

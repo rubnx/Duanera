@@ -29,8 +29,12 @@ import {
   getSourceProvenanceById,
   safeSourcePageUrl,
   sourceDisplayFilename,
+  sourceFileRoleLabel,
   sourceFilenameLabel,
   sourcePeriodLabel,
+  sourceProcessingStatusLabel,
+  sourceTradeFlow,
+  sourceTradeFlowLabel,
   sourceTradeRecordsHref,
   type ImportBatchProvenance,
   type SourceFlowCoverage,
@@ -63,44 +67,6 @@ function formatDateTime(value: Date | null) {
   }
 
   return value.toISOString();
-}
-
-function flowLabel(value: string | null) {
-  if (value === "import") {
-    return "Importaciones";
-  }
-
-  if (value === "export") {
-    return "Exportaciones";
-  }
-
-  return "Referencia";
-}
-
-function sourceTradeFlow(value: string | null) {
-  return value === "import" || value === "export" ? value : undefined;
-}
-
-function fileRoleLabel(value: string) {
-  const labels: Record<string, string> = {
-    compressed_source_file: "Archivo oficial comprimido",
-    direct_source_file: "Archivo directo",
-    reference_file: "Referencia oficial",
-  };
-
-  return labels[value] ?? value;
-}
-
-function statusLabel(value: string) {
-  const labels: Record<string, string> = {
-    completed: "Completado",
-    failed: "Fallido",
-    metadata_seeded: "Metadatos cargados",
-    partial: "Parcial",
-    pending: "Pendiente",
-  };
-
-  return labels[value] ?? value;
 }
 
 function periodLabelForCoverage(coverage: SourceFlowCoverage) {
@@ -205,7 +171,7 @@ function SourceQaContext({
                   Lote {row.importBatchId.slice(0, 8)}
                 </div>
                 <div className="mt-1 text-xs text-muted-foreground">
-                  {flowLabel(row.tradeFlow)} · {row.parserName} {row.parserVersion}
+                  {sourceTradeFlowLabel(row.tradeFlow)} · {row.parserName} {row.parserVersion}
                 </div>
                 <p className="mt-2 text-xs leading-5 text-muted-foreground">
                   {issueCountSummary(row)}
@@ -288,7 +254,7 @@ function BatchRows({
                   </TableCell>
                   <TableCell className="align-top">
                     <Badge variant={batch.status === "completed" ? "secondary" : "outline"}>
-                      {statusLabel(batch.status)}
+                      {sourceProcessingStatusLabel(batch.status)}
                     </Badge>
                     {batch.warningSummary || batch.errorSummary ? (
                       <div className="mt-2 max-w-[240px] text-xs text-muted-foreground">
@@ -367,9 +333,9 @@ export default async function SourceDetailPage({ params }: PageProps) {
         </Link>
         <div className="flex flex-col gap-2">
           <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="secondary">{flowLabel(source.tradeFlow)}</Badge>
+            <Badge variant="secondary">{sourceTradeFlowLabel(source.tradeFlow)}</Badge>
             <Badge variant="outline">{sourcePeriodLabel(source)}</Badge>
-            <Badge variant="outline">{statusLabel(source.processingStatus)}</Badge>
+            <Badge variant="outline">{sourceProcessingStatusLabel(source.processingStatus)}</Badge>
           </div>
           <h1 className="max-w-5xl break-words text-2xl font-semibold tracking-tight">
             {sourceDisplayFilename(source)}
@@ -412,7 +378,7 @@ export default async function SourceDetailPage({ params }: PageProps) {
                 label="Nombre normalizado working"
                 value={sourceFilenameLabel(source.normalizedWorkingFilename)}
               />
-              <Field label="Tipo fuente" value={fileRoleLabel(source.fileRole)} />
+              <Field label="Tipo fuente" value={sourceFileRoleLabel(source.fileRole)} />
               <Field label="Dominio fuente" value={source.sourceDomain} />
               <Field label="Sistema fuente" value={source.sourceSystem} />
               <Field label="Categoría" value={source.sourceCategory} />
@@ -422,7 +388,7 @@ export default async function SourceDetailPage({ params }: PageProps) {
               <Field label="Tamaño" value={formatBytes(source.fileSizeBytes)} mono />
               <Field label="SHA-256" value={source.fileHashSha256} mono />
               <Field label="Período" value={sourcePeriodLabel(source)} />
-              <Field label="Flujo" value={flowLabel(source.tradeFlow)} />
+              <Field label="Flujo" value={sourceTradeFlowLabel(source.tradeFlow)} />
               <Field label="Notas licencia" value={source.licenseNotes} />
               <Field
                 label="Página pública fuente"
@@ -522,7 +488,7 @@ export default async function SourceDetailPage({ params }: PageProps) {
                     <TableRow
                       key={`${coverage.tradeFlow}:${coverage.periodYear}:${coverage.periodMonth}`}
                     >
-                      <TableCell>{flowLabel(coverage.tradeFlow)}</TableCell>
+                      <TableCell>{sourceTradeFlowLabel(coverage.tradeFlow)}</TableCell>
                       <TableCell className="font-mono text-xs">
                         {periodLabelForCoverage(coverage)}
                       </TableCell>

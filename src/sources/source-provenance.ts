@@ -111,6 +111,44 @@ export function sourceFilenameLabel(filename: string | null | undefined) {
   return filename.split(/[\\/]/).filter(Boolean).at(-1) ?? filename;
 }
 
+export function sourceTradeFlow(value: string | null | undefined) {
+  return value === "import" || value === "export" ? value : undefined;
+}
+
+export function sourceTradeFlowLabel(value: string | null | undefined) {
+  if (value === "import") {
+    return "Importaciones";
+  }
+
+  if (value === "export") {
+    return "Exportaciones";
+  }
+
+  return "Referencia";
+}
+
+export function sourceFileRoleLabel(value: string) {
+  const labels: Record<string, string> = {
+    compressed_source_file: "Archivo oficial comprimido",
+    direct_source_file: "Archivo directo",
+    reference_file: "Referencia oficial",
+  };
+
+  return labels[value] ?? value;
+}
+
+export function sourceProcessingStatusLabel(value: string) {
+  const labels: Record<string, string> = {
+    completed: "Completado",
+    failed: "Fallido",
+    metadata_seeded: "Metadatos cargados",
+    partial: "Parcial",
+    pending: "Pendiente",
+  };
+
+  return labels[value] ?? value;
+}
+
 export function isSourceProvenanceId(value: string) {
   return isUuid(value);
 }

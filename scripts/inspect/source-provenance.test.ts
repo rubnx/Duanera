@@ -5,8 +5,12 @@ import {
   isSourceProvenanceId,
   safeSourcePageUrl,
   sourceDisplayFilename,
+  sourceFileRoleLabel,
   sourceFilenameLabel,
   sourcePeriodLabel,
+  sourceProcessingStatusLabel,
+  sourceTradeFlow,
+  sourceTradeFlowLabel,
   sourceTradeRecordsHref,
 } from "../../src/sources/source-provenance";
 
@@ -138,4 +142,17 @@ test("formats source filename and period labels conservatively", () => {
     }),
     "No informado",
   );
+});
+
+test("labels source roles, statuses, and trade flows consistently", () => {
+  assert.equal(sourceTradeFlow("import"), "import");
+  assert.equal(sourceTradeFlow("export"), "export");
+  assert.equal(sourceTradeFlow("reference"), undefined);
+  assert.equal(sourceTradeFlowLabel("import"), "Importaciones");
+  assert.equal(sourceTradeFlowLabel("export"), "Exportaciones");
+  assert.equal(sourceTradeFlowLabel(null), "Referencia");
+  assert.equal(sourceFileRoleLabel("compressed_source_file"), "Archivo oficial comprimido");
+  assert.equal(sourceFileRoleLabel("custom_role"), "custom_role");
+  assert.equal(sourceProcessingStatusLabel("metadata_seeded"), "Metadatos cargados");
+  assert.equal(sourceProcessingStatusLabel("custom_status"), "custom_status");
 });
