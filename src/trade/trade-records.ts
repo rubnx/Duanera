@@ -31,6 +31,18 @@ import {
   type TradeRecordCursor,
 } from "./trade-record-pagination";
 import { buildTradeRecordRelatedGroupDefinitions } from "./trade-record-related-groups";
+import {
+  parseTradeRecordPeriod,
+  tradeRecordCountryExpression,
+  tradeRecordDecimalSumExpression,
+  tradeRecordGrossWeightExpression,
+  tradeRecordHsCodePrefixExpression,
+  tradeRecordItemValueExpression,
+  tradeRecordParticipantCorrelativeExpression,
+  tradeRecordPeriodTupleExpression,
+  tradeRecordRelevantPortExpression,
+  tradeRecordRelevantPortLabelExpression,
+} from "./trade-record-expressions";
 
 export {
   decodeTradeRecordCursor,
@@ -223,107 +235,6 @@ export type TradeRecordRelatedGroup = {
 };
 export type TradeRecordRelatedGroupDefinition = Omit<TradeRecordRelatedGroup, "records">;
 
-function periodNumber(year: number, month: number): number {
-  return year * 100 + month;
-}
-
-type ParsedPeriod = {
-  year: number;
-  month: number;
-  value: number;
-};
-
-function parsePeriod(value: string): ParsedPeriod {
-  const match = /^(\d{4})-(\d{2})$/.exec(value);
-  if (!match) {
-    throw new Error(`Period must use YYYY-MM format, got ${value}.`);
-  }
-
-  const year = Number.parseInt(match[1], 10);
-  const month = Number.parseInt(match[2], 10);
-  if (month < 1 || month > 12) {
-    throw new Error(`Period month must be between 01 and 12, got ${value}.`);
-  }
-
-  return {
-    year,
-    month,
-    value: periodNumber(year, month),
-  };
-}
-
-function periodTupleExpression(): SQL<number> {
-  return sql<number>`(${tradeRecords.periodYear}, ${tradeRecords.periodMonth})`;
-}
-
-function itemValueExpression(filters: TradeRecordFilters): SQL<string> {
-  if (filters.tradeFlow === "import") {
-    return sql<string>`${tradeRecords.itemCifValue}`;
-  }
-
-  if (filters.tradeFlow === "export") {
-    return sql<string>`${tradeRecords.itemFobValue}`;
-  }
-
-  return sql<string>`case when ${tradeRecords.tradeFlow} = 'import' then ${tradeRecords.itemCifValue} else ${tradeRecords.itemFobValue} end`;
-}
-
-function grossWeightExpression(): SQL<string> {
-  return sql<string>`coalesce(${tradeRecords.grossWeightItem}, ${tradeRecords.grossWeightTotal})`;
-}
-
-function originOrDestinationCountryExpression(filters: TradeRecordFilters): SQL<string> {
-  if (filters.tradeFlow === "import") {
-    return sql<string>`${tradeRecords.originCountryCode}`;
-  }
-
-  if (filters.tradeFlow === "export") {
-    return sql<string>`${tradeRecords.destinationCountryCode}`;
-  }
-
-  return sql<string>`case when ${tradeRecords.tradeFlow} = 'import' then ${tradeRecords.originCountryCode} else ${tradeRecords.destinationCountryCode} end`;
-}
-
-function relevantPortExpression(filters: TradeRecordFilters): SQL<string> {
-  if (filters.tradeFlow === "import") {
-    return sql<string>`${tradeRecords.disembarkPortCode}`;
-  }
-
-  if (filters.tradeFlow === "export") {
-    return sql<string>`${tradeRecords.embarkPortCode}`;
-  }
-
-  return sql<string>`case when ${tradeRecords.tradeFlow} = 'import' then ${tradeRecords.disembarkPortCode} else ${tradeRecords.embarkPortCode} end`;
-}
-
-function relevantPortLabelExpression(filters: TradeRecordFilters): SQL<string> {
-  if (filters.tradeFlow === "import") {
-    return sql<string>`${tradeRecords.disembarkPortLabelRaw}`;
-  }
-
-  if (filters.tradeFlow === "export") {
-    return sql<string>`${tradeRecords.embarkPortLabelRaw}`;
-  }
-
-  return sql<string>`case when ${tradeRecords.tradeFlow} = 'import' then ${tradeRecords.disembarkPortLabelRaw} else ${tradeRecords.embarkPortLabelRaw} end`;
-}
-
-function participantCorrelativeExpression(filters: TradeRecordFilters): SQL<string> {
-  if (filters.tradeFlow === "import") {
-    return sql<string>`${tradeRecords.importerCorrelativeId}`;
-  }
-
-  if (filters.tradeFlow === "export") {
-    return sql<string>`coalesce(${tradeRecords.exporterPrimaryCorrelativeId}, ${tradeRecords.exporterSecondaryCorrelativeId})`;
-  }
-
-  return sql<string>`case when ${tradeRecords.tradeFlow} = 'import' then ${tradeRecords.importerCorrelativeId} else coalesce(${tradeRecords.exporterPrimaryCorrelativeId}, ${tradeRecords.exporterSecondaryCorrelativeId}) end`;
-}
-
-function hsCodePrefixExpression(): SQL<string> {
-  return sql<string>`substring(${tradeRecords.hsCodeNormalized} from 1 for 6)`;
-}
-
 function gteDecimal(expression: SQL<string>, value: string): SQL {
   return sql`${expression} >= ${value}`;
 }
@@ -347,8 +258,12 @@ function buildWhere(filters: TradeRecordFilters): SQL | undefined {
     conditions.push(eq(tradeRecords.periodMonth, filters.periodMonth));
   }
 
-  const periodFrom = filters.periodFrom ? parsePeriod(filters.periodFrom) : undefined;
-  const periodTo = filters.periodTo ? parsePeriod(filters.periodTo) : undefined;
+  const periodFrom = filters.periodFrom
+    ? parseTradeRecordPeriod(filters.periodFrom)
+    : undefined;
+  const periodTo = filters.periodTo
+    ? parseTradeRecordPeriod(filters.periodTo)
+    : undefined;
 
   if (filters.periodFrom) {
     if (periodFrom && periodTo && periodFrom.value === periodTo.value) {
@@ -356,7 +271,7 @@ function buildWhere(filters: TradeRecordFilters): SQL | undefined {
       conditions.push(eq(tradeRecords.periodMonth, periodFrom.month));
     } else if (periodFrom) {
       conditions.push(
-        sql`${periodTupleExpression()} >= (${periodFrom.year}, ${periodFrom.month})`,
+        sql`${tradeRecordPeriodTupleExpression()} >= (${periodFrom.year}, ${periodFrom.month})`,
       );
     }
   }
@@ -364,7 +279,7 @@ function buildWhere(filters: TradeRecordFilters): SQL | undefined {
   if (filters.periodTo && (!periodFrom || !periodTo || periodFrom.value !== periodTo.value)) {
     if (periodTo) {
       conditions.push(
-        sql`${periodTupleExpression()} <= (${periodTo.year}, ${periodTo.month})`,
+        sql`${tradeRecordPeriodTupleExpression()} <= (${periodTo.year}, ${periodTo.month})`,
       );
     }
   }
@@ -421,7 +336,7 @@ function buildWhere(filters: TradeRecordFilters): SQL | undefined {
     }
   }
 
-  const itemValue = itemValueExpression(filters);
+  const itemValue = tradeRecordItemValueExpression(filters);
   if (filters.minItemValue) {
     conditions.push(gteDecimal(itemValue, filters.minItemValue));
   }
@@ -582,7 +497,7 @@ function genericOrderBy(filters: TradeRecordFilters): SQL[] {
   switch (filters.sort) {
     case "item_value_desc":
       return [
-        sql`${itemValueExpression(filters)} desc nulls last`,
+        sql`${tradeRecordItemValueExpression(filters)} desc nulls last`,
         desc(tradeRecords.periodYear),
         desc(tradeRecords.periodMonth),
         asc(rawTradeRows.rowNumber),
@@ -590,7 +505,7 @@ function genericOrderBy(filters: TradeRecordFilters): SQL[] {
       ];
     case "item_value_asc":
       return [
-        sql`${itemValueExpression(filters)} asc nulls last`,
+        sql`${tradeRecordItemValueExpression(filters)} asc nulls last`,
         desc(tradeRecords.periodYear),
         desc(tradeRecords.periodMonth),
         asc(rawTradeRows.rowNumber),
@@ -614,7 +529,7 @@ function genericOrderBy(filters: TradeRecordFilters): SQL[] {
       ];
     case "gross_weight_desc":
       return [
-        sql`${grossWeightExpression()} desc nulls last`,
+        sql`${tradeRecordGrossWeightExpression()} desc nulls last`,
         desc(tradeRecords.periodYear),
         desc(tradeRecords.periodMonth),
         asc(rawTradeRows.rowNumber),
@@ -624,10 +539,6 @@ function genericOrderBy(filters: TradeRecordFilters): SQL[] {
     case undefined:
       return sourceOrder;
   }
-}
-
-function decimalSumExpression(expression: SQL<string>): SQL<string | null> {
-  return sql<string | null>`sum(${expression})::text`;
 }
 
 async function rankedSummary(
@@ -641,13 +552,13 @@ async function rankedSummary(
     sql`${codeExpression} is not null`,
     sql`${codeExpression} <> ''`,
   );
-  const itemValue = itemValueExpression(filters);
+  const itemValue = tradeRecordItemValueExpression(filters);
   const rows = await db
     .select({
       code: codeExpression,
       labelRaw: labelExpression ? sql<string | null>`min(${labelExpression})` : sql<null>`null`,
       records: count(),
-      totalItemValue: decimalSumExpression(itemValue),
+      totalItemValue: tradeRecordDecimalSumExpression(itemValue),
     })
     .from(tradeRecords)
     .where(and(where, codeNotEmpty))
@@ -668,17 +579,17 @@ export async function summarizeTradeRecords(
   filters: TradeRecordFilters = {},
 ): Promise<TradeRecordIntelligenceSummary> {
   const where = buildWhere(filters);
-  const itemValue = itemValueExpression(filters);
+  const itemValue = tradeRecordItemValueExpression(filters);
   const [totalsRow] = await db
     .select({
       records: count(),
-      itemValue: decimalSumExpression(itemValue),
-      declarationFobValue: decimalSumExpression(sql`${tradeRecords.declarationFobValue}`),
-      quantity: decimalSumExpression(sql`${tradeRecords.quantity}`),
+      itemValue: tradeRecordDecimalSumExpression(itemValue),
+      declarationFobValue: tradeRecordDecimalSumExpression(sql`${tradeRecords.declarationFobValue}`),
+      quantity: tradeRecordDecimalSumExpression(sql`${tradeRecords.quantity}`),
       quantityUnitCode: sql<string | null>`case when count(distinct ${tradeRecords.quantityUnitCode}) = 1 then min(${tradeRecords.quantityUnitCode}) else null end`,
       quantityUnitIsMixed: sql<boolean>`count(distinct ${tradeRecords.quantityUnitCode}) > 1`,
-      grossWeightItem: decimalSumExpression(sql`${tradeRecords.grossWeightItem}`),
-      grossWeightTotal: decimalSumExpression(sql`${tradeRecords.grossWeightTotal}`),
+      grossWeightItem: tradeRecordDecimalSumExpression(sql`${tradeRecords.grossWeightItem}`),
+      grossWeightTotal: tradeRecordDecimalSumExpression(sql`${tradeRecords.grossWeightTotal}`),
       currencyCode: sql<string | null>`case when count(distinct ${tradeRecords.currencyCodeRaw}) = 1 then min(${tradeRecords.currencyCodeRaw}) else null end`,
       currencyIsMixed: sql<boolean>`count(distinct ${tradeRecords.currencyCodeRaw}) > 1`,
     })
@@ -686,15 +597,15 @@ export async function summarizeTradeRecords(
     .where(where);
 
   const [countries, customsOffices, ports, hsCodes] = await Promise.all([
-    rankedSummary(db, filters, originOrDestinationCountryExpression(filters)),
+    rankedSummary(db, filters, tradeRecordCountryExpression(filters)),
     rankedSummary(db, filters, sql<string>`${tradeRecords.customsOfficeCode}`),
     rankedSummary(
       db,
       filters,
-      relevantPortExpression(filters),
-      relevantPortLabelExpression(filters),
+      tradeRecordRelevantPortExpression(filters),
+      tradeRecordRelevantPortLabelExpression(filters),
     ),
-    rankedSummary(db, filters, hsCodePrefixExpression()),
+    rankedSummary(db, filters, tradeRecordHsCodePrefixExpression()),
   ]);
 
   return {
@@ -756,16 +667,16 @@ export async function compareTradeRecordGroups(
 ): Promise<TradeRecordComparison> {
   const rowLimit = Math.min(Math.max(Math.trunc(limit), 1), 10);
   const where = buildWhere(filters) ?? sql`true`;
-  const itemValue = itemValueExpression(filters);
-  const countryCode = originOrDestinationCountryExpression(filters);
-  const portCode = relevantPortExpression(filters);
-  const portLabel = relevantPortLabelExpression(filters);
-  const participantCode = participantCorrelativeExpression(filters);
+  const itemValue = tradeRecordItemValueExpression(filters);
+  const countryCode = tradeRecordCountryExpression(filters);
+  const portCode = tradeRecordRelevantPortExpression(filters);
+  const portLabel = tradeRecordRelevantPortLabelExpression(filters);
+  const participantCode = tradeRecordParticipantCorrelativeExpression(filters);
 
   const result = await db.execute(sql`
     with filtered as (
       select
-        ${hsCodePrefixExpression()} as hs_code_prefix,
+        ${tradeRecordHsCodePrefixExpression()} as hs_code_prefix,
         ${tradeRecords.productDescriptionRaw} as product_description_raw,
         ${countryCode} as country_code,
         ${tradeRecords.customsOfficeCode} as customs_office_code,
@@ -934,8 +845,8 @@ function exactMonthForRawOrderedList(
     return undefined;
   }
 
-  const periodFrom = parsePeriod(filters.periodFrom);
-  const periodTo = parsePeriod(filters.periodTo);
+  const periodFrom = parseTradeRecordPeriod(filters.periodFrom);
+  const periodTo = parseTradeRecordPeriod(filters.periodTo);
 
   if (periodFrom.value !== periodTo.value) {
     return undefined;
