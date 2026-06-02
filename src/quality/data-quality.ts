@@ -36,6 +36,13 @@ import {
   march2026ReportPeriod,
   march2026TradeRecordsWhere,
 } from "@/quality/march-2026";
+import {
+  dataQualityRemediationNextStep,
+  dataQualityRemediationStatus,
+  dataQualityRemediationTotal,
+  dataQualitySourceBatchKey,
+  type DataQualityRemediationIssueCounts,
+} from "@/quality/source-batch-remediation";
 import { countValueToNumber, type CountValue } from "@/db/count-values";
 
 const reportPeriod = march2026ReportPeriod;
@@ -47,6 +54,13 @@ export {
   normalizeCodeForCoverage,
   type DataQualityStatus,
 } from "@/quality/coverage";
+export {
+  dataQualityRemediationNextStep,
+  dataQualityRemediationStatus,
+  dataQualityRemediationTotal,
+  dataQualitySourceBatchKey,
+  type DataQualityRemediationIssueCounts,
+} from "@/quality/source-batch-remediation";
 
 const codeTableKeys = {
   countries: "chile_aduana:paises",
@@ -168,16 +182,6 @@ export type DataQualityIssueGroup = {
   sampleLimit: number;
   tradeRecordsHref: string;
   samples: DataQualityIssueSample[];
-};
-
-export type DataQualityRemediationIssueCounts = {
-  missingImportGrossWeightItem: number;
-  undecodedCustomsOffice: number;
-  undecodedPort: number;
-  undecodedTransportMode: number;
-  missingOrZeroItemValue: number;
-  missingOrZeroDeclarationFob: number;
-  quantityUnitValueReview: number;
 };
 
 export type DataQualitySourceBatchRemediation = {
@@ -332,72 +336,6 @@ export function dataQualityIssueStatus(
   statusWhenPresent: DataQualityStatus = "review",
 ): DataQualityStatus {
   return count > 0 ? statusWhenPresent : "ok";
-}
-
-export function dataQualitySourceBatchKey({
-  importBatchId,
-  sourceFileId,
-  tradeFlow,
-}: {
-  sourceFileId: string;
-  importBatchId: string;
-  tradeFlow: string;
-}) {
-  return `${sourceFileId}:${importBatchId}:${tradeFlow}`;
-}
-
-export function dataQualityRemediationTotal(
-  counts: DataQualityRemediationIssueCounts,
-) {
-  return (
-    counts.missingImportGrossWeightItem +
-    counts.undecodedCustomsOffice +
-    counts.undecodedPort +
-    counts.undecodedTransportMode +
-    counts.missingOrZeroItemValue +
-    counts.missingOrZeroDeclarationFob +
-    counts.quantityUnitValueReview
-  );
-}
-
-export function dataQualityRemediationStatus(
-  counts: DataQualityRemediationIssueCounts,
-): DataQualityStatus {
-  if (
-    counts.missingImportGrossWeightItem > 0 ||
-    counts.missingOrZeroItemValue > 0 ||
-    counts.missingOrZeroDeclarationFob > 0
-  ) {
-    return "warning";
-  }
-
-  return dataQualityRemediationTotal(counts) > 0 ? "review" : "ok";
-}
-
-export function dataQualityRemediationNextStep(
-  counts: DataQualityRemediationIssueCounts,
-) {
-  if (counts.missingOrZeroItemValue > 0 || counts.missingOrZeroDeclarationFob > 0) {
-    return "Revisar mapeo de valores comerciales contra el archivo fuente antes de usar agregados.";
-  }
-
-  if (counts.missingImportGrossWeightItem > 0) {
-    return "Revisar parser/mapeo de peso bruto item para importaciones; comparar contra peso total y metadatos fuente.";
-  }
-
-  if (
-    counts.undecodedCustomsOffice > 0 ||
-    counts.undecodedPort > 0 ||
-    counts.undecodedTransportMode > 0
-  ) {
-    return "Validar tablas de códigos Aduana cargadas y confirmar si los códigos fuente son nuevos, especiales o mal normalizados.";
-  }
-
-  if (counts.quantityUnitValueReview > 0) {
-    return "Revisar normalización de cantidad, unidad y precio unitario antes de comparar unidades.";
-  }
-
-  return "Sin señales QA priorizadas para este lote en marzo 2026.";
 }
 
 async function loadFlowSummaries(db: DbClient): Promise<DataQualityFlowSummary[]> {
