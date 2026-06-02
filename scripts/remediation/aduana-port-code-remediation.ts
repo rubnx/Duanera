@@ -375,15 +375,19 @@ async function main() {
 
   const { db } = await import("../../src/db/client");
   const result = await runPortCodeTableRemediation({ apply, db });
-  console.log(JSON.stringify(result, null, 2));
+  process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
 
   if (!apply) {
-    console.log(
-      "Dry run only. Re-run with --apply and ADUANA_PORT_REMEDIATION_CONFIRM=apply to update dev code values.",
+    process.stdout.write(
+      "Dry run only. Re-run with --apply and ADUANA_PORT_REMEDIATION_CONFIRM=apply to update dev code values.\n",
     );
   }
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
-  await main();
+  main().catch((error: unknown) => {
+    const message = error instanceof Error ? error.message : String(error);
+    process.stderr.write(`Aduana port code-table remediation failed: ${message}\n`);
+    process.exitCode = 1;
+  });
 }
