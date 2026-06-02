@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 
 import {
   parseArchivePlan,
+  parseArchiveUploadArgs,
   resolvePlanLocalPath,
   verifyLocalFile,
   type PlanObject,
@@ -93,4 +94,25 @@ test("validates archive upload plan JSON before use", () => {
       ),
     /invalid SHA-256/,
   );
+});
+
+test("parses archive upload arguments with explicit integer limits", () => {
+  const args = parseArchiveUploadArgs([
+    "--only-classification",
+    "source_manifest",
+    "--limit",
+    "5",
+    "--confirm-upload",
+  ]);
+
+  assert.equal(args.confirmUpload, true);
+  assert.equal(args.limit, 5);
+  assert.deepEqual([...args.includeClassifications], ["source_manifest"]);
+});
+
+test("rejects ambiguous archive upload limit arguments", () => {
+  assert.throws(() => parseArchiveUploadArgs(["--limit", "1e2"]), /positive integer/);
+  assert.throws(() => parseArchiveUploadArgs(["--limit", "1.5"]), /positive integer/);
+  assert.throws(() => parseArchiveUploadArgs(["--limit", "0"]), /positive safe integer/);
+  assert.throws(() => parseArchiveUploadArgs(["--limit"]), /requires a value/);
 });

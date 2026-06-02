@@ -52,7 +52,7 @@ const defaultPlanFile = "/tmp/duanera-r2-upload-plan.json";
 const defaultClassifications = new Set(["official_source_raw"]);
 const maxSinglePutObjectBytes = 5 * 1024 * 1024 * 1024;
 
-function parseArgs(argv: string[]): Args {
+export function parseArchiveUploadArgs(argv: string[]): Args {
   const args: Args = {
     confirmUpload: false,
     includeClassifications: new Set(defaultClassifications),
@@ -95,9 +95,13 @@ function parseArgs(argv: string[]): Args {
     }
 
     if (arg === "--limit") {
-      const value = Number(requiredValue(argv, index, arg));
-      if (!Number.isInteger(value) || value < 1) {
+      const rawValue = requiredValue(argv, index, arg);
+      if (!/^\d+$/.test(rawValue)) {
         throw new Error("--limit must be a positive integer.");
+      }
+      const value = Number(rawValue);
+      if (!Number.isSafeInteger(value) || value < 1) {
+        throw new Error("--limit must be a positive safe integer.");
       }
       args.limit = value;
       index += 1;
@@ -459,7 +463,7 @@ function summarizeSelection(objects: PlanObject[]) {
 async function main() {
   config({ path: ".env.local", quiet: true });
 
-  const args = parseArgs(process.argv.slice(2));
+  const args = parseArchiveUploadArgs(process.argv.slice(2));
   const env = readEnv();
   assertEndpointMatchesAccount(env);
   const client = createClient(env);
