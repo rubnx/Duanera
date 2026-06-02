@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import {
   extractIdentityEvidenceSignals,
+  identityEvidenceRecordValue,
   isUsefulIdentityEvidenceValue,
   normalizeIdentityEvidenceValue,
 } from "../../src/research/identity-evidence";
@@ -47,4 +48,23 @@ test("extracts product attributes as unverified source-text signals", () => {
     ),
     true,
   );
+});
+
+test("ignores malformed identity evidence raw payloads", () => {
+  assert.deepEqual(identityEvidenceRecordValue({ MARCA: "AQUACHILE" }), {
+    MARCA: "AQUACHILE",
+  });
+  assert.equal(identityEvidenceRecordValue(null), null);
+  assert.equal(identityEvidenceRecordValue("MARCA=AQUACHILE"), null);
+  assert.equal(identityEvidenceRecordValue(["MARCA", "AQUACHILE"]), null);
+
+  const signals = extractIdentityEvidenceSignals({
+    tradeFlow: "export",
+    productDescriptionRaw: "23935 ~FILETE SALMON DEL ATLANTICO",
+    productAttributes: ["AQUACHILE-F"],
+    rawValues: "NOMBRECIATRANSP=MAERSK LINE",
+  });
+
+  assert.equal(signals.some((signal) => signal.value === "AQUACHILE-F"), false);
+  assert.equal(signals.some((signal) => signal.value === "MAERSK LINE"), false);
 });

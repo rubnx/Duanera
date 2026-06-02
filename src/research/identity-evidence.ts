@@ -147,22 +147,30 @@ export function isUsefulIdentityEvidenceValue(value: unknown) {
   return true;
 }
 
+export function identityEvidenceRecordValue(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+
+  return value as Record<string, unknown>;
+}
+
 function rawValue(rawValues: unknown, key: string) {
-  if (!rawValues || typeof rawValues !== "object" || Array.isArray(rawValues)) {
+  const values = identityEvidenceRecordValue(rawValues);
+  if (!values) {
     return "";
   }
 
-  return normalizeIdentityEvidenceValue(
-    (rawValues as Record<string, unknown>)[key],
-  );
+  return normalizeIdentityEvidenceValue(values[key]);
 }
 
 function attributeEntries(value: unknown) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
+  const values = identityEvidenceRecordValue(value);
+  if (!values) {
     return [];
   }
 
-  return Object.entries(value as Record<string, unknown>)
+  return Object.entries(values)
     .map(([field, raw]) => ({
       field,
       label: productAttributeLabels[field] ?? field,
