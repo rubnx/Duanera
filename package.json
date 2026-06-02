@@ -16,6 +16,7 @@
     "db:load:raw-sample": "tsx scripts/ingest/load-raw-trade-row-sample.ts",
     "db:normalize:trade-sample": "tsx scripts/ingest/normalize-trade-record-sample.ts",
     "db:prune:raw-payloads": "tsx scripts/ingest/prune-raw-trade-row-payloads.ts",
+    "db:remediate:aduana-ports": "tsx scripts/remediation/aduana-port-code-remediation.ts",
     "db:studio": "drizzle-kit studio",
     "archive:r2:plan": "tsx scripts/archive/r2-upload-plan.ts",
     "archive:r2:verify": "tsx scripts/archive/r2-upload-archive.ts --verify-only",

@@ -2,14 +2,14 @@
 
 Date prepared: 2026-06-01
 
-Scope: March 2026 dev data only. This note is read-only evidence for the remaining `/data-quality/load-readiness` code-table blocker. It does not approve a schema change, data load, migration, pruning pass, R2 upload, or code-table mutation.
+Scope: March 2026 dev data only. This note records evidence and the reviewed dev-only port remediation for the remaining `/data-quality/load-readiness` code-table blocker. It does not approve a schema change, new trade-data load, migration, pruning pass, R2 upload, production promotion, or unresolved Aduana/currency code-table mutation.
 
 ## Summary
 
 The current load-readiness no-go signal is correctly narrowed to evidence-backed dictionary gaps, not parser failure or data loss.
 
 - Aduana code `56` appears in 644 March 2026 trade records: 501 import records and 143 export records. The current workbook-backed `chile_aduana:aduanas` dictionary does not decode it.
-- Nonzero port gaps are small but commercially visible: 61 import disembark-port records and 24 export embark-port records. A 2026-06-01 evidence pass found official Anexo 51-11 update evidence for the nonzero port gaps, but no code-table mutation has been approved or applied.
+- Nonzero port gaps were small but commercially visible: 61 import disembark-port records and 24 export embark-port records. A 2026-06-01 evidence pass found official Anexo 51-11 update evidence for the nonzero port gaps, and a reviewed dev-only remediation inserted the 11 verified `chile_aduana:puertos` rows.
 - DUS export port code `0` and transport code `0` remain source-special/null style values and should not be treated as dictionary gaps.
 - DIN import `grossWeightItem` remains an expected source limitation: March 2026 DIN has `TOT_PESO` total gross weight, but no confirmed item-level gross-weight field.
 - Import `MONEDA` has 8 medium-priority undecoded values (`141`, `145`, `147`) that need separate evidence before currency decoding changes.
@@ -31,8 +31,8 @@ Use these classes before any future mutation:
 | Field | Codes | Affected records | Evidence status | Recommendation |
 | --- | --- | ---: | --- | --- |
 | Aduana import/export | `56` | 644 total | Needs manual official evidence | Do not decode yet. Find exact current Aduana code-table evidence for aduana `56`. Transactional records often pair export code `56` with raw embark glosa `PINO HACHADO(LIUCURA`, but an older official Aduana resolution maps Liucura/Pino Hachado to code `64`, not `56`, so this is not safe to mutate. |
-| Import disembark port | `817`, `818`, `819`, `820`, `822`, `823`, `824`, `826` | 61 total | Official label found; workbook missing/stale | DIN records do not carry port glosas for these fields. Official Anexo 51-11 update notices now support a reviewed `chile_aduana:puertos` remediation plan, but the seeded workbook remains stale and no mutation is approved yet. |
-| Export embark port | `225`, `817`, `821`, `827` | 24 | Official label found; workbook missing/stale | DUS raw records include `PASO GUANACO SONSO`, `PUERTO CABO FROWARD`, `ESPERANZA`, and `T.GNELES NORTE`; official Anexo 51-11 update notices now confirm the exact mappings. Prepare a reviewed mutation plan rather than editing dictionaries directly. |
+| Import disembark port | `817`, `818`, `819`, `820`, `822`, `823`, `824`, `826` | 61 total | Remediated in dev from official label evidence | DIN records do not carry port glosas for these fields. `scripts/remediation/aduana-port-code-remediation.ts` inserted reviewed `chile_aduana:puertos` rows with official Anexo 51-11 update provenance metadata. |
+| Export embark port | `225`, `817`, `821`, `827` | 24 | Remediated in dev from official label evidence | DUS raw records include `PASO GUANACO SONSO`, `PUERTO CABO FROWARD`, `ESPERANZA`, and `T.GNELES NORTE`; official Anexo 51-11 update notices confirm the exact mappings, and dev now decodes these port rows. |
 | Export embark/disembark and transport special code | `0` | 3,132 export embark-port records; 4,602 transport records in the broad March count | Source-special/current-source code | Keep classified as source-special/null. It is often seen with service-style exports and absent glosas. |
 | Import currency | `141`, `145`, `147` | 8 | Needs manual official evidence | The values are present in raw `MONEDA`, but the current `Moneda` workbook sheet did not confirm them as currency labels. Do not borrow labels from country or operation-code tables. |
 
@@ -58,25 +58,30 @@ Total evidence-backed port impact: 85 March 2026 relevant-port records. Export c
 
 Important cross-table caveat: local seeded `chile_aduana:puertos` already contains port codes `141`, `145`, and `147` for Miami, Palm Beach, and Columbres. That does not decode import `MONEDA` values `141`, `145`, or `147`; those codes remain unresolved in `chile_aduana:moneda`.
 
-## Candidate Mutation Plan, Not Yet Approved
+## Dev Remediation Applied
 
-No code-table mutation is approved in this pass.
+The reviewed port-only remediation has been applied to Neon dev.
 
-For the port rows with official evidence above, use this shape in a future reviewed remediation pass:
+- Script: `scripts/remediation/aduana-port-code-remediation.ts`.
+- Package command: `npm run db:remediate:aduana-ports`.
+- Guardrails: script requires `DUANERA_DB_TARGET=dev`; apply mode additionally requires `--apply` and `ADUANA_PORT_REMEDIATION_CONFIRM=apply`.
+- Rows inserted: 11 under `chile_aduana:puertos`.
+- Review status: `reviewed_official_update`.
+- Metadata marker: `metadata.remediation_id = chile_aduana_ports_anexo_51_11_2026_06_01`.
+- Idempotency check: a follow-up dry-run returned 0 inserts, 0 updates, and 11 noops.
 
-1. Add or update only the affected `code_values` rows under the existing `code_table_key`.
-2. Store source provenance in code-value metadata: source file id, workbook or public Aduana reference, sheet/section, observed date, and confidence.
-3. Re-run `/data-quality/code-tables` and `/data-quality/load-readiness`.
-4. Verify record counts before/after:
-   - `chile_aduana:puertos` codes `225`, `817`, `818`, `819`, `820`, `821`, `822`, `823`, `824`, `826`, `827`: expected impact 85 decoded relevant-port records across import/export.
-5. Keep a rollback path by making the change as a deterministic seed/backfill script that can remove only the newly inserted reviewed rows.
+Verification after apply:
 
-Recommended test plan for that future mutation:
+- Import disembark-port high-priority row: `recordsWithUndecodedCode` changed from 61 to 0.
+- Export embark-port high-priority row: `recordsWithUndecodedCode` changed from 24 to 0.
+- Code-table summary high-priority gaps changed from 4 to 2.
+- Code-table summary records with undecoded codes changed from 5,944 to 5,859.
+- `/data-quality/load-readiness` remains `no-go` because Aduana code `56` is still a high-priority unresolved dictionary gap.
 
-- Unit-test the proposed seed/backfill helper so it targets only `chile_aduana:puertos` and only the 11 reviewed code values.
-- Re-run `npm run test:data-quality` to confirm source-special code `0` remains excluded and the high-priority port gaps are reduced.
-- Re-run `npm run typecheck`, all named test scripts, `npm run build`, and `git diff --check`.
-- Smoke-check `/data-quality/code-tables`, `/data-quality/load-readiness`, and representative linked `/trade-records` filters before committing.
+Do not include unresolved gaps in the same remediation:
+
+- `chile_aduana:aduanas` code `56`: expected impact up to 644 decoded records if exact official evidence is found later.
+- `chile_aduana:moneda` codes `141`, `145`, `147`: expected impact 8 decoded import records if exact official currency evidence is found later.
 
 Rollback/reseed strategy:
 
@@ -84,14 +89,9 @@ Rollback/reseed strategy:
 - Do not rewrite or reseed the full workbook-backed dictionary unless the official workbook itself is updated and archived.
 - Preserve the 2026-05-26 workbook as the baseline source and store legal-update provenance separately in metadata for the added rows.
 
-Do not include unresolved gaps in the same mutation:
-
-- `chile_aduana:aduanas` code `56`: expected impact up to 644 decoded records if exact official evidence is found later.
-- `chile_aduana:moneda` codes `141`, `145`, `147`: expected impact 8 decoded import records if exact official currency evidence is found later.
-
 ## Readiness Impact
 
-If the evidence-backed port rows above are added in a reviewed pass, `/data-quality/load-readiness` should reduce the port portion of the current code-table blocker. Aduana code `56` is still the largest unresolved high-priority gap, so readiness should remain conservative until exact official aduana-code evidence is acquired or the blocker is explicitly reclassified. It may still remain `review-first` because payload retention, performance guardrails, field-mapping caveats, and medium-priority dictionary gaps are intentionally conservative before loading another dev month.
+The evidence-backed port rows reduce the port portion of the code-table blocker, but `/data-quality/load-readiness` still remains `no-go`. Aduana code `56` is still the largest unresolved high-priority gap, so readiness should remain conservative until exact official aduana-code evidence is acquired or the blocker is explicitly reclassified. It may still remain `review-first` because payload retention, performance guardrails, field-mapping caveats, and medium-priority dictionary gaps are intentionally conservative before loading another dev month.
 
 ## Evidence Notes
 
@@ -128,9 +128,9 @@ Relevant official URLs:
 
 ## Next Step
 
-Before mutating dictionaries, run a dedicated reviewed code-table remediation implementation pass:
+Continue with unresolved non-port evidence:
 
-- Implement only the evidence-backed port rows as a deterministic reviewed seed/backfill.
-- Keep the unresolved Aduana `56` and currency `141`/`145`/`147` gaps in read-only QA until exact official evidence is acquired.
-- Preserve source provenance for every inserted code-value row.
-- Re-run code-table QA and load-readiness after the port remediation to confirm the readiness impact.
+- Acquire exact official evidence for Aduana `56`; do not infer it from transactional context or Pino Hachado/Liucura glosas.
+- Acquire exact official currency evidence for import `MONEDA` codes `141`, `145`, and `147`.
+- Keep export source-special code `0` excluded from actionable code-table gaps.
+- Review whether `/data-quality/load-readiness` should remain `no-go` or be reclassified after the remaining official evidence pass.

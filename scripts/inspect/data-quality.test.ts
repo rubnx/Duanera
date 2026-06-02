@@ -41,6 +41,13 @@ import {
   loadReadinessDecisionFromStatuses,
   safeLoadReadinessLinks,
 } from "../../src/quality/load-readiness";
+import {
+  assertReviewedPortRemediationScope,
+  normalizeLabel,
+  planPortCodeValueRemediation,
+  portRemediationMetadata,
+  reviewedPortCodeValues,
+} from "../remediation/aduana-port-code-remediation";
 import type { DataQualityReport } from "../../src/quality/data-quality";
 import type { FieldMappingReport } from "../../src/quality/field-mapping";
 import type { CodeTableRemediationReport } from "../../src/quality/code-table-remediation";
@@ -348,6 +355,99 @@ test("labels and explains code-table remediation actions conservatively", () => 
       sourceSpecialCodeNote: "Código 0 se conserva como valor fuente.",
     }),
     /Sin brecha de etiqueta accionable/,
+  );
+});
+
+test("keeps Aduana port remediation scoped to reviewed port rows only", () => {
+  assert.doesNotThrow(() => assertReviewedPortRemediationScope());
+
+  const codes = reviewedPortCodeValues.map((row) => row.codeValue).sort();
+  assert.deepEqual(codes, [
+    "225",
+    "817",
+    "818",
+    "819",
+    "820",
+    "821",
+    "822",
+    "823",
+    "824",
+    "826",
+    "827",
+  ]);
+  assert.equal(codes.includes("0"), false);
+  assert.equal(codes.includes("56"), false);
+  assert.equal(codes.includes("141"), false);
+  assert.equal(codes.includes("145"), false);
+  assert.equal(codes.includes("147"), false);
+});
+
+test("plans Aduana port remediation inserts, updates, and noops idempotently", () => {
+  const exactRow = reviewedPortCodeValues.find((row) => row.codeValue === "817");
+  assert.ok(exactRow);
+
+  const plan = planPortCodeValueRemediation([
+    {
+      codeValue: "817",
+      labelEs: exactRow.labelEs,
+      normalizedLabelEs: normalizeLabel(exactRow.labelEs),
+      reviewStatus: "reviewed_official_update",
+      metadata: portRemediationMetadata(exactRow),
+    },
+    {
+      codeValue: "818",
+      labelEs: "HUACHIPATO",
+      normalizedLabelEs: "huachipato",
+      reviewStatus: "seeded",
+      metadata: {},
+    },
+    {
+      codeValue: "819",
+      labelEs: "Terminal Marítimo Escuadrón",
+      normalizedLabelEs: "terminal maritimo escuadron",
+      reviewStatus: "reviewed_official_update",
+      metadata: { remediation_id: "chile_aduana_ports_anexo_51_11_2026_06_01" },
+    },
+  ]);
+
+  const actionsByCode = new Map(plan.map((row) => [row.codeValue, row.action]));
+  assert.equal(actionsByCode.get("817"), "noop");
+  assert.equal(actionsByCode.get("818"), "update");
+  assert.equal(actionsByCode.get("819"), "update");
+  assert.equal(actionsByCode.get("225"), "insert");
+});
+
+test("rejects accidental Aduana, currency, or source-special remediation scope drift", () => {
+  assert.throws(
+    () =>
+      assertReviewedPortRemediationScope([
+        ...reviewedPortCodeValues,
+        {
+          codeValue: "56",
+          labelEs: "Aduana no revisada",
+          evidenceSource: "unsupported",
+          evidenceUrl: "https://example.invalid",
+          publishedDate: "2026-06-01",
+          march2026Impact: "unsupported",
+        },
+      ]),
+    /forbidden code values/,
+  );
+
+  assert.throws(
+    () =>
+      assertReviewedPortRemediationScope([
+        ...reviewedPortCodeValues.filter((row) => row.codeValue !== "225"),
+        {
+          codeValue: "141",
+          labelEs: "Moneda no revisada",
+          evidenceSource: "unsupported",
+          evidenceUrl: "https://example.invalid",
+          publishedDate: "2026-06-01",
+          march2026Impact: "unsupported",
+        },
+      ]),
+    /forbidden code values/,
   );
 });
 
