@@ -1,9 +1,17 @@
-import { and, desc, eq, or, sql, type SQL } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 
 import type { DbClient } from "@/db/client";
 import { countValueToNumber } from "@/db/count-values";
 import { queryResultRows } from "@/db/query-result";
 import { rawTradeRows, tradeRecords } from "@/db/schema";
+import {
+  groupParticipantExpression,
+  itemValueExpression,
+  itemValueNumericExpression,
+  participantWhere,
+  relevantCountryExpression,
+  relevantPortExpression,
+} from "@/research/identity-evidence-expressions";
 import {
   extractIdentityEvidenceSignals,
   identityEvidenceSummary,
@@ -81,45 +89,6 @@ export type IdentityEvidenceOptions = {
 };
 
 const toNumber = countValueToNumber;
-
-function groupParticipantExpression(tradeFlow: TradeFlow): SQL<string> {
-  return tradeFlow === "import"
-    ? sql<string>`${tradeRecords.importerCorrelativeId}`
-    : sql<string>`coalesce(${tradeRecords.exporterPrimaryCorrelativeId}, ${tradeRecords.exporterSecondaryCorrelativeId})`;
-}
-
-function itemValueExpression(tradeFlow: TradeFlow): SQL<string | null> {
-  return tradeFlow === "import"
-    ? sql<string | null>`${tradeRecords.itemCifValue}::text`
-    : sql<string | null>`${tradeRecords.itemFobValue}::text`;
-}
-
-function itemValueNumericExpression(tradeFlow: TradeFlow): SQL<string | null> {
-  return tradeFlow === "import"
-    ? sql<string | null>`${tradeRecords.itemCifValue}`
-    : sql<string | null>`${tradeRecords.itemFobValue}`;
-}
-
-function relevantCountryExpression(tradeFlow: TradeFlow): SQL<string | null> {
-  return tradeFlow === "import"
-    ? sql<string | null>`${tradeRecords.originCountryCode}`
-    : sql<string | null>`${tradeRecords.destinationCountryCode}`;
-}
-
-function relevantPortExpression(tradeFlow: TradeFlow): SQL<string | null> {
-  return tradeFlow === "import"
-    ? sql<string | null>`${tradeRecords.disembarkPortCode}`
-    : sql<string | null>`${tradeRecords.embarkPortCode}`;
-}
-
-function participantWhere(tradeFlow: TradeFlow, correlativeId: string) {
-  return tradeFlow === "import"
-    ? eq(tradeRecords.importerCorrelativeId, correlativeId)
-    : or(
-        eq(tradeRecords.exporterPrimaryCorrelativeId, correlativeId),
-        eq(tradeRecords.exporterSecondaryCorrelativeId, correlativeId),
-      );
-}
 
 function groupHref(tradeFlow: TradeFlow, correlativeId: string) {
   return buildTradeRecordSearchHref({
