@@ -4,12 +4,9 @@ import { pathToFileURL } from "node:url";
 
 import type { DbClient } from "../../src/db/client";
 import { assertDevDatabaseTarget } from "../../src/db/dev-guard";
-import {
-  rawTradeRows,
-  sourceTradeParticipants,
-  tradeRecords,
-} from "../../src/db/schema";
+import { rawTradeRows, tradeRecords } from "../../src/db/schema";
 import { positiveIntegerEnvValue } from "../../src/lib/env";
+import { TradeParticipantTracker } from "./normalize-trade-record-participants";
 import { mapTradeRecordValues, rawValuesRecord } from "./normalize-trade-record-values";
 export { parseIntegerValue, rawValuesRecord } from "./normalize-trade-record-values";
 
@@ -17,21 +14,6 @@ const parserName = "aduana-main-sample-normalizer";
 const parserVersion = "0.1.0";
 const defaultRawChunkSize = 1000;
 const defaultTradeRecordBatchSize = 500;
-
-type ParticipantRole = "importer" | "exporter_primary" | "exporter_secondary";
-
-type ParticipantStats = {
-  id: string;
-  count: number;
-  firstSeenYear: number;
-  firstSeenMonth: number;
-  lastSeenYear: number;
-  lastSeenMonth: number;
-};
-
-let db: DbClient;
-const participantStats = new Map<string, ParticipantStats>();
-const participantIds = new Map<string, string>();
 
 function rawChunkSize(): number {
   return positiveIntegerEnvValue(
@@ -49,136 +31,15 @@ function tradeRecordBatchSize(): number {
   );
 }
 
-function participantKey(tradeFlow: string, role: ParticipantRole, correlativeId: string) {
-  return `${tradeFlow}:${role}:${correlativeId}`;
-}
-
-async function ensureParticipant(
-  tradeFlow: "import" | "export",
-  role: ParticipantRole,
-  correlativeId: string | null,
-  periodYear: number,
-  periodMonth: number,
-): Promise<string | null> {
-  if (!correlativeId || correlativeId === "0") {
-    return null;
-  }
-
-  const key = participantKey(tradeFlow, role, correlativeId);
-  const existingId = participantIds.get(key);
-
-  const values = {
-    tradeFlow,
-    participantRole: role,
-    sourceCorrelativeId: correlativeId,
-    firstSeenYear: periodYear,
-    firstSeenMonth: periodMonth,
-    lastSeenYear: periodYear,
-    lastSeenMonth: periodMonth,
-    crossYearStabilityStatus: "unknown",
-  };
-
-  const id =
-    existingId ??
-    (
-      await db
-        .insert(sourceTradeParticipants)
-        .values(values)
-        .onConflictDoNothing()
-        .returning({ id: sourceTradeParticipants.id })
-    )[0]?.id;
-
-  if (!id) {
-    const [existing] = await db
-      .select({ id: sourceTradeParticipants.id })
-      .from(sourceTradeParticipants)
-      .where(
-        and(
-          eq(sourceTradeParticipants.tradeFlow, tradeFlow),
-          eq(sourceTradeParticipants.participantRole, role),
-          eq(sourceTradeParticipants.sourceCorrelativeId, correlativeId),
-        ),
-      )
-      .limit(1);
-
-    if (!existing) {
-      throw new Error(`Could not create or find participant ${key}.`);
-    }
-
-    participantIds.set(key, existing.id);
-  } else {
-    participantIds.set(key, id);
-  }
-
-  const stats = participantStats.get(key);
-  if (stats) {
-    stats.count += 1;
-    if (periodYear * 100 + periodMonth < stats.firstSeenYear * 100 + stats.firstSeenMonth) {
-      stats.firstSeenYear = periodYear;
-      stats.firstSeenMonth = periodMonth;
-    }
-    if (periodYear * 100 + periodMonth > stats.lastSeenYear * 100 + stats.lastSeenMonth) {
-      stats.lastSeenYear = periodYear;
-      stats.lastSeenMonth = periodMonth;
-    }
-  } else {
-    participantStats.set(key, {
-      id: participantIds.get(key)!,
-      count: 1,
-      firstSeenYear: periodYear,
-      firstSeenMonth: periodMonth,
-      lastSeenYear: periodYear,
-      lastSeenMonth: periodMonth,
-    });
-  }
-
-  return participantIds.get(key)!;
-}
-
-async function refreshParticipantStats() {
-  for (const stats of participantStats.values()) {
-    await db
-      .update(sourceTradeParticipants)
-      .set({
-        recordCount: stats.count,
-        firstSeenYear: stats.firstSeenYear,
-        firstSeenMonth: stats.firstSeenMonth,
-        lastSeenYear: stats.lastSeenYear,
-        lastSeenMonth: stats.lastSeenMonth,
-        updatedAt: new Date(),
-      })
-      .where(eq(sourceTradeParticipants.id, stats.id));
-  }
-}
-
-async function loadExistingParticipants() {
-  const rows = await db
-    .select({
-      id: sourceTradeParticipants.id,
-      tradeFlow: sourceTradeParticipants.tradeFlow,
-      participantRole: sourceTradeParticipants.participantRole,
-      sourceCorrelativeId: sourceTradeParticipants.sourceCorrelativeId,
-    })
-    .from(sourceTradeParticipants);
-
-  for (const row of rows) {
-    participantIds.set(
-      participantKey(
-        row.tradeFlow,
-        row.participantRole as ParticipantRole,
-        row.sourceCorrelativeId,
-      ),
-      row.id,
-    );
-  }
-}
-
-async function flushTradeRecordBatch(batch: Array<typeof tradeRecords.$inferInsert>) {
+async function flushTradeRecordBatch(
+  database: DbClient,
+  batch: Array<typeof tradeRecords.$inferInsert>,
+) {
   if (batch.length === 0) {
     return;
   }
 
-  await db
+  await database
     .insert(tradeRecords)
     .values(batch)
     .onConflictDoUpdate({
@@ -238,22 +99,19 @@ async function flushTradeRecordBatch(batch: Array<typeof tradeRecords.$inferInse
 }
 
 export async function runTradeRecordNormalizer(database: DbClient) {
-  db = database;
-  participantIds.clear();
-  participantStats.clear();
-
   let normalized = 0;
   const chunkSize = rawChunkSize();
   const insertBatchSize = tradeRecordBatchSize();
   const tradeRecordBatch: Array<typeof tradeRecords.$inferInsert> = [];
+  const participants = new TradeParticipantTracker(database);
 
-  await loadExistingParticipants();
+  await participants.loadExisting();
 
   for (const tradeFlow of ["export", "import"] as const) {
     let lastRowNumber = 0;
 
     while (true) {
-      const rows = await db
+      const rows = await database
         .select({
           id: rawTradeRows.id,
           sourceFileId: rawTradeRows.sourceFileId,
@@ -294,21 +152,21 @@ export async function runTradeRecordNormalizer(database: DbClient) {
         const rawValues = rawValuesRecord(row.rawValues, row.id);
         const mapped = mapTradeRecordValues(row.tradeFlow, rawValues);
 
-        const importerParticipantId = await ensureParticipant(
+        const importerParticipantId = await participants.ensure(
           "import",
           "importer",
           mapped.importerCorrelativeId,
           row.periodYear,
           row.periodMonth,
         );
-        const exporterPrimaryParticipantId = await ensureParticipant(
+        const exporterPrimaryParticipantId = await participants.ensure(
           "export",
           "exporter_primary",
           mapped.exporterPrimaryCorrelativeId,
           row.periodYear,
           row.periodMonth,
         );
-        const exporterSecondaryParticipantId = await ensureParticipant(
+        const exporterSecondaryParticipantId = await participants.ensure(
           "export",
           "exporter_secondary",
           mapped.exporterSecondaryCorrelativeId,
@@ -334,7 +192,7 @@ export async function runTradeRecordNormalizer(database: DbClient) {
         normalized += 1;
 
         if (tradeRecordBatch.length >= insertBatchSize) {
-          await flushTradeRecordBatch(tradeRecordBatch);
+          await flushTradeRecordBatch(database, tradeRecordBatch);
         }
       }
 
@@ -344,14 +202,14 @@ export async function runTradeRecordNormalizer(database: DbClient) {
     }
   }
 
-  await flushTradeRecordBatch(tradeRecordBatch);
-  await refreshParticipantStats();
+  await flushTradeRecordBatch(database, tradeRecordBatch);
+  await participants.refreshStats();
 
   process.stdout.write(
-    `Trade record normalization complete. Normalized ${normalized} raw rows and touched ${participantStats.size} anonymous participants.\n`,
+    `Trade record normalization complete. Normalized ${normalized} raw rows and touched ${participants.participantCount} anonymous participants.\n`,
   );
 
-  return { normalized, participantCount: participantStats.size };
+  return { normalized, participantCount: participants.participantCount };
 }
 
 async function main() {
