@@ -1,3 +1,4 @@
+import { normalizeUuid } from "../lib/ids";
 import type { TradeFlow, TradeRecordFilters } from "./trade-records";
 
 export type TradeRecordSearchHrefParams =
@@ -69,6 +70,14 @@ function setIfPresent(query: URLSearchParams, key: string, value: string | undef
   }
 }
 
+function safeSearchParam(key: string, value: string | undefined) {
+  if (key === "sourceFileId" || key === "importBatchId") {
+    return value ? normalizeUuid(value) ?? undefined : undefined;
+  }
+
+  return value;
+}
+
 function applyTarget(
   query: URLSearchParams,
   baseFlow: TradeFlow | undefined,
@@ -113,7 +122,7 @@ export function buildTradeRecordSearchHref(
   const query = new URLSearchParams();
 
   for (const key of knownSearchKeys) {
-    setIfPresent(query, key, readParam(params, key));
+    setIfPresent(query, key, safeSearchParam(key, readParam(params, key)));
   }
 
   if (target) {

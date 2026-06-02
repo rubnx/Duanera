@@ -378,7 +378,15 @@ test("builds trade record drilldown links without pagination cursors", () => {
 
   assert.equal(
     href,
-    "/trade-records?tradeFlow=import&periodFrom=2026-03&periodTo=2026-03&sourceFileId=source-1&importBatchId=batch-1&hsCodePrefix=4011&originCountry=220&limit=25",
+    "/trade-records?tradeFlow=import&periodFrom=2026-03&periodTo=2026-03&hsCodePrefix=4011&originCountry=220&limit=25",
+  );
+
+  assert.equal(
+    buildTradeRecordSearchHref({
+      sourceFileId: "00000000-0000-4000-8000-0000000000AA",
+      importBatchId: "00000000-0000-4000-8000-0000000000BB",
+    }),
+    "/trade-records?sourceFileId=00000000-0000-4000-8000-0000000000aa&importBatchId=00000000-0000-4000-8000-0000000000bb",
   );
 });
 
