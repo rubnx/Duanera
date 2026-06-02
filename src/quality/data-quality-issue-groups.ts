@@ -36,13 +36,13 @@ import {
   march2026ReportPeriod,
   march2026TradeRecordsWhere,
 } from "@/quality/march-2026";
+import { dusExportSpecialLogisticsCodes } from "@/quality/source-special-codes";
 import type { TradeFlow, TradeRecordFilters } from "@/trade/trade-records";
 
 const reportPeriod = march2026ReportPeriod;
 const marchTradeWhere = march2026TradeRecordsWhere;
 const toNumber = countValueToNumber;
 const issueSampleLimit = 8;
-const dusExportSpecialLogisticsCodes = new Set(["0"]);
 
 const issueSampleColumns = {
   id: tradeRecords.id,
