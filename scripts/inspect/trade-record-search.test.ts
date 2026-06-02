@@ -289,6 +289,16 @@ test("rejects invalid cursor usage", () => {
       }),
     TradeRecordSearchError,
   );
+  assert.throws(
+    () =>
+      parseTradeRecordSearchParams({
+        after: encodeTradeRecordCursor({
+          rawRowNumber: 0,
+          rawTradeRowId: "00000000-0000-4000-8000-000000000001",
+        }),
+      }),
+    TradeRecordSearchError,
+  );
 });
 
 test("classifies trade search performance warnings", () => {

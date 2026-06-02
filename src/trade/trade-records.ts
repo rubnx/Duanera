@@ -240,6 +240,14 @@ export function encodeTradeRecordCursor(cursor: TradeRecordCursor): string {
   return Buffer.from(JSON.stringify(cursor), "utf8").toString("base64url");
 }
 
+function cursorPayload(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+
+  return value as Record<string, unknown>;
+}
+
 export function decodeTradeRecordCursor(value: string): TradeRecordCursor {
   let decoded: unknown;
 
@@ -249,25 +257,19 @@ export function decodeTradeRecordCursor(value: string): TradeRecordCursor {
     throw new Error("Cursor is invalid.");
   }
 
-  if (
-    typeof decoded !== "object" ||
-    decoded === null ||
-    !("rawRowNumber" in decoded) ||
-    !("rawTradeRowId" in decoded)
-  ) {
+  const payload = cursorPayload(decoded);
+  if (!payload || !("rawRowNumber" in payload) || !("rawTradeRowId" in payload)) {
     throw new Error("Cursor is invalid.");
   }
 
-  const rawRowNumber = Number((decoded as { rawRowNumber: unknown }).rawRowNumber);
-  const rawTradeRowId = (decoded as { rawTradeRowId: unknown }).rawTradeRowId;
+  const rawRowNumber = Number(payload.rawRowNumber);
+  const rawTradeRowId = payload.rawTradeRowId;
 
   if (
     !Number.isInteger(rawRowNumber) ||
-    rawRowNumber < 0 ||
+    rawRowNumber < 1 ||
     typeof rawTradeRowId !== "string" ||
-    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-      rawTradeRowId,
-    )
+    !isUuid(rawTradeRowId)
   ) {
     throw new Error("Cursor is invalid.");
   }
