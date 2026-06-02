@@ -9,7 +9,7 @@ Scope: March 2026 dev data only. This note is read-only evidence for the remaini
 The current load-readiness no-go signal is correctly narrowed to evidence-backed dictionary gaps, not parser failure or data loss.
 
 - Aduana code `56` appears in 644 March 2026 trade records: 501 import records and 143 export records. The current workbook-backed `chile_aduana:aduanas` dictionary does not decode it.
-- Nonzero port gaps are small but commercially visible: 61 import disembark-port records and 24 export embark-port records.
+- Nonzero port gaps are small but commercially visible: 61 import disembark-port records and 24 export embark-port records. A 2026-06-01 evidence pass found official Anexo 51-11 update evidence for the nonzero port gaps, but no code-table mutation has been approved or applied.
 - DUS export port code `0` and transport code `0` remain source-special/null style values and should not be treated as dictionary gaps.
 - DIN import `grossWeightItem` remains an expected source limitation: March 2026 DIN has `TOT_PESO` total gross weight, but no confirmed item-level gross-weight field.
 - Import `MONEDA` has 8 medium-priority undecoded values (`141`, `145`, `147`) that need separate evidence before currency decoding changes.
@@ -31,29 +31,67 @@ Use these classes before any future mutation:
 | Field | Codes | Affected records | Evidence status | Recommendation |
 | --- | --- | ---: | --- | --- |
 | Aduana import/export | `56` | 644 total | Needs manual official evidence | Do not decode yet. Find exact current Aduana code-table evidence for aduana `56`. Transactional records often pair export code `56` with raw embark glosa `PINO HACHADO(LIUCURA`, but an older official Aduana resolution maps Liucura/Pino Hachado to code `64`, not `56`, so this is not safe to mutate. |
-| Import disembark port | `817`, `819`, `820`, `823`, `824` | 54 shown in top codes; 61 total in service rollup | Workbook missing/stale | DIN records do not carry port glosas for these fields. Do not infer labels from export rows or adjacent code ranges. Find official current port table evidence. |
-| Export embark port | `225`, `817`, `821`, `827` | 24 | Raw glosa only | DUS raw records include `PASO GUANACO SONSO`, `PUERTO CABO FROWARD`, `ESPERANZA`, and `T.GNELES NORTE`. Treat as candidate labels, not final dictionary rows, until an official code-table source confirms exact code mappings. |
+| Import disembark port | `817`, `818`, `819`, `820`, `822`, `823`, `824`, `826` | 61 total | Official label found; workbook missing/stale | DIN records do not carry port glosas for these fields. Official Anexo 51-11 update notices now support a reviewed `chile_aduana:puertos` remediation plan, but the seeded workbook remains stale and no mutation is approved yet. |
+| Export embark port | `225`, `817`, `821`, `827` | 24 | Official label found; workbook missing/stale | DUS raw records include `PASO GUANACO SONSO`, `PUERTO CABO FROWARD`, `ESPERANZA`, and `T.GNELES NORTE`; official Anexo 51-11 update notices now confirm the exact mappings. Prepare a reviewed mutation plan rather than editing dictionaries directly. |
 | Export embark/disembark and transport special code | `0` | 3,132 export embark-port records; 4,602 transport records in the broad March count | Source-special/current-source code | Keep classified as source-special/null. It is often seen with service-style exports and absent glosas. |
 | Import currency | `141`, `145`, `147` | 8 | Needs manual official evidence | The values are present in raw `MONEDA`, but the current `Moneda` workbook sheet did not confirm them as currency labels. Do not borrow labels from country or operation-code tables. |
 
+## Official Port Evidence Found
+
+The current Aduana workbook downloaded from `tablas_de_codigos.xlsx` still hashes to `9a06201c5b1450851ff11188457876f0ed29ac60817af2832e3d16fc972c9376`, matching the local 2026-05-26 archived workbook. It still omits the March gap codes below as `chile_aduana:puertos` code-value rows. The evidence is therefore not "already seeded"; it is official Anexo 51-11 update evidence that should feed a reviewed dictionary remediation.
+
+| Code | Proposed label | March 2026 impact | Evidence source | Confidence |
+| --- | --- | ---: | --- | --- |
+| `225` | Paso Guanaco Sonso | 1 export embark record | Resolución Exenta 3194, published 2020-11-19, adds Paso Guanaco Sonso to Anexo 51-11 with code 225. | High: exact official code-to-label extract. |
+| `817` | Puerto Cabo Froward | 15 import disembark records; 3 export embark records | Resolución Exenta 477, published 2021-03-02, adds Puerto Cabo Froward to Anexo 51-11 with code 817. | High: exact official code-to-label extract. |
+| `818` | Muelle Huachipato | 4 import disembark records | Resolución Exenta 2424, published 2021-10-26, adds Muelle Huachipato to Anexo 51-11 with code 818. | High: exact official code-to-label extract. |
+| `819` | Terminal Marítimo Escuadrón | 8 import disembark records | Resolución Exenta 2424, published 2021-10-26, adds Terminal Marítimo Escuadrón to Anexo 51-11 with code 819. | High: exact official code-to-label extract. |
+| `820` | Terminal Portuario Terquim | 15 import disembark records | Resolución Exenta 2424, published 2021-10-26, adds Terminal Portuario Terquim to Anexo 51-11 with code 820. | High: exact official code-to-label extract. |
+| `821` | Terminal Muelle Mecanizado Esperanza | 4 export embark records | Resolución Exenta 356, published 2022-02-15, adds Terminal Muelle Mecanizado Esperanza to Anexo 51-11 with code 821. | High: exact official code-to-label extract. |
+| `822` | Terminal Marítimo Enaex | 2 import disembark records | Resolución Exenta 870, published 2022-04-08, adds Terminal Marítimo Enaex to Anexo 51-11 with code 822. | High: exact official code-to-label extract. |
+| `823` | Terminal Marítimo Oxiquim | 10 import disembark records | Resolución Exenta 1242, published 2022-05-23, adds Terminal Marítimo Oxiquim to Anexo 51-11 with code 823. | High: exact official code-to-label extract. |
+| `824` | Paso Buta Mallin | 6 import disembark records | Resolución Exenta 2222, published 2022-08-26, adds Paso Buta Mallin to Anexo 51-11 with code 824. | High: exact official code-to-label extract. |
+| `826` | Estación de Medición Recinto | 1 import disembark record | Resolución Exenta 2222, published 2022-08-26, adds Estación de Medición Recinto to Anexo 51-11 with code 826. | High: exact official code-to-label extract. |
+| `827` | Terminal Gráneles del Norte | 16 export embark records | Resolución Exenta 2800, published 2022-11-04, creates/habilitates code 827 for Terminal Gráneles del Norte and leaves without effect Resolución Exenta 1244. | High: exact official code-to-label extract and explicit replacement context. |
+
+Total evidence-backed port impact: 85 March 2026 relevant-port records. Export code `0` remains excluded because it is source-special/null style context, not a nonzero dictionary row.
+
+Important cross-table caveat: local seeded `chile_aduana:puertos` already contains port codes `141`, `145`, and `147` for Miami, Palm Beach, and Columbres. That does not decode import `MONEDA` values `141`, `145`, or `147`; those codes remain unresolved in `chile_aduana:moneda`.
+
 ## Candidate Mutation Plan, Not Yet Approved
 
-No code-table mutation is recommended yet.
+No code-table mutation is approved in this pass.
 
-If a future pass finds exact official evidence, use this shape:
+For the port rows with official evidence above, use this shape in a future reviewed remediation pass:
 
 1. Add or update only the affected `code_values` rows under the existing `code_table_key`.
 2. Store source provenance in code-value metadata: source file id, workbook or public Aduana reference, sheet/section, observed date, and confidence.
 3. Re-run `/data-quality/code-tables` and `/data-quality/load-readiness`.
 4. Verify record counts before/after:
-   - `chile_aduana:aduanas` code `56`: expected impact up to 644 decoded records.
-   - `chile_aduana:puertos` codes `817`, `819`, `820`, `821`, `823`, `824`, `827`, `225`: expected impact up to 85 decoded relevant-port records across import/export.
-   - `chile_aduana:moneda` codes `141`, `145`, `147`: expected impact 8 decoded import records if confirmed.
+   - `chile_aduana:puertos` codes `225`, `817`, `818`, `819`, `820`, `821`, `822`, `823`, `824`, `826`, `827`: expected impact 85 decoded relevant-port records across import/export.
 5. Keep a rollback path by making the change as a deterministic seed/backfill script that can remove only the newly inserted reviewed rows.
+
+Recommended test plan for that future mutation:
+
+- Unit-test the proposed seed/backfill helper so it targets only `chile_aduana:puertos` and only the 11 reviewed code values.
+- Re-run `npm run test:data-quality` to confirm source-special code `0` remains excluded and the high-priority port gaps are reduced.
+- Re-run `npm run typecheck`, all named test scripts, `npm run build`, and `git diff --check`.
+- Smoke-check `/data-quality/code-tables`, `/data-quality/load-readiness`, and representative linked `/trade-records` filters before committing.
+
+Rollback/reseed strategy:
+
+- Keep the mutation deterministic and scoped by `code_table_key`, code value, and provenance metadata so a rollback can delete only rows inserted by this remediation.
+- Do not rewrite or reseed the full workbook-backed dictionary unless the official workbook itself is updated and archived.
+- Preserve the 2026-05-26 workbook as the baseline source and store legal-update provenance separately in metadata for the added rows.
+
+Do not include unresolved gaps in the same mutation:
+
+- `chile_aduana:aduanas` code `56`: expected impact up to 644 decoded records if exact official evidence is found later.
+- `chile_aduana:moneda` codes `141`, `145`, `147`: expected impact 8 decoded import records if exact official currency evidence is found later.
 
 ## Readiness Impact
 
-If official evidence confirms and decodes the high-priority aduana and port gaps, `/data-quality/load-readiness` should move away from the current code-table blocker. It may still remain `review-first` because payload retention, performance guardrails, field-mapping caveats, and medium-priority dictionary gaps are intentionally conservative before loading another dev month.
+If the evidence-backed port rows above are added in a reviewed pass, `/data-quality/load-readiness` should reduce the port portion of the current code-table blocker. Aduana code `56` is still the largest unresolved high-priority gap, so readiness should remain conservative until exact official aduana-code evidence is acquired or the blocker is explicitly reclassified. It may still remain `review-first` because payload retention, performance guardrails, field-mapping caveats, and medium-priority dictionary gaps are intentionally conservative before loading another dev month.
 
 ## Evidence Notes
 
@@ -67,20 +105,32 @@ Local read-only queries checked:
 
 External official Aduana material checked:
 
-- Aduana Resolucion Exenta 6915 (2014) includes a historical Aduana/pass table, but it maps Liucura/Pino Hachado to code `64`, so it does not validate March 2026 code `56`.
-- Aduana statistical compendia mention port/place names such as Puerto Cabo Froward, Paso Guanaco Sonso, Terminal Graneles del Norte, and Pino Hachado/Liucura, but those documents are not exact current code-to-label dictionaries for the March 2026 row-level codes.
+- Aduana Resolución Exenta 6915 (2014) includes a historical Aduana/pass table, but it maps Liucura/Pino Hachado to code `64`, so it does not validate March 2026 code `56`.
+- Aduana statistical compendia mention port/place names such as Puerto Cabo Froward, Paso Guanaco Sonso, Terminal Gráneles del Norte, and Pino Hachado/Liucura, but those documents are not exact current code-to-label dictionaries for the March 2026 row-level codes.
+- BCN/Ley Chile and Diario Oficial extracts for Aduana Anexo 51-11 updates provide exact port-code evidence for the March 2026 nonzero port gaps. These are suitable for a reviewed remediation proposal, not an automatic mutation.
+- Decreto 354 Exento (2025) and a vLex index entry for Resolución 5330 (2025) show official Aduana de La Araucanía activity and Anexo 1/51 updates, but they do not provide a visible exact `56` -> label mapping in the inspected public text.
 
 Relevant official URLs:
 
 - https://www.aduana.cl/resolucion-exenta-n-6915-05-12-2014/aduana/2014-12-05/162630.html
 - https://www.aduana.cl/aduana/site/docs/20181217/20181217125337/compendio_comex_marzo_2021_2022_final.pdf
 - https://www.aduana.cl/aduana/site/docs/20181217/20181217125337/compendio_comex_diciembre_2021_2022_final_v06022023.pdf
+- https://www.bcn.cl/leychile/navegar?idNorma=1151885
+- https://www.bcn.cl/leychile/navegar?idNorma=1156469
+- https://www.bcn.cl/leychile/navegar?i=1167006&f=2021-10-26
+- https://www.diariooficial.interior.gob.cl/publicaciones/2022/02/15/43179/01/2086306.pdf
+- https://www.diariooficial.interior.gob.cl/publicaciones/2022/04/08/43224/01/2111321.pdf
+- https://www.bcn.cl/leychile/navegar?idNorma=1176404
+- https://www.bcn.cl/leychile/navegar?f=2022-08-26&i=1180469
+- https://www.bcn.cl/leychile/navegar?idNorma=1183791&idVersion=2022-11-04
+- https://www.bcn.cl/leychile/navegar?idNorma=1219265
+- https://vlex.cl/source/30890/c/resolucion
 
 ## Next Step
 
-Before mutating dictionaries, run a dedicated official-code-table acquisition pass:
+Before mutating dictionaries, run a dedicated reviewed code-table remediation implementation pass:
 
-- Search for a newer Aduana Annex 51 or equivalent official lookup source covering aduanas, ports, and currencies.
-- Preserve the source file in the local source archive and R2 plan before use.
-- Compare exact code mappings against March 2026 gaps.
-- Prepare a deterministic, reviewed seed/backfill script only after exact official evidence is documented.
+- Implement only the evidence-backed port rows as a deterministic reviewed seed/backfill.
+- Keep the unresolved Aduana `56` and currency `141`/`145`/`147` gaps in read-only QA until exact official evidence is acquired.
+- Preserve source provenance for every inserted code-value row.
+- Re-run code-table QA and load-readiness after the port remediation to confirm the readiness impact.
