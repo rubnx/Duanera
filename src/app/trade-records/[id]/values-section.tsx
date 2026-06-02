@@ -86,7 +86,11 @@ export function TradeRecordValuesSection({ record }: { record: DetailRecord }) {
             />
             <DetailField
               label="Cantidad"
-              value={formatDetailQuantity(record.quantity, record.decodedLabels.quantityUnit)}
+              value={formatDetailQuantity(
+                record.quantity,
+                record.quantityUnitCode,
+                record.decodedLabels.quantityUnit,
+              )}
               mono
             />
             <DetailField label="Peso bruto total" value={record.grossWeightTotal} mono />
@@ -115,7 +119,11 @@ export function TradeRecordValuesSection({ record }: { record: DetailRecord }) {
               />
               <DetailField
                 label="Cantidad"
-                value={formatDetailQuantity(record.quantity, record.decodedLabels.quantityUnit)}
+                value={formatDetailQuantity(
+                  record.quantity,
+                  record.quantityUnitCode,
+                  record.decodedLabels.quantityUnit,
+                )}
                 mono
               />
               <DetailField label="Peso bruto item" value={record.grossWeightItem} mono />

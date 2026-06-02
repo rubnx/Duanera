@@ -61,12 +61,14 @@ export function formatTradeCodeLabel(
 
 export function formatTradeQuantity(
   value: string | null,
-  unit?: string | null,
+  unitCode?: string | null,
+  unitLabel?: string | null,
   fallback = "—",
 ) {
   if (!value) {
     return fallback;
   }
 
+  const unit = unitLabel ?? unitCode;
   return unit ? `${value} ${unit}` : value;
 }

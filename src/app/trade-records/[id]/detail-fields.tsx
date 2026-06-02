@@ -14,8 +14,12 @@ export function formatDetailMoney(value: string | null, currency?: string) {
   return formatTradeMoney(value, currency, detailFallback);
 }
 
-export function formatDetailQuantity(value: string | null, unit?: string) {
-  return formatTradeQuantity(value, unit, detailFallback);
+export function formatDetailQuantity(
+  value: string | null,
+  unitCode?: string | null,
+  unitLabel?: string | null,
+) {
+  return formatTradeQuantity(value, unitCode, unitLabel, detailFallback);
 }
 
 export function formatDetailJson(value: unknown) {

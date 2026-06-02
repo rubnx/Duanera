@@ -23,5 +23,6 @@ test("formats trade money, code labels, and quantities with configurable fallbac
   assert.equal(formatTradeCodeLabel("336", "México"), "336 · México");
   assert.equal(formatTradeCodeLabel(null, undefined, "No informado"), "No informado");
   assert.equal(formatTradeQuantity("10", "KG"), "10 KG");
-  assert.equal(formatTradeQuantity(null, "KG", "No informado"), "No informado");
+  assert.equal(formatTradeQuantity("10", "KG", "Kilogramos"), "10 Kilogramos");
+  assert.equal(formatTradeQuantity(null, "KG", "Kilogramos", "No informado"), "No informado");
 });
