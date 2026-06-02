@@ -23,15 +23,17 @@ import {
   type TradeRecordWithLabels,
 } from "@/trade/trade-record-labels";
 import {
-  formatTradeCodeLabel,
-  formatTradeMoney,
-  formatTradeQuantity,
-} from "@/trade/trade-record-format";
-import {
   getTradeRecordById,
   listRelatedTradeRecords,
   type TradeRecordDetail,
 } from "@/trade/trade-records";
+import {
+  DetailField,
+  formatDetailCodeLabel,
+  formatDetailJson,
+  formatDetailMoney,
+  formatDetailQuantity,
+} from "./detail-fields";
 import { ProvenancePanel } from "./provenance-panel";
 import {
   RelatedRecordsSection,
@@ -43,28 +45,6 @@ type PageProps = {
 };
 
 type DetailRecord = TradeRecordWithLabels<TradeRecordDetail>;
-
-const detailFallback = "No informado";
-
-function formatCodeLabel(code: string | null, label?: string) {
-  return formatTradeCodeLabel(code, label, detailFallback);
-}
-
-function formatMoney(value: string | null, currency?: string) {
-  return formatTradeMoney(value, currency, detailFallback);
-}
-
-function formatQuantity(value: string | null, unit?: string) {
-  return formatTradeQuantity(value, unit, detailFallback);
-}
-
-function formatJson(value: unknown) {
-  if (value === null || value === undefined) {
-    return "No informado";
-  }
-
-  return JSON.stringify(value, null, 2);
-}
 
 function participantLabel(record: DetailRecord) {
   if (record.tradeFlow === "import") {
@@ -97,25 +77,6 @@ function valueSectionCopy(record: DetailRecord) {
     description:
       "Campos FOB y contexto logístico de exportación. No se muestran campos CIF en cero que no aportan lectura comercial.",
   };
-}
-
-function Field({
-  label,
-  value,
-  mono = false,
-}: {
-  label: string;
-  value: string | number | null | undefined;
-  mono?: boolean;
-}) {
-  return (
-    <div className="flex min-w-0 flex-col gap-1">
-      <dt className="text-xs font-medium text-muted-foreground">{label}</dt>
-      <dd className={mono ? "break-words font-mono text-xs" : "break-words text-sm"}>
-        {value ?? "No informado"}
-      </dd>
-    </div>
-  );
 }
 
 export default async function TradeRecordDetailPage({ params }: PageProps) {
@@ -204,26 +165,26 @@ export default async function TradeRecordDetailPage({ params }: PageProps) {
             </CardHeader>
             <CardContent>
               <dl className="grid gap-4 md:grid-cols-2">
-                <Field label="Declaración" value={record.declarationIdRaw} mono />
-                <Field label="Item" value={record.itemNumber} />
-                <Field label="Fecha aceptación" value={record.acceptanceDate} />
-                <Field label={participant.label} value={participant.value} mono />
-                <Field label="Descripción fuente" value={record.productDescriptionRaw} />
-                <Field
+                <DetailField label="Declaración" value={record.declarationIdRaw} mono />
+                <DetailField label="Item" value={record.itemNumber} />
+                <DetailField label="Fecha aceptación" value={record.acceptanceDate} />
+                <DetailField label={participant.label} value={participant.value} mono />
+                <DetailField label="Descripción fuente" value={record.productDescriptionRaw} />
+                <DetailField
                   label="Referencia producto fuente"
                   value={product.sourceReference ?? "No informado"}
                   mono
                 />
-                <Field label="HS original" value={record.hsCodeRaw} mono />
-                <Field label="HS normalizado" value={record.hsCodeNormalized} mono />
-                <Field
+                <DetailField label="HS original" value={record.hsCodeRaw} mono />
+                <DetailField label="HS normalizado" value={record.hsCodeNormalized} mono />
+                <DetailField
                   label="Unidad cantidad"
-                  value={formatCodeLabel(
+                  value={formatDetailCodeLabel(
                     record.quantityUnitCode,
                     record.decodedLabels.quantityUnit,
                   )}
                 />
-                <Field label="Cantidad" value={record.quantity} mono />
+                <DetailField label="Cantidad" value={record.quantity} mono />
               </dl>
             </CardContent>
           </Card>
@@ -236,99 +197,99 @@ export default async function TradeRecordDetailPage({ params }: PageProps) {
             <CardContent>
               {record.tradeFlow === "import" ? (
                 <dl className="grid gap-4 md:grid-cols-3">
-                  <Field
+                  <DetailField
                     label="CIF item"
-                    value={formatMoney(record.itemCifValue, record.decodedLabels.currency)}
+                    value={formatDetailMoney(record.itemCifValue, record.decodedLabels.currency)}
                     mono
                   />
-                  <Field
+                  <DetailField
                     label="FOB declaración"
-                    value={formatMoney(
+                    value={formatDetailMoney(
                       record.declarationFobValue,
                       record.decodedLabels.currency,
                     )}
                     mono
                   />
-                  <Field
+                  <DetailField
                     label="CIF declaración"
-                    value={formatMoney(record.cifValue, record.decodedLabels.currency)}
+                    value={formatDetailMoney(record.cifValue, record.decodedLabels.currency)}
                     mono
                   />
-                  <Field
+                  <DetailField
                     label="Flete"
-                    value={formatMoney(record.freightValue, record.decodedLabels.currency)}
+                    value={formatDetailMoney(record.freightValue, record.decodedLabels.currency)}
                     mono
                   />
-                  <Field
+                  <DetailField
                     label="Seguro"
-                    value={formatMoney(record.insuranceValue, record.decodedLabels.currency)}
+                    value={formatDetailMoney(record.insuranceValue, record.decodedLabels.currency)}
                     mono
                   />
-                  <Field
+                  <DetailField
                     label="Precio unitario"
-                    value={formatMoney(record.unitPriceValue, record.decodedLabels.currency)}
+                    value={formatDetailMoney(record.unitPriceValue, record.decodedLabels.currency)}
                     mono
                   />
-                  <Field
+                  <DetailField
                     label="Cantidad"
-                    value={formatQuantity(record.quantity, record.decodedLabels.quantityUnit)}
+                    value={formatDetailQuantity(record.quantity, record.decodedLabels.quantityUnit)}
                     mono
                   />
-                  <Field label="Peso bruto total" value={record.grossWeightTotal} mono />
-                  <Field label="Peso bruto item" value={record.grossWeightItem} mono />
+                  <DetailField label="Peso bruto total" value={record.grossWeightTotal} mono />
+                  <DetailField label="Peso bruto item" value={record.grossWeightItem} mono />
                 </dl>
               ) : (
                 <div className="flex flex-col gap-4">
                   <dl className="grid gap-4 md:grid-cols-3">
-                    <Field
+                    <DetailField
                       label="FOB item"
-                      value={formatMoney(record.itemFobValue, record.decodedLabels.currency)}
+                      value={formatDetailMoney(record.itemFobValue, record.decodedLabels.currency)}
                       mono
                     />
-                    <Field
+                    <DetailField
                       label="FOB declaración"
-                      value={formatMoney(
+                      value={formatDetailMoney(
                         record.declarationFobValue,
                         record.decodedLabels.currency,
                       )}
                       mono
                     />
-                    <Field
+                    <DetailField
                       label="Precio unitario FOB"
-                      value={formatMoney(record.unitPriceValue, record.decodedLabels.currency)}
+                      value={formatDetailMoney(record.unitPriceValue, record.decodedLabels.currency)}
                       mono
                     />
-                    <Field
+                    <DetailField
                       label="Cantidad"
-                      value={formatQuantity(record.quantity, record.decodedLabels.quantityUnit)}
+                      value={formatDetailQuantity(record.quantity, record.decodedLabels.quantityUnit)}
                       mono
                     />
-                    <Field label="Peso bruto item" value={record.grossWeightItem} mono />
-                    <Field label="Peso bruto total" value={record.grossWeightTotal} mono />
-                    <Field
+                    <DetailField label="Peso bruto item" value={record.grossWeightItem} mono />
+                    <DetailField label="Peso bruto total" value={record.grossWeightTotal} mono />
+                    <DetailField
                       label="País destino"
-                      value={formatCodeLabel(
+                      value={formatDetailCodeLabel(
                         record.destinationCountryCode,
                         record.decodedLabels.destinationCountry,
                       )}
                     />
-                    <Field
+                    <DetailField
                       label="Puerto embarque"
-                      value={formatCodeLabel(
+                      value={formatDetailCodeLabel(
                         record.embarkPortCode,
                         record.decodedLabels.embarkPort,
                       )}
                     />
-                    <Field
+                    <DetailField
                       label="Puerto desembarque"
-                      value={formatCodeLabel(
+                      value={formatDetailCodeLabel(
                         record.disembarkPortCode,
                         record.decodedLabels.disembarkPort,
                       )}
                     />
-                    <Field
+                    <DetailField
                       label="Vía transporte"
-                      value={formatCodeLabel(
+                      value={formatDetailCodeLabel(
                         record.transportModeCode,
                         record.decodedLabels.transportMode,
                       )}
@@ -349,10 +310,10 @@ export default async function TradeRecordDetailPage({ params }: PageProps) {
                         </div>
                         <dl className="grid gap-4 md:grid-cols-3">
                           {exportAdditionalValues.map((field) => (
-                            <Field
+                            <DetailField
                               key={field.label}
                               label={field.label}
-                              value={formatMoney(field.value, record.decodedLabels.currency)}
+                              value={formatDetailMoney(field.value, record.decodedLabels.currency)}
                               mono
                             />
                           ))}
@@ -372,62 +333,62 @@ export default async function TradeRecordDetailPage({ params }: PageProps) {
             </CardHeader>
             <CardContent>
               <dl className="grid gap-4 md:grid-cols-2">
-                <Field
+                <DetailField
                   label="País origen"
-                  value={formatCodeLabel(
+                  value={formatDetailCodeLabel(
                     record.originCountryCode,
                     record.decodedLabels.originCountry,
                   )}
                 />
-                <Field
+                <DetailField
                   label="País adquisición"
-                  value={formatCodeLabel(
+                  value={formatDetailCodeLabel(
                     record.acquisitionCountryCode,
                     record.decodedLabels.acquisitionCountry,
                   )}
                 />
-                <Field
+                <DetailField
                   label="País consignación"
-                  value={formatCodeLabel(
+                  value={formatDetailCodeLabel(
                     record.consignmentCountryCode,
                     record.decodedLabels.consignmentCountry,
                   )}
                 />
-                <Field
+                <DetailField
                   label="País destino"
-                  value={formatCodeLabel(
+                  value={formatDetailCodeLabel(
                     record.destinationCountryCode,
                     record.decodedLabels.destinationCountry,
                   )}
                 />
-                <Field
+                <DetailField
                   label="Aduana"
-                  value={formatCodeLabel(
+                  value={formatDetailCodeLabel(
                     record.customsOfficeCode,
                     record.decodedLabels.customsOffice,
                   )}
                 />
-                <Field
+                <DetailField
                   label="Vía transporte"
-                  value={formatCodeLabel(
+                  value={formatDetailCodeLabel(
                     record.transportModeCode,
                     record.decodedLabels.transportMode,
                   )}
                 />
-                <Field
+                <DetailField
                   label="Puerto embarque"
-                  value={formatCodeLabel(record.embarkPortCode, record.decodedLabels.embarkPort)}
+                  value={formatDetailCodeLabel(record.embarkPortCode, record.decodedLabels.embarkPort)}
                 />
-                <Field
+                <DetailField
                   label="Puerto desembarque"
-                  value={formatCodeLabel(
+                  value={formatDetailCodeLabel(
                     record.disembarkPortCode,
                     record.decodedLabels.disembarkPort,
                   )}
                 />
-                <Field
+                <DetailField
                   label="Tipo carga"
-                  value={formatCodeLabel(record.cargoTypeCode, record.decodedLabels.cargoType)}
+                  value={formatDetailCodeLabel(record.cargoTypeCode, record.decodedLabels.cargoType)}
                 />
               </dl>
             </CardContent>
@@ -448,7 +409,7 @@ export default async function TradeRecordDetailPage({ params }: PageProps) {
               {productAttributes.length > 0 ? (
                 <dl className="grid gap-3">
                   {productAttributes.map((attribute) => (
-                    <Field
+                    <DetailField
                       key={`${attribute.label}:${attribute.value}`}
                       label={attribute.label}
                       value={attribute.value}
@@ -487,7 +448,7 @@ export default async function TradeRecordDetailPage({ params }: PageProps) {
           <div>
             <div className="mb-2 text-xs font-medium text-muted-foreground">Valores parseados</div>
             <pre className="max-h-[420px] overflow-auto rounded-lg bg-muted p-3 text-xs leading-relaxed">
-              {formatJson(record.rawValues)}
+              {formatDetailJson(record.rawValues)}
             </pre>
           </div>
         </CardContent>
