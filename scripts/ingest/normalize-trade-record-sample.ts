@@ -1,6 +1,8 @@
 import { config } from "dotenv";
 import { and, asc, eq, gt, isNotNull, sql } from "drizzle-orm";
+import { pathToFileURL } from "node:url";
 
+import type { DbClient } from "../../src/db/client";
 import { assertDevDatabaseTarget } from "../../src/db/dev-guard";
 import {
   normalizeHsCode,
@@ -13,12 +15,6 @@ import {
   sourceTradeParticipants,
   tradeRecords,
 } from "../../src/db/schema";
-
-config({ path: ".env.local" });
-config();
-assertDevDatabaseTarget("trade record sample normalizer");
-
-const { db } = await import("../../src/db/client");
 
 const parserName = "aduana-main-sample-normalizer";
 const parserVersion = "0.1.0";
@@ -37,6 +33,7 @@ type ParticipantStats = {
   lastSeenMonth: number;
 };
 
+let db: DbClient;
 const participantStats = new Map<string, ParticipantStats>();
 const participantIds = new Map<string, string>();
 
@@ -61,14 +58,25 @@ function text(values: RawValues, key: string): string | null {
   return value ? value : null;
 }
 
-function integer(values: RawValues, key: string): number | null {
-  const value = text(values, key);
+export function parseIntegerValue(value: string | null): number | null {
   if (!value) {
     return null;
   }
 
-  const parsed = Number.parseInt(value, 10);
-  return Number.isNaN(parsed) ? null : parsed;
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  if (!/^\d+$/.test(trimmed)) {
+    return null;
+  }
+
+  return Number.parseInt(trimmed, 10);
+}
+
+function integer(values: RawValues, key: string): number | null {
+  return parseIntegerValue(text(values, key));
 }
 
 function decimal(values: RawValues, key: string): string | null {
@@ -379,112 +387,137 @@ async function flushTradeRecordBatch(batch: Array<typeof tradeRecords.$inferInse
   batch.length = 0;
 }
 
-let normalized = 0;
-const chunkSize = rawChunkSize();
-const insertBatchSize = tradeRecordBatchSize();
-const tradeRecordBatch: Array<typeof tradeRecords.$inferInsert> = [];
+export async function runTradeRecordNormalizer(database: DbClient) {
+  db = database;
+  participantIds.clear();
+  participantStats.clear();
 
-await loadExistingParticipants();
+  let normalized = 0;
+  const chunkSize = rawChunkSize();
+  const insertBatchSize = tradeRecordBatchSize();
+  const tradeRecordBatch: Array<typeof tradeRecords.$inferInsert> = [];
 
-for (const tradeFlow of ["export", "import"] as const) {
-  let lastRowNumber = 0;
+  await loadExistingParticipants();
 
-  while (true) {
-    const rows = await db
-      .select({
-        id: rawTradeRows.id,
-        sourceFileId: rawTradeRows.sourceFileId,
-        importBatchId: rawTradeRows.importBatchId,
-        tradeFlow: rawTradeRows.tradeFlow,
-        periodYear: rawTradeRows.periodYear,
-        periodMonth: rawTradeRows.periodMonth,
-        rowNumber: rawTradeRows.rowNumber,
-        rawValues: rawTradeRows.rawValues,
-      })
-      .from(rawTradeRows)
-      .where(
-        and(
-          eq(rawTradeRows.parseStatus, "parsed"),
-          eq(rawTradeRows.tradeFlow, tradeFlow),
-          isNotNull(rawTradeRows.rawValues),
-          gt(rawTradeRows.rowNumber, lastRowNumber),
-        ),
-      )
-      .orderBy(asc(rawTradeRows.rowNumber))
-      .limit(chunkSize);
+  for (const tradeFlow of ["export", "import"] as const) {
+    let lastRowNumber = 0;
 
-    if (rows.length === 0) {
-      break;
+    while (true) {
+      const rows = await db
+        .select({
+          id: rawTradeRows.id,
+          sourceFileId: rawTradeRows.sourceFileId,
+          importBatchId: rawTradeRows.importBatchId,
+          tradeFlow: rawTradeRows.tradeFlow,
+          periodYear: rawTradeRows.periodYear,
+          periodMonth: rawTradeRows.periodMonth,
+          rowNumber: rawTradeRows.rowNumber,
+          rawValues: rawTradeRows.rawValues,
+        })
+        .from(rawTradeRows)
+        .where(
+          and(
+            eq(rawTradeRows.parseStatus, "parsed"),
+            eq(rawTradeRows.tradeFlow, tradeFlow),
+            isNotNull(rawTradeRows.rawValues),
+            gt(rawTradeRows.rowNumber, lastRowNumber),
+          ),
+        )
+        .orderBy(asc(rawTradeRows.rowNumber))
+        .limit(chunkSize);
+
+      if (rows.length === 0) {
+        break;
+      }
+
+      for (const row of rows) {
+        lastRowNumber = row.rowNumber;
+
+        if (row.tradeFlow !== "import" && row.tradeFlow !== "export") {
+          continue;
+        }
+
+        if (!row.periodYear || !row.periodMonth) {
+          throw new Error(`Raw row ${row.id} is missing period fields.`);
+        }
+
+        const rawValues = row.rawValues as RawValues;
+        const mapped =
+          row.tradeFlow === "import" ? importTradeValues(rawValues) : exportTradeValues(rawValues);
+
+        const importerParticipantId = await ensureParticipant(
+          "import",
+          "importer",
+          mapped.importerCorrelativeId,
+          row.periodYear,
+          row.periodMonth,
+        );
+        const exporterPrimaryParticipantId = await ensureParticipant(
+          "export",
+          "exporter_primary",
+          mapped.exporterPrimaryCorrelativeId,
+          row.periodYear,
+          row.periodMonth,
+        );
+        const exporterSecondaryParticipantId = await ensureParticipant(
+          "export",
+          "exporter_secondary",
+          mapped.exporterSecondaryCorrelativeId,
+          row.periodYear,
+          row.periodMonth,
+        );
+
+        tradeRecordBatch.push({
+          sourceFileId: row.sourceFileId,
+          importBatchId: row.importBatchId,
+          rawTradeRowId: row.id,
+          importerParticipantId,
+          exporterPrimaryParticipantId,
+          exporterSecondaryParticipantId,
+          tradeFlow: row.tradeFlow,
+          periodYear: row.periodYear,
+          periodMonth: row.periodMonth,
+          ...mapped,
+          parserName,
+          parserVersion,
+        });
+
+        normalized += 1;
+
+        if (tradeRecordBatch.length >= insertBatchSize) {
+          await flushTradeRecordBatch(tradeRecordBatch);
+        }
+      }
+
+      process.stdout.write(
+        `${tradeFlow}: normalized ${normalized} total rows through raw row ${lastRowNumber}.\n`,
+      );
     }
-
-    for (const row of rows) {
-      lastRowNumber = row.rowNumber;
-
-      if (row.tradeFlow !== "import" && row.tradeFlow !== "export") {
-        continue;
-      }
-
-      if (!row.periodYear || !row.periodMonth) {
-        throw new Error(`Raw row ${row.id} is missing period fields.`);
-      }
-
-      const rawValues = row.rawValues as RawValues;
-      const mapped =
-        row.tradeFlow === "import" ? importTradeValues(rawValues) : exportTradeValues(rawValues);
-
-      const importerParticipantId = await ensureParticipant(
-        "import",
-        "importer",
-        mapped.importerCorrelativeId,
-        row.periodYear,
-        row.periodMonth,
-      );
-      const exporterPrimaryParticipantId = await ensureParticipant(
-        "export",
-        "exporter_primary",
-        mapped.exporterPrimaryCorrelativeId,
-        row.periodYear,
-        row.periodMonth,
-      );
-      const exporterSecondaryParticipantId = await ensureParticipant(
-        "export",
-        "exporter_secondary",
-        mapped.exporterSecondaryCorrelativeId,
-        row.periodYear,
-        row.periodMonth,
-      );
-
-      tradeRecordBatch.push({
-        sourceFileId: row.sourceFileId,
-        importBatchId: row.importBatchId,
-        rawTradeRowId: row.id,
-        importerParticipantId,
-        exporterPrimaryParticipantId,
-        exporterSecondaryParticipantId,
-        tradeFlow: row.tradeFlow,
-        periodYear: row.periodYear,
-        periodMonth: row.periodMonth,
-        ...mapped,
-        parserName,
-        parserVersion,
-      });
-
-      normalized += 1;
-
-      if (tradeRecordBatch.length >= insertBatchSize) {
-        await flushTradeRecordBatch(tradeRecordBatch);
-      }
-    }
-
-    console.log(
-      `${tradeFlow}: normalized ${normalized} total rows through raw row ${lastRowNumber}.`,
-    );
   }
+
+  await flushTradeRecordBatch(tradeRecordBatch);
+  await refreshParticipantStats();
+
+  process.stdout.write(
+    `Trade record normalization complete. Normalized ${normalized} raw rows and touched ${participantStats.size} anonymous participants.\n`,
+  );
+
+  return { normalized, participantCount: participantStats.size };
 }
 
-await flushTradeRecordBatch(tradeRecordBatch);
-await refreshParticipantStats();
+async function main() {
+  config({ path: ".env.local" });
+  config();
+  assertDevDatabaseTarget("trade record sample normalizer");
 
-console.log(
-  `Trade record normalization complete. Normalized ${normalized} raw rows and touched ${participantStats.size} anonymous participants.`,
-);
+  const { db } = await import("../../src/db/client");
+  await runTradeRecordNormalizer(db);
+}
+
+if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
+  main().catch((error: unknown) => {
+    const message = error instanceof Error ? error.message : String(error);
+    process.stderr.write(`Trade record normalization failed: ${message}\n`);
+    process.exitCode = 1;
+  });
+}
