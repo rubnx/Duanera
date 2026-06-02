@@ -149,6 +149,14 @@ type SourceContextRow = {
   normalizedRawFilename: string | null;
 };
 
+export function rawSampleValueRecord(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+
+  return value as Record<string, unknown>;
+}
+
 const fieldMappingDefinitions: FieldMappingDefinition[] = [
   {
     id: "import_declaration_id",
@@ -924,11 +932,11 @@ function sampleValuesForDefinition(
   const seen = new Set<string>();
 
   for (const row of rawSamples) {
-    if (row.tradeFlow !== definition.tradeFlow || !row.rawValues) {
+    const rawValues = rawSampleValueRecord(row.rawValues);
+    if (row.tradeFlow !== definition.tradeFlow || !rawValues) {
       continue;
     }
 
-    const rawValues = row.rawValues as Record<string, unknown>;
     for (const fieldName of definition.rawFields) {
       const rawValue = rawValues[fieldName];
       const value = typeof rawValue === "string" ? rawValue.trim() : "";
@@ -962,12 +970,12 @@ function rawSampleCoverageForDefinition(
   let presentRows = 0;
 
   for (const row of rawSamples) {
-    if (row.tradeFlow !== definition.tradeFlow || !row.rawValues) {
+    const rawValues = rawSampleValueRecord(row.rawValues);
+    if (row.tradeFlow !== definition.tradeFlow || !rawValues) {
       continue;
     }
 
     sampleRows += 1;
-    const rawValues = row.rawValues as Record<string, unknown>;
     const hasPresentValue = definition.rawFields.some((fieldName) => {
       const rawValue = rawValues[fieldName];
       return typeof rawValue === "string" && rawValue.trim().length > 0;

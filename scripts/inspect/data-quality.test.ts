@@ -20,6 +20,7 @@ import {
   fieldMappingGroupLabel,
   fieldMappingSearchHref,
   fieldMappingSourceTradeHref,
+  rawSampleValueRecord,
 } from "../../src/quality/field-mapping";
 import {
   codeTableRemediationHref,
@@ -218,6 +219,13 @@ test("labels field-mapping groups and confidence in Spanish", () => {
   assert.equal(fieldMappingGroupLabel("commercial_values"), "Valores comerciales");
   assert.equal(fieldMappingConfidenceLabel("verified"), "Mapeo directo");
   assert.equal(fieldMappingConfidenceLabel("needs_review"), "Requiere revisión");
+});
+
+test("accepts only object-shaped raw sample values for field-mapping QA", () => {
+  assert.deepEqual(rawSampleValueRecord({ NUMITEM: "1" }), { NUMITEM: "1" });
+  assert.equal(rawSampleValueRecord(null), null);
+  assert.equal(rawSampleValueRecord("NUMITEM=1"), null);
+  assert.equal(rawSampleValueRecord(["NUMITEM", "1"]), null);
 });
 
 test("classifies code-table remediation coverage by commercial priority", () => {
