@@ -13,18 +13,21 @@ import {
   tradeRecordPresetCategories,
   tradeRecordPresets,
   type TradeRecordPreset,
+  type TradeRecordPresetDefaultPeriod,
 } from "@/trade/trade-record-presets";
 
 function PresetLink({
+  defaultPeriod,
   isActive,
   preset,
 }: {
+  defaultPeriod: TradeRecordPresetDefaultPeriod;
   isActive: boolean;
   preset: TradeRecordPreset;
 }) {
   return (
     <Link
-      href={buildTradeRecordPresetHref(preset)}
+      href={buildTradeRecordPresetHref(preset, defaultPeriod)}
       aria-current={isActive ? "page" : undefined}
       className={[
         "block min-w-0 rounded-lg border px-3 py-2 text-left transition-colors",
@@ -48,14 +51,21 @@ function PresetLink({
   );
 }
 
-export function TradeRecordPresetViews({ activePresetId }: { activePresetId: string | null }) {
+export function TradeRecordPresetViews({
+  activePresetId,
+  defaultPeriod,
+}: {
+  activePresetId: string | null;
+  defaultPeriod: TradeRecordPresetDefaultPeriod;
+}) {
   return (
     <Card>
       <CardHeader className="border-b">
         <CardTitle>Vistas comerciales rápidas</CardTitle>
         <CardDescription>
-          Atajos compartibles para explorar marzo 2026 con filtros existentes. Son
-          vistas de conveniencia, no conclusiones de mercado verificadas.
+          Atajos compartibles para explorar el último mes cargado con filtros
+          existentes. Son vistas de conveniencia, no conclusiones de mercado
+          verificadas.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -73,6 +83,7 @@ export function TradeRecordPresetViews({ activePresetId }: { activePresetId: str
                 {presets.map((preset) => (
                   <PresetLink
                     key={preset.id}
+                    defaultPeriod={defaultPeriod}
                     preset={preset}
                     isActive={activePresetId === preset.id}
                   />

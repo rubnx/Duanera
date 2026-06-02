@@ -17,6 +17,10 @@ import {
   tradeRecordPresets,
 } from "../../src/trade/trade-record-presets";
 import {
+  formatTradeRecordPeriodScope,
+  formatTradeRecordPeriodValue,
+} from "../../src/trade/trade-record-periods";
+import {
   buildTradeRecordRelatedGroupDefinitions,
   encodeTradeRecordCursor,
   type TradeRecordSummary,
@@ -465,13 +469,18 @@ test("converts related-record filters into search-link params", () => {
 });
 
 test("builds shareable trade record preset URLs with supported filters only", () => {
+  const defaultPeriod = {
+    periodFrom: "2026-04",
+    periodTo: "2026-04",
+  };
+
   assert.equal(
-    buildTradeRecordPresetHref(tradeRecordPresets[0]),
-    "/trade-records?tradeFlow=import&periodFrom=2026-03&periodTo=2026-03&minItemValue=50000&sort=item_value_desc&limit=25",
+    buildTradeRecordPresetHref(tradeRecordPresets[0], defaultPeriod),
+    "/trade-records?tradeFlow=import&periodFrom=2026-04&periodTo=2026-04&minItemValue=50000&sort=item_value_desc&limit=25",
   );
 
   for (const preset of tradeRecordPresets) {
-    const href = buildTradeRecordPresetHref(preset);
+    const href = buildTradeRecordPresetHref(preset, defaultPeriod);
     const url = new URL(href, "https://duanera.test");
     const filters = parseTradeRecordSearchParams(url.searchParams);
 
@@ -480,36 +489,59 @@ test("builds shareable trade record preset URLs with supported filters only", ()
     assert.equal(url.searchParams.has("offset"), false);
     assert.equal(url.searchParams.has("importer"), false);
     assert.equal(url.searchParams.has("exporter"), false);
-    assert.equal(filters.periodFrom, "2026-03");
-    assert.equal(filters.periodTo, "2026-03");
+    assert.equal(filters.periodFrom, "2026-04");
+    assert.equal(filters.periodTo, "2026-04");
     assert.ok(filters.tradeFlow === "import" || filters.tradeFlow === "export");
   }
 });
 
 test("matches active trade record presets only when filters are exact", () => {
+  const defaultPeriod = {
+    periodFrom: "2026-04",
+    periodTo: "2026-04",
+  };
+
   assert.equal(
-    activeTradeRecordPresetId({
-      tradeFlow: "import",
-      periodFrom: "2026-03",
-      periodTo: "2026-03",
-      minItemValue: "50000",
-      sort: "item_value_desc",
-      limit: 25,
-    }),
+    activeTradeRecordPresetId(
+      {
+        tradeFlow: "import",
+        periodFrom: "2026-04",
+        periodTo: "2026-04",
+        minItemValue: "50000",
+        sort: "item_value_desc",
+        limit: 25,
+      },
+      defaultPeriod,
+    ),
     "high-value-imports",
   );
 
   assert.equal(
-    activeTradeRecordPresetId({
-      tradeFlow: "import",
-      periodFrom: "2026-03",
-      periodTo: "2026-03",
-      minItemValue: "50000",
-      maxItemValue: "100000",
-      sort: "item_value_desc",
-      limit: 25,
-    }),
+    activeTradeRecordPresetId(
+      {
+        tradeFlow: "import",
+        periodFrom: "2026-04",
+        periodTo: "2026-04",
+        minItemValue: "50000",
+        maxItemValue: "100000",
+        sort: "item_value_desc",
+        limit: 25,
+      },
+      defaultPeriod,
+    ),
     null,
+  );
+});
+
+test("formats trade record period values and loaded scope labels", () => {
+  assert.equal(formatTradeRecordPeriodValue(2026, 4), "2026-04");
+  assert.equal(formatTradeRecordPeriodScope([]), "Sin períodos cargados");
+  assert.equal(
+    formatTradeRecordPeriodScope([
+      { year: 2026, month: 4, value: "2026-04", records: 1 },
+      { year: 2026, month: 3, value: "2026-03", records: 1 },
+    ]),
+    "2026-03 a 2026-04",
   );
 });
 

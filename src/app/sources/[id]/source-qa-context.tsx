@@ -52,10 +52,13 @@ function issueCountSummary(row: DataQualitySourceBatchRemediation) {
 
 export function SourceQaContext({
   rows,
+  sourcePeriodLabel,
 }: {
   rows: DataQualitySourceBatchRemediation[];
+  sourcePeriodLabel: string;
 }) {
   const totalSignals = rows.reduce((total, row) => total + row.totalIssueSignals, 0);
+  const isMarchSource = sourcePeriodLabel === "2026-03";
 
   return (
     <Card>
@@ -64,6 +67,9 @@ export function SourceQaContext({
         <CardDescription>
           Guía interna para priorizar revisión técnica por lote. No certifica calidad
           legal ni identifica empresas.
+          {isMarchSource
+            ? ""
+            : ` Esta fuente corresponde a ${sourcePeriodLabel}; este bloque solo muestra señales QA priorizadas de la línea base marzo 2026.`}
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-3 text-sm">

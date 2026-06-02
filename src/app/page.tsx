@@ -35,7 +35,7 @@ export default function HomePage() {
           <CardHeader>
             <CardTitle>Buscador interno</CardTitle>
             <CardDescription>
-              Tabla filtrable sobre la muestra normalizada de marzo 2026.
+              Tabla filtrable sobre los meses cargados en la base dev.
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-3">
@@ -81,7 +81,7 @@ export default function HomePage() {
           </CardHeader>
           <CardContent>
             <code className="block break-words rounded-lg bg-muted p-3 text-xs">
-              /api/trade-records?tradeFlow=import&amp;periodFrom=2026-03&amp;periodTo=2026-03&amp;limit=5
+              /api/trade-records?tradeFlow=import&amp;periodFrom=2026-04&amp;periodTo=2026-04&amp;limit=5
             </code>
           </CardContent>
         </Card>

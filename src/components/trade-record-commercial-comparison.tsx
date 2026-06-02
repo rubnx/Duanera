@@ -158,9 +158,9 @@ export function TradeRecordCommercialComparison({
         )}
 
         <p className="text-xs text-muted-foreground">
-          Comparación read-only en Postgres MVP. Úsala como contexto direccional de marzo
-          2026; cantidades, monedas y correlativos conservan las limitaciones de la
-          fuente.
+          Comparación read-only en Postgres MVP. Úsala como contexto direccional del
+          período filtrado; cantidades, monedas y correlativos conservan las
+          limitaciones de la fuente.
         </p>
       </CardContent>
     </Card>

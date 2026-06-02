@@ -17,6 +17,11 @@ import { loadTradeRecordFilterOptions } from "@/trade/trade-record-filter-option
 import { filtersToTradeRecordSearchParams } from "@/trade/trade-record-links";
 import { activeTradeRecordPresetId } from "@/trade/trade-record-presets";
 import {
+  fallbackTradeRecordPeriod,
+  formatTradeRecordPeriodScope,
+  listTradeRecordPeriods,
+} from "@/trade/trade-record-periods";
+import {
   searchTradeRecords,
   TradeRecordSearchError,
 } from "@/trade/trade-record-search";
@@ -24,12 +29,14 @@ import {
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 type TradeRecordsSearchResult = Awaited<ReturnType<typeof searchTradeRecords>>;
 
-const defaultSearchInput = {
-  tradeFlow: "import",
-  periodFrom: "2026-03",
-  periodTo: "2026-03",
-  limit: "25",
-};
+function defaultSearchInput(defaultPeriod: string) {
+  return {
+    tradeFlow: "import",
+    periodFrom: defaultPeriod,
+    periodTo: defaultPeriod,
+    limit: "25",
+  };
+}
 
 function firstValue(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
@@ -76,10 +83,18 @@ export default async function TradeRecordsPage({
   searchParams: SearchParams;
 }) {
   const params = await searchParams;
+  const availablePeriods = await listTradeRecordPeriods(db);
+  const latestPeriod = availablePeriods[0]?.value ?? fallbackTradeRecordPeriod;
+  const defaultInput = defaultSearchInput(latestPeriod);
+  const defaultPresetPeriod = {
+    periodFrom: latestPeriod,
+    periodTo: latestPeriod,
+  };
+  const availablePeriodScope = formatTradeRecordPeriodScope(availablePeriods);
   const searchInput = {
-    tradeFlow: firstValue(params.tradeFlow) ?? defaultSearchInput.tradeFlow,
-    periodFrom: firstValue(params.periodFrom) ?? defaultSearchInput.periodFrom,
-    periodTo: firstValue(params.periodTo) ?? defaultSearchInput.periodTo,
+    tradeFlow: firstValue(params.tradeFlow) ?? defaultInput.tradeFlow,
+    periodFrom: firstValue(params.periodFrom) ?? defaultInput.periodFrom,
+    periodTo: firstValue(params.periodTo) ?? defaultInput.periodTo,
     hsCodePrefix: firstValue(params.hsCodePrefix),
     q: firstValue(params.q),
     importer: firstValue(params.importer),
@@ -100,7 +115,7 @@ export default async function TradeRecordsPage({
     minGrossWeightTotal: firstValue(params.minGrossWeightTotal),
     maxGrossWeightTotal: firstValue(params.maxGrossWeightTotal),
     sort: firstValue(params.sort),
-    limit: firstValue(params.limit) ?? defaultSearchInput.limit,
+    limit: firstValue(params.limit) ?? defaultInput.limit,
     offset: firstValue(params.offset),
     after: firstValue(params.after),
   };
@@ -117,7 +132,7 @@ export default async function TradeRecordsPage({
     }
 
     searchError = error.message;
-    result = await searchTradeRecords(db, defaultSearchInput);
+    result = await searchTradeRecords(db, defaultInput);
   }
 
   const previousOffset = Math.max(result.pagination.offset - result.pagination.limit, 0);
@@ -130,7 +145,7 @@ export default async function TradeRecordsPage({
   const nextHref = result.pagination.nextCursor
     ? buildPageHref(effectiveSearchParams, { after: result.pagination.nextCursor })
     : buildPageHref(effectiveSearchParams, { offset: nextOffset });
-  const activePresetId = activeTradeRecordPresetId(result.filters);
+  const activePresetId = activeTradeRecordPresetId(result.filters, defaultPresetPeriod);
   const usesOffsetMode = result.pagination.paginationMode === "offset";
   const searchPerformanceNote = performanceNote(result);
 
@@ -143,9 +158,10 @@ export default async function TradeRecordsPage({
           </Badge>
           <h1 className="text-2xl font-semibold tracking-tight">Registros Aduana</h1>
           <p className="max-w-3xl break-words text-sm text-muted-foreground">
-            Muestra de importaciones y exportaciones de marzo 2026. Los IDs de
-            importador/exportador son correlativos anónimos de Aduana, no identidades
-            legales verificadas.
+            Base dev con registros Aduana disponibles para {availablePeriodScope}. La
+            búsqueda sin filtros usa el último mes cargado ({latestPeriod}) para evitar
+            consultas amplias por defecto. Los IDs de importador/exportador son
+            correlativos anónimos de Aduana, no identidades legales verificadas.
           </p>
         </div>
         <div className="flex flex-wrap gap-3 text-sm">
@@ -164,7 +180,10 @@ export default async function TradeRecordsPage({
         </div>
       </header>
 
-      <TradeRecordPresetViews activePresetId={activePresetId} />
+      <TradeRecordPresetViews
+        activePresetId={activePresetId}
+        defaultPeriod={defaultPresetPeriod}
+      />
 
       <TradeRecordSearchFilters
         filterOptions={filterOptions}

@@ -236,7 +236,7 @@ export default async function SourceDetailPage({ params }: PageProps) {
             </CardContent>
           </Card>
 
-          <SourceQaContext rows={qaRemediation} />
+          <SourceQaContext rows={qaRemediation} sourcePeriodLabel={sourcePeriodLabel(source)} />
         </aside>
       </section>
 

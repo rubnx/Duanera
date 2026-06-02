@@ -90,6 +90,11 @@ export function TradeRecordSearchFilters({
   result: TradeRecordSearchResponse;
   usesOffsetMode: boolean;
 }) {
+  const usesPeriodRange =
+    result.filters.periodFrom &&
+    result.filters.periodTo &&
+    result.filters.periodFrom !== result.filters.periodTo;
+
   return (
     <Card>
       <CardHeader>
@@ -120,8 +125,8 @@ export function TradeRecordSearchFilters({
             <Input
               id="periodFrom"
               name="periodFrom"
-              defaultValue={result.filters.periodFrom ?? "2026-03"}
-              placeholder="2026-03"
+              defaultValue={result.filters.periodFrom ?? ""}
+              placeholder="YYYY-MM"
             />
           </div>
           <div className="flex flex-col gap-1.5">
@@ -129,8 +134,8 @@ export function TradeRecordSearchFilters({
             <Input
               id="periodTo"
               name="periodTo"
-              defaultValue={result.filters.periodTo ?? "2026-03"}
-              placeholder="2026-03"
+              defaultValue={result.filters.periodTo ?? ""}
+              placeholder="YYYY-MM"
             />
           </div>
           <div className="flex flex-col gap-1.5">
@@ -310,6 +315,7 @@ export function TradeRecordSearchFilters({
         <TradeRecordActiveFilters
           filterOptions={filterOptions}
           result={result}
+          usesPeriodRange={Boolean(usesPeriodRange)}
           usesOffsetMode={usesOffsetMode}
         />
       </CardContent>

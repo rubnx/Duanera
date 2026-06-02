@@ -142,10 +142,12 @@ function activeFilterItems(
 export function TradeRecordActiveFilters({
   filterOptions,
   result,
+  usesPeriodRange,
   usesOffsetMode,
 }: {
   filterOptions: TradeRecordFilterOptions;
   result: TradeRecordSearchResponse;
+  usesPeriodRange: boolean;
   usesOffsetMode: boolean;
 }) {
   const activeFilters = activeFilterItems(result, filterOptions);
@@ -168,8 +170,9 @@ export function TradeRecordActiveFilters({
       </div>
       {usesOffsetMode ? (
         <p className="mt-2 text-xs text-muted-foreground">
-          Los rangos comerciales, búsquedas de texto, correlativos y ordenamientos
-          por valor usan paginación por posición para mantener el orden solicitado.
+          {usesPeriodRange
+            ? "Los rangos de varios meses usan paginación por posición; para revisar mucho volumen, acota por un mes exacto, HS, país, puerto, aduana o rango comercial."
+            : "Los rangos comerciales, búsquedas de texto, correlativos y ordenamientos por valor usan paginación por posición para mantener el orden solicitado."}
         </p>
       ) : null}
     </div>

@@ -8,8 +8,8 @@ export type TradeRecordPresetCategory =
 
 export type TradeRecordPresetParams = {
   tradeFlow: "import" | "export";
-  periodFrom: string;
-  periodTo: string;
+  periodFrom?: string;
+  periodTo?: string;
   hsCodePrefix?: string;
   q?: string;
   originCountry?: string;
@@ -43,6 +43,11 @@ export type TradeRecordPreset = {
   params: TradeRecordPresetParams;
 };
 
+export type TradeRecordPresetDefaultPeriod = {
+  periodFrom: string;
+  periodTo: string;
+};
+
 export const tradeRecordPresetCategories: Array<{
   id: TradeRecordPresetCategory;
   label: string;
@@ -61,8 +66,6 @@ export const tradeRecordPresets: TradeRecordPreset[] = [
     description: "Items importados con CIF item alto, ordenados por mayor valor.",
     params: {
       tradeFlow: "import",
-      periodFrom: "2026-03",
-      periodTo: "2026-03",
       minItemValue: "50000",
       sort: "item_value_desc",
       limit: "25",
@@ -75,8 +78,6 @@ export const tradeRecordPresets: TradeRecordPreset[] = [
     description: "Items exportados con FOB item alto, ordenados por mayor valor.",
     params: {
       tradeFlow: "export",
-      periodFrom: "2026-03",
-      periodTo: "2026-03",
       minItemValue: "50000",
       sort: "item_value_desc",
       limit: "25",
@@ -89,8 +90,6 @@ export const tradeRecordPresets: TradeRecordPreset[] = [
     description: "Partida HS 020130 para comparar origen, aduana, puerto y valores.",
     params: {
       tradeFlow: "import",
-      periodFrom: "2026-03",
-      periodTo: "2026-03",
       hsCodePrefix: "020130",
       sort: "item_value_desc",
       limit: "25",
@@ -103,8 +102,6 @@ export const tradeRecordPresets: TradeRecordPreset[] = [
     description: "Partida HS 401110 en exportaciones, útil para revisar destinos y FOB.",
     params: {
       tradeFlow: "export",
-      periodFrom: "2026-03",
-      periodTo: "2026-03",
       hsCodePrefix: "401110",
       sort: "item_value_desc",
       limit: "25",
@@ -117,8 +114,6 @@ export const tradeRecordPresets: TradeRecordPreset[] = [
     description: "Vista de origen Brasil para revisar productos, puertos y aduanas.",
     params: {
       tradeFlow: "import",
-      periodFrom: "2026-03",
-      periodTo: "2026-03",
       originCountry: "220",
       sort: "item_value_desc",
       limit: "25",
@@ -131,8 +126,6 @@ export const tradeRecordPresets: TradeRecordPreset[] = [
     description: "Vista de destino Estados Unidos para comparar productos y puertos.",
     params: {
       tradeFlow: "export",
-      periodFrom: "2026-03",
-      periodTo: "2026-03",
       destinationCountry: "225",
       sort: "item_value_desc",
       limit: "25",
@@ -145,8 +138,6 @@ export const tradeRecordPresets: TradeRecordPreset[] = [
     description: "Puerto relevante 965 para revisar carga y aduanas asociadas.",
     params: {
       tradeFlow: "import",
-      periodFrom: "2026-03",
-      periodTo: "2026-03",
       port: "965",
       sort: "gross_weight_desc",
       limit: "25",
@@ -159,8 +150,6 @@ export const tradeRecordPresets: TradeRecordPreset[] = [
     description: "Vía de transporte marítima/fluvial/lacustre, ordenada por peso bruto.",
     params: {
       tradeFlow: "import",
-      periodFrom: "2026-03",
-      periodTo: "2026-03",
       transportMode: "1",
       sort: "gross_weight_desc",
       limit: "25",
@@ -206,11 +195,30 @@ function setIfPresent(query: URLSearchParams, key: PresetParamKey, value: string
   }
 }
 
-export function buildTradeRecordPresetHref(preset: TradeRecordPreset) {
+function presetValueForKey(
+  preset: TradeRecordPreset,
+  key: PresetParamKey,
+  defaultPeriod?: TradeRecordPresetDefaultPeriod,
+) {
+  if (key === "periodFrom" && !preset.params.periodFrom) {
+    return defaultPeriod?.periodFrom;
+  }
+
+  if (key === "periodTo" && !preset.params.periodTo) {
+    return defaultPeriod?.periodTo;
+  }
+
+  return preset.params[key];
+}
+
+export function buildTradeRecordPresetHref(
+  preset: TradeRecordPreset,
+  defaultPeriod?: TradeRecordPresetDefaultPeriod,
+) {
   const query = new URLSearchParams();
 
   for (const key of presetParamKeys) {
-    setIfPresent(query, key, preset.params[key]);
+    setIfPresent(query, key, presetValueForKey(preset, key, defaultPeriod));
   }
 
   return `/trade-records?${query.toString()}`;
@@ -276,10 +284,13 @@ function filterValueForPresetKey(
   }
 }
 
-export function activeTradeRecordPresetId(filters: TradeRecordFilters) {
+export function activeTradeRecordPresetId(
+  filters: TradeRecordFilters,
+  defaultPeriod?: TradeRecordPresetDefaultPeriod,
+) {
   for (const preset of tradeRecordPresets) {
     const matches = presetParamKeys.every((key) => {
-      const presetValue = preset.params[key];
+      const presetValue = presetValueForKey(preset, key, defaultPeriod);
       const filterValue = filterValueForPresetKey(filters, key);
 
       return presetValue ? filterValue === presetValue : !filterValue;
