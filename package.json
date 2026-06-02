@@ -30,6 +30,7 @@
     "test:r2-plan": "tsx --test scripts/archive/r2-upload-plan.test.ts",
     "test:r2-archive": "tsx --test scripts/archive/r2-upload-archive.test.ts",
     "test:env": "tsx --test scripts/inspect/env.test.ts",
+    "test:source-file-manifest": "tsx --test scripts/seed/source-file-manifest.test.ts",
     "test:code-tables": "tsx --test scripts/seed/code-tables.test.ts",
     "test:raw-row-retention": "tsx --test scripts/ingest/raw-row-retention.test.ts",
     "test:raw-row-pruner": "tsx --test scripts/ingest/prune-raw-trade-row-payloads.test.ts",

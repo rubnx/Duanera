@@ -1,17 +1,13 @@
 import { readFile } from "node:fs/promises";
+import { pathToFileURL } from "node:url";
 
 import { parse } from "csv-parse/sync";
 import { config } from "dotenv";
 import { eq } from "drizzle-orm";
 
+import type { DbClient } from "../../src/db/client";
 import { assertDevDatabaseTarget } from "../../src/db/dev-guard";
 import { sourceFiles } from "../../src/db/schema";
-
-config({ path: ".env.local" });
-config();
-assertDevDatabaseTarget("source-file-manifest seed");
-
-const { db } = await import("../../src/db/client");
 
 type ManifestRow = {
   source_domain: string;
@@ -56,16 +52,39 @@ function nullable(value: string | undefined): string | null {
   return value;
 }
 
-function parseInteger(value: string | undefined): number | null {
+export function parseManifestInteger({
+  fieldName,
+  value,
+}: {
+  fieldName: string;
+  value: string | undefined;
+}): number | null {
   if (!value) {
     return null;
   }
 
-  const parsed = Number.parseInt(value, 10);
-  return Number.isNaN(parsed) ? null : parsed;
+  const trimmed = value.trim();
+  if (!trimmed || trimmed === "unknown") {
+    return null;
+  }
+
+  if (!/^\d+$/.test(trimmed)) {
+    throw new Error(`${fieldName} must be an integer, got ${value}.`);
+  }
+
+  return Number.parseInt(trimmed, 10);
 }
 
-function periodDate(year: number | null, month: number | null, boundary: "start" | "end") {
+export function parseManifestMonth(value: string | undefined): number | null {
+  const month = parseManifestInteger({ fieldName: "month", value });
+  if (month !== null && (month < 1 || month > 12)) {
+    throw new Error(`month must be between 1 and 12, got ${value}.`);
+  }
+
+  return month;
+}
+
+export function periodDate(year: number | null, month: number | null, boundary: "start" | "end") {
   if (!year) {
     return null;
   }
@@ -92,9 +111,12 @@ async function readManifest(path: string): Promise<ManifestRow[]> {
   }) as ManifestRow[];
 }
 
-async function upsertSourceFile(row: ManifestRow): Promise<"inserted" | "updated"> {
-  const year = parseInteger(row.year);
-  const month = parseInteger(row.month);
+async function upsertSourceFile(
+  db: DbClient,
+  row: ManifestRow,
+): Promise<"inserted" | "updated"> {
+  const year = parseManifestInteger({ fieldName: "year", value: row.year });
+  const month = parseManifestMonth(row.month);
   const values = {
     countryCode: row.country,
     sourceSystem: "chile_aduana",
@@ -108,7 +130,10 @@ async function upsertSourceFile(row: ManifestRow): Promise<"inserted" | "updated
     storageKey: row.raw_path,
     workingStorageKey: nullable(row.working_paths),
     fileHashSha256: nullable(row.raw_checksum_sha256),
-    fileSizeBytes: parseInteger(row.raw_file_size),
+    fileSizeBytes: parseManifestInteger({
+      fieldName: "raw_file_size",
+      value: row.raw_file_size,
+    }),
     fileFormat: nullable(row.raw_file_format),
     fileRole: row.raw_file_role,
     tradeFlow: nullable(row.trade_flow),
@@ -138,23 +163,43 @@ async function upsertSourceFile(row: ManifestRow): Promise<"inserted" | "updated
   return "inserted";
 }
 
-let inserted = 0;
-let updated = 0;
+export async function runSourceFileManifestSeed(db: DbClient) {
+  let inserted = 0;
+  let updated = 0;
 
-for (const manifestPath of manifestPaths) {
-  const rows = await readManifest(manifestPath);
-  for (const row of rows) {
-    if (!selectedRawFilenames.has(row.normalized_raw_filename)) {
-      continue;
-    }
+  for (const manifestPath of manifestPaths) {
+    const rows = await readManifest(manifestPath);
+    for (const row of rows) {
+      if (!selectedRawFilenames.has(row.normalized_raw_filename)) {
+        continue;
+      }
 
-    const result = await upsertSourceFile(row);
-    if (result === "inserted") {
-      inserted += 1;
-    } else {
-      updated += 1;
+      const result = await upsertSourceFile(db, row);
+      if (result === "inserted") {
+        inserted += 1;
+      } else {
+        updated += 1;
+      }
     }
   }
+
+  process.stdout.write(`Source file manifest seed complete. Inserted ${inserted}, updated ${updated}.\n`);
+  return { inserted, updated };
 }
 
-console.log(`Source file manifest seed complete. Inserted ${inserted}, updated ${updated}.`);
+async function main() {
+  config({ path: ".env.local" });
+  config();
+  assertDevDatabaseTarget("source-file-manifest seed");
+
+  const { db } = await import("../../src/db/client");
+  await runSourceFileManifestSeed(db);
+}
+
+if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
+  main().catch((error: unknown) => {
+    const message = error instanceof Error ? error.message : String(error);
+    process.stderr.write(`Source file manifest seed failed: ${message}\n`);
+    process.exitCode = 1;
+  });
+}
