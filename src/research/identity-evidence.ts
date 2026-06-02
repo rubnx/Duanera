@@ -152,7 +152,7 @@ export function identityEvidenceRecordValue(value: unknown): Record<string, unkn
     return null;
   }
 
-  return value as Record<string, unknown>;
+  return Object.fromEntries(Object.entries(value));
 }
 
 function rawValue(rawValues: unknown, key: string) {

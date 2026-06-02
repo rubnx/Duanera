@@ -63,10 +63,16 @@ export function rawValuesRecord(value: unknown, rowId = "unknown"): RawValues {
     throw new Error(`Raw row ${rowId} raw_values must be an object.`);
   }
 
-  const entries = Object.entries(value);
-  const invalidKeys = entries
-    .filter(([, rawValue]) => typeof rawValue !== "string")
-    .map(([key]) => key);
+  const rawValues: RawValues = {};
+  const invalidKeys: string[] = [];
+  for (const [key, rawValue] of Object.entries(value)) {
+    if (typeof rawValue !== "string") {
+      invalidKeys.push(key);
+      continue;
+    }
+
+    rawValues[key] = rawValue;
+  }
 
   if (invalidKeys.length > 0) {
     throw new Error(
@@ -74,7 +80,7 @@ export function rawValuesRecord(value: unknown, rowId = "unknown"): RawValues {
     );
   }
 
-  return value as RawValues;
+  return rawValues;
 }
 
 export function parseIntegerValue(value: string | null): number | null {

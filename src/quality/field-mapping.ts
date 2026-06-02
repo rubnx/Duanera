@@ -154,7 +154,7 @@ export function rawSampleValueRecord(value: unknown): Record<string, unknown> | 
     return null;
   }
 
-  return value as Record<string, unknown>;
+  return Object.fromEntries(Object.entries(value));
 }
 
 const fieldMappingDefinitions: FieldMappingDefinition[] = [

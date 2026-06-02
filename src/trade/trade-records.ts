@@ -245,7 +245,7 @@ function cursorPayload(value: unknown): Record<string, unknown> | null {
     return null;
   }
 
-  return value as Record<string, unknown>;
+  return Object.fromEntries(Object.entries(value));
 }
 
 export function decodeTradeRecordCursor(value: string): TradeRecordCursor {
