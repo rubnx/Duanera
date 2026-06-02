@@ -34,6 +34,7 @@
     "test:source-layouts": "tsx --test scripts/seed/source-layout-metadata.test.ts",
     "test:code-tables": "tsx --test scripts/seed/code-tables.test.ts",
     "test:trade-normalizer": "tsx --test scripts/ingest/normalize-trade-record-sample.test.ts",
+    "test:raw-row-loader": "tsx --test scripts/ingest/load-raw-trade-row-sample.test.ts",
     "test:raw-row-retention": "tsx --test scripts/ingest/raw-row-retention.test.ts",
     "test:raw-row-pruner": "tsx --test scripts/ingest/prune-raw-trade-row-payloads.test.ts",
     "test:parser": "tsx --test scripts/ingest/aduana-parser.test.ts",

@@ -1,10 +1,13 @@
 import { createReadStream } from "node:fs";
+import path from "node:path";
 import { createInterface } from "node:readline";
+import { pathToFileURL } from "node:url";
 
 import { config } from "dotenv";
 import { and, asc, eq, sql } from "drizzle-orm";
 import iconv from "iconv-lite";
 
+import type { DbClient } from "../../src/db/client";
 import { assertDevDatabaseTarget } from "../../src/db/dev-guard";
 import { positiveIntegerEnvValue } from "../../src/lib/env";
 import { parseAduanaRow } from "../../src/ingest/aduana-main-file";
@@ -20,19 +23,13 @@ import {
   sourceLayouts,
 } from "../../src/db/schema";
 
-config({ path: ".env.local" });
-config();
-assertDevDatabaseTarget("raw trade row sample loader");
-
-const { db } = await import("../../src/db/client");
-
 const parserName = "aduana-main-sample-raw-loader";
 const parserVersion = "0.1.0";
 const defaultLimit = 100;
 const defaultBatchSize = 250;
-const payloadRetentionMode = parseRawRowPayloadRetentionMode(
-  process.env.RAW_ROW_PAYLOAD_RETENTION,
-);
+const repoRoot = process.cwd();
+
+let db: DbClient;
 
 type SampleSource = {
   tradeFlow: "import" | "export";
@@ -62,12 +59,33 @@ function batchSize(): number {
   );
 }
 
-function singleWorkingPath(value: string | null): string {
+export function resolveWorkingStoragePath(value: string | null): string {
   if (!value) {
     throw new Error("Source file is missing workingStorageKey.");
   }
 
-  return value.split("|")[0] ?? value;
+  const firstPath = value
+    .split("|")
+    .map((part) => part.trim())
+    .find(Boolean);
+
+  if (!firstPath) {
+    throw new Error("Source file workingStorageKey does not contain a usable local path.");
+  }
+
+  const absolutePath = path.resolve(repoRoot, firstPath);
+  const relativePath = path.relative(repoRoot, absolutePath);
+  const posixRelativePath = relativePath.split(path.sep).join("/");
+
+  if (relativePath.startsWith("..") || path.isAbsolute(relativePath)) {
+    throw new Error(`${firstPath}: working storage path must stay inside the repository.`);
+  }
+
+  if (posixRelativePath !== "data" && !posixRelativePath.startsWith("data/")) {
+    throw new Error(`${firstPath}: working storage path must be inside the ignored data/ archive.`);
+  }
+
+  return absolutePath;
 }
 
 async function getSource(source: SampleSource) {
@@ -162,11 +180,15 @@ async function upsertImportBatch(sourceFileId: string) {
   return inserted.id;
 }
 
-async function loadSample(source: SampleSource, limit: number) {
+async function loadSample(
+  source: SampleSource,
+  limit: number,
+  payloadRetentionMode: ReturnType<typeof parseRawRowPayloadRetentionMode>,
+) {
   const sourceFile = await getSource(source);
   const layout = await getLayout(source.tradeFlow);
   const importBatchId = await upsertImportBatch(sourceFile.id);
-  const workingPath = singleWorkingPath(sourceFile.workingStorageKey);
+  const workingPath = resolveWorkingStoragePath(sourceFile.workingStorageKey);
 
   let rowsRead = 0;
   let rowsParsed = 0;
@@ -261,8 +283,8 @@ async function loadSample(source: SampleSource, limit: number) {
     }
 
     if (rowsRead % 25000 === 0) {
-      console.log(
-        `${source.tradeFlow}: read ${rowsRead}, parsed ${rowsParsed}, failed ${rowsFailed}.`,
+      process.stdout.write(
+        `${source.tradeFlow}: read ${rowsRead}, parsed ${rowsParsed}, failed ${rowsFailed}.\n`,
       );
     }
   }
@@ -282,15 +304,43 @@ async function loadSample(source: SampleSource, limit: number) {
     })
     .where(eq(importBatches.id, importBatchId));
 
-  console.log(
-    `Loaded ${source.tradeFlow} raw rows: ${rowsParsed} parsed, ${rowsFailed} failed.`,
+  process.stdout.write(
+    `Loaded ${source.tradeFlow} raw rows: ${rowsParsed} parsed, ${rowsFailed} failed.\n`,
   );
 }
 
-const limit = rowLimit();
-console.log(`Raw row payload retention mode: ${payloadRetentionMode}.`);
-for (const source of sampleSources) {
-  await loadSample(source, limit);
+export async function runRawTradeRowSampleLoader(database: DbClient) {
+  db = database;
+
+  const limit = rowLimit();
+  const payloadRetentionMode = parseRawRowPayloadRetentionMode(
+    process.env.RAW_ROW_PAYLOAD_RETENTION,
+  );
+
+  process.stdout.write(`Raw row payload retention mode: ${payloadRetentionMode}.\n`);
+
+  for (const source of sampleSources) {
+    await loadSample(source, limit, payloadRetentionMode);
+  }
+
+  process.stdout.write(`Raw trade row sample load complete. Limit per flow: ${limit}.\n`);
+
+  return { limit, payloadRetentionMode };
 }
 
-console.log(`Raw trade row sample load complete. Limit per flow: ${limit}.`);
+async function main() {
+  config({ path: ".env.local" });
+  config();
+  assertDevDatabaseTarget("raw trade row sample loader");
+
+  const { db } = await import("../../src/db/client");
+  await runRawTradeRowSampleLoader(db);
+}
+
+if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
+  main().catch((error: unknown) => {
+    const message = error instanceof Error ? error.message : String(error);
+    process.stderr.write(`Raw trade row sample load failed: ${message}\n`);
+    process.exitCode = 1;
+  });
+}
