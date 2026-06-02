@@ -176,7 +176,7 @@ Current raw row loading supports `RAW_ROW_PAYLOAD_RETENTION`:
 
 Successful-row pruning is now available as a separate dev-only post-normalization step. `raw_text` and `raw_values` are nullable, but the normalizer still reads `raw_values`, so pruning must run only after matching `trade_records` exist.
 
-Use `DUANERA_DB_TARGET=dev npm run db:prune:raw-payloads` for a dry run. To actually prune, set `RAW_ROW_PRUNE_CONFIRM=prune`. The script prunes only rows marked `errors_and_warnings` / `pending_post_normalization_prune`, with no parse errors or warnings, and with matching provenance in `trade_records`.
+Use `DUANERA_DB_TARGET=dev npm run db:prune:raw-payloads` for a dry run. To actually prune, pass `-- --prune` and set `RAW_ROW_PRUNE_CONFIRM=prune`; both confirmations are required. The script prunes only rows marked `errors_and_warnings` / `pending_post_normalization_prune`, with no parse errors or warnings, and with matching provenance in `trade_records`.
 
 Existing March 2026 dev rows remain `full_postgres` and are not eligible unless explicitly reloaded or re-marked for pruning. External payload storage remains deferred.
 
