@@ -76,6 +76,7 @@ Available scripts:
 - `DUANERA_DB_TARGET=dev npm run db:seed:source-files`
 - `DUANERA_DB_TARGET=dev npm run db:seed:source-layouts`
 - `DUANERA_DB_TARGET=dev npm run db:seed:code-tables`
+- `npm run preflight:aduana-load`
 - `DUANERA_DB_TARGET=dev npm run db:load:raw-sample`
 - `DUANERA_DB_TARGET=dev npm run db:normalize:trade-sample`
 
@@ -88,6 +89,30 @@ They are not full ingestion. They do not import complete files, production data,
 The raw-row and normalization scripts are batched/chunked so they can be used for larger dev-only validation by increasing their limits. The raw-row loader only accepts working source paths inside the ignored local `data/` archive. The trade-record normalizer parses integer fields strictly; malformed item numbers or other integer-like values become `null` instead of being partially parsed. After the Neon project was upgraded from the 512 MB free storage limit, a full March 2026 dev load completed on May 28, 2026: 439,353 import rows and 109,187 export rows were loaded into `raw_trade_rows` and normalized into `trade_records` with 0 parse failures.
 
 This is still a dev validation path, not production ingestion. Full-month raw row storage increased the dev database to roughly 2 GB, so storage strategy and query performance should be reviewed before loading more months.
+
+Before attempting another Aduana month in dev, run the read-only preflight against candidate manifest rows or working files. It does not insert `source_files`, `import_batches`, `raw_trade_rows`, or `trade_records`; it checks local `data/` paths, manifest period/flow provenance, raw/working sizes and SHA-256 checksums when available, DIN/DUS March 2026 layout compatibility, no-header expectations, sample row parse health, known code-table risks, payload-retention caveats, and anonymous-correlative safety.
+
+Example:
+
+```bash
+npm run preflight:aduana-load -- \
+  --period 2026-04 \
+  --trade-flow import \
+  --sample-rows 50 \
+  --pretty
+```
+
+For explicit existing files:
+
+```bash
+npm run preflight:aduana-load -- \
+  --normalized-raw-filename cl_aduana_imports_2026_03_raw.rar \
+  --normalized-raw-filename cl_aduana_exports_2026_03_raw.rar \
+  --sample-rows 25 \
+  --pretty
+```
+
+Treat `blocker` as a stop signal before any dev load. Treat `manual_review` as a source/layout review requirement. Treat `warning` as a checklist item; common warnings include dictionary coverage gaps and the recommendation to set `RAW_ROW_PAYLOAD_RETENTION=errors_and_warnings` for real additional dev-month validation.
 
 ## Raw row retention and storage policy
 

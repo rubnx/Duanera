@@ -16,7 +16,7 @@ const DATA_DICTIONARY_URL =
 const DATA_DICTIONARY_PAGE_URL =
   "https://datos.gob.cl/dataset/diccionario-de-datos-para-datos-abiertos-aduana";
 
-const importFieldNames = [
+export const importFieldNames = [
   "NUMENCRIPTADO",
   "TIPO_DOCTO",
   "ADU",
@@ -197,7 +197,7 @@ const importFieldNames = [
   "VAL4",
 ] as const;
 
-const exportFieldNames = [
+export const exportFieldNames = [
   "FECHAACEPT",
   "NUMEROIDENT",
   "ADUANA",
@@ -284,7 +284,7 @@ const exportFieldNames = [
   "PESOBRUTOITEM",
 ] as const;
 
-const importCodedFields = new Set([
+export const importCodedFields = new Set([
   "TIPO_DOCTO",
   "ADU",
   "FORM",
@@ -343,7 +343,7 @@ const importCodedFields = new Set([
   "CODOBS4",
 ]);
 
-const exportCodedFields = new Set([
+export const exportCodedFields = new Set([
   "ADUANA",
   "TIPOOPERACION",
   "COMUNAEXPORTADORPPAL",
