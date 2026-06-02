@@ -19,12 +19,16 @@ import { sourceDisplayFilename, sourceTradeRecordsHref } from "@/sources/source-
 import { buildTradeRecordSearchHref } from "@/trade/trade-record-links";
 import type { TradeFlow } from "@/trade/trade-records";
 import { coveragePercent, type DataQualityStatus } from "@/quality/data-quality";
+import {
+  countValueToNumber,
+  march2026RawTradeRowsWhere,
+  march2026ReportPeriod,
+  march2026TradeRecordsWhere,
+  presentTrimmedTextCondition,
+  type CountValue,
+} from "@/quality/march-2026";
 
-const reportPeriod = {
-  year: 2026,
-  month: 3,
-  label: "2026-03",
-};
+const reportPeriod = march2026ReportPeriod;
 
 export type FieldMappingGroup =
   | "commercial_values"
@@ -125,8 +129,6 @@ export type FieldMappingReport = {
     warningMappings: number;
   };
 };
-
-type CountValue = number | string | null | undefined;
 
 type LayoutFieldRow = {
   tradeFlow: string | null;
@@ -740,34 +742,10 @@ const fieldMappingDefinitions: FieldMappingDefinition[] = [
   },
 ];
 
-function toNumber(value: CountValue): number {
-  if (value === null || value === undefined) {
-    return 0;
-  }
-
-  const numberValue = Number(value);
-  return Number.isFinite(numberValue) ? numberValue : 0;
-}
-
-function marchRawWhere(flow: TradeFlow): SQL {
-  return and(
-    eq(rawTradeRows.periodYear, reportPeriod.year),
-    eq(rawTradeRows.periodMonth, reportPeriod.month),
-    eq(rawTradeRows.tradeFlow, flow),
-  ) ?? sql`true`;
-}
-
-function marchTradeWhere(flow: TradeFlow): SQL {
-  return and(
-    eq(tradeRecords.periodYear, reportPeriod.year),
-    eq(tradeRecords.periodMonth, reportPeriod.month),
-    eq(tradeRecords.tradeFlow, flow),
-  ) ?? sql`true`;
-}
-
-function presentCondition(expression: SQL<unknown>) {
-  return sql`(${expression} is not null and btrim(${expression}::text) <> '')`;
-}
+const toNumber = countValueToNumber;
+const marchRawWhere = march2026RawTradeRowsWhere;
+const marchTradeWhere = march2026TradeRecordsWhere;
+const presentCondition = presentTrimmedTextCondition;
 
 function normalizedPresentCondition(field: NormalizedFieldKey): SQL {
   switch (field) {

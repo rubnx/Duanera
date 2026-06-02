@@ -26,12 +26,15 @@ import {
   normalizeCodeForCoverage,
   type DataQualityStatus,
 } from "@/quality/data-quality";
+import {
+  countValueToNumber,
+  march2026ReportPeriod,
+  march2026TradeRecordsWhere,
+  presentTrimmedTextCondition,
+  type CountValue,
+} from "@/quality/march-2026";
 
-const reportPeriod = {
-  year: 2026,
-  month: 3,
-  label: "2026-03",
-};
+const reportPeriod = march2026ReportPeriod;
 
 export type CodeTableRemediationDimension =
   | "countries"
@@ -155,8 +158,6 @@ export type CodeTableRemediationReport = {
     recordsWithUndecodedCodes: number;
   };
 };
-
-type CountValue = number | string | null | undefined;
 
 export type CodeTableCodeCountInput = {
   code: string | null;
@@ -416,26 +417,9 @@ const remediationDefinitions: CodeTableRemediationDefinition[] = [
   },
 ];
 
-function toNumber(value: CountValue): number {
-  if (value === null || value === undefined) {
-    return 0;
-  }
-
-  const numericValue = Number(value);
-  return Number.isFinite(numericValue) ? numericValue : 0;
-}
-
-function marchTradeWhere(flow: TradeFlow): SQL {
-  return and(
-    eq(tradeRecords.periodYear, reportPeriod.year),
-    eq(tradeRecords.periodMonth, reportPeriod.month),
-    eq(tradeRecords.tradeFlow, flow),
-  ) ?? sql`true`;
-}
-
-function presentCondition(expression: SQL<unknown>) {
-  return sql`(${expression} is not null and btrim(${expression}::text) <> '')`;
-}
+const toNumber = countValueToNumber;
+const marchTradeWhere = march2026TradeRecordsWhere;
+const presentCondition = presentTrimmedTextCondition;
 
 function codeExpression(field: SupportedNormalizedCodeField): SQL<string> {
   switch (field) {

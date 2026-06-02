@@ -28,6 +28,7 @@
     "test:trade-search": "tsx --test scripts/inspect/trade-record-search.test.ts",
     "test:cli-args": "tsx --test scripts/inspect/cli-args.test.ts",
     "test:format": "tsx --test scripts/inspect/format.test.ts",
+    "test:march-2026-quality": "tsx --test scripts/inspect/march-2026-quality.test.ts",
     "test:query-result": "tsx --test scripts/inspect/query-result.test.ts",
     "test:identity-evidence": "tsx --test scripts/inspect/identity-evidence.test.ts",
     "test:identity-evidence-report": "tsx --test scripts/research/identity-evidence-report.test.ts",

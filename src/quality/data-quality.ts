@@ -24,12 +24,15 @@ import {
   filtersToTradeRecordSearchParams,
 } from "@/trade/trade-record-links";
 import type { TradeFlow, TradeRecordFilters } from "@/trade/trade-records";
+import {
+  countValueToNumber,
+  march2026RawTradeRowsWhere,
+  march2026ReportPeriod,
+  march2026TradeRecordsWhere,
+  type CountValue,
+} from "@/quality/march-2026";
 
-const reportPeriod = {
-  year: 2026,
-  month: 3,
-  label: "2026-03",
-};
+const reportPeriod = march2026ReportPeriod;
 
 const codeTableKeys = {
   countries: "chile_aduana:paises",
@@ -202,8 +205,6 @@ export type DataQualityReport = {
   findings: DataQualityFinding[];
 };
 
-type CountValue = number | string | null | undefined;
-
 type FlowCountRow = {
   tradeFlow: string | null;
   rawRows?: CountValue;
@@ -272,14 +273,7 @@ type SourceBatchCodeCountRow = {
   records: CountValue;
 };
 
-function toNumber(value: CountValue): number {
-  if (value === null || value === undefined) {
-    return 0;
-  }
-
-  const numericValue = Number(value);
-  return Number.isFinite(numericValue) ? numericValue : 0;
-}
+const toNumber = countValueToNumber;
 
 export function coveragePercent(covered: number, total: number): number {
   if (total <= 0) {
@@ -358,31 +352,8 @@ export function isActionableUndecodedCode({
 
 const dusExportSpecialLogisticsCodes = new Set(["0"]);
 
-function marchRawWhere(flow?: TradeFlow): SQL {
-  const conditions: SQL[] = [
-    eq(rawTradeRows.periodYear, reportPeriod.year),
-    eq(rawTradeRows.periodMonth, reportPeriod.month),
-  ];
-
-  if (flow) {
-    conditions.push(eq(rawTradeRows.tradeFlow, flow));
-  }
-
-  return and(...conditions) ?? sql`true`;
-}
-
-function marchTradeWhere(flow?: TradeFlow): SQL {
-  const conditions: SQL[] = [
-    eq(tradeRecords.periodYear, reportPeriod.year),
-    eq(tradeRecords.periodMonth, reportPeriod.month),
-  ];
-
-  if (flow) {
-    conditions.push(eq(tradeRecords.tradeFlow, flow));
-  }
-
-  return and(...conditions) ?? sql`true`;
-}
+const marchRawWhere = march2026RawTradeRowsWhere;
+const marchTradeWhere = march2026TradeRecordsWhere;
 
 function countPresent(expression: SQL<unknown>) {
   return sql<number>`count(*) filter (where ${expression} is not null and ${expression}::text <> '')`;

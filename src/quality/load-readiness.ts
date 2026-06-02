@@ -16,12 +16,9 @@ import {
   type RemediationQueueReport,
 } from "@/quality/remediation-queue";
 import { formatIntegerEsCl } from "@/lib/format";
+import { march2026ReportPeriod } from "@/quality/march-2026";
 
-const reportPeriod = {
-  year: 2026,
-  month: 3,
-  label: "2026-03",
-};
+const reportPeriod = march2026ReportPeriod;
 
 export type LoadReadinessStatus = "ready" | "review" | "blocked";
 
