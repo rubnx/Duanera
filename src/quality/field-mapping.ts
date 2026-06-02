@@ -37,8 +37,12 @@ import {
 import {
   fieldMappingCoverageStatus,
   fieldMappingSearchHref,
-  rawSampleValueRecord,
 } from "@/quality/field-mapping-helpers";
+import {
+  fieldMappingRawSampleCoverage,
+  fieldMappingSampleValues,
+  type FieldMappingRawSampleRow,
+} from "@/quality/field-mapping-samples";
 
 const reportPeriod = march2026ReportPeriod;
 
@@ -105,11 +109,6 @@ type LayoutFieldRow = {
   codeTableKey: string | null;
 };
 
-type RawSampleRow = {
-  tradeFlow: string | null;
-  rawValues: unknown;
-};
-
 type SourceContextRow = {
   tradeFlow: string | null;
   sourceFileId: string;
@@ -155,71 +154,6 @@ function rawFieldsForDefinition(
   ));
 }
 
-function sampleValuesForDefinition(
-  definition: FieldMappingDefinition,
-  rawSamples: RawSampleRow[],
-) {
-  const values: string[] = [];
-  const seen = new Set<string>();
-
-  for (const row of rawSamples) {
-    const rawValues = rawSampleValueRecord(row.rawValues);
-    if (row.tradeFlow !== definition.tradeFlow || !rawValues) {
-      continue;
-    }
-
-    for (const fieldName of definition.rawFields) {
-      const rawValue = rawValues[fieldName];
-      const value = typeof rawValue === "string" ? rawValue.trim() : "";
-      if (!value) {
-        continue;
-      }
-
-      const displayValue = definition.rawFields.length > 1
-        ? `${fieldName}: ${value}`
-        : value;
-      if (seen.has(displayValue)) {
-        continue;
-      }
-
-      seen.add(displayValue);
-      values.push(displayValue);
-      if (values.length >= 3) {
-        return values;
-      }
-    }
-  }
-
-  return values;
-}
-
-function rawSampleCoverageForDefinition(
-  definition: FieldMappingDefinition,
-  rawSamples: RawSampleRow[],
-) {
-  let sampleRows = 0;
-  let presentRows = 0;
-
-  for (const row of rawSamples) {
-    const rawValues = rawSampleValueRecord(row.rawValues);
-    if (row.tradeFlow !== definition.tradeFlow || !rawValues) {
-      continue;
-    }
-
-    sampleRows += 1;
-    const hasPresentValue = definition.rawFields.some((fieldName) => {
-      const rawValue = rawValues[fieldName];
-      return typeof rawValue === "string" && rawValue.trim().length > 0;
-    });
-
-    if (hasPresentValue) {
-      presentRows += 1;
-    }
-  }
-
-  return { sampleRows, presentRows };
-}
-
 async function loadLayoutFields(db: DbClient) {
   return db
     .select({
@@ -243,7 +177,7 @@ async function loadLayoutFields(db: DbClient) {
 }
 
 async function loadRawSamples(db: DbClient) {
-  const rows: RawSampleRow[] = [];
+  const rows: FieldMappingRawSampleRow[] = [];
 
   for (const tradeFlow of ["import", "export"] satisfies TradeFlow[]) {
     const flowRows = await db
@@ -337,7 +271,7 @@ export async function getMarch2026FieldMappingReport(
     const sourceContext = sourceContexts.get(tradeFlow);
 
     for (const definition of definitions) {
-      const rawSampleCoverage = rawSampleCoverageForDefinition(definition, rawSamples);
+      const rawSampleCoverage = fieldMappingRawSampleCoverage(definition, rawSamples);
       const rawPresentRows = rawSampleCoverage.presentRows;
       const normalizedPresentRows = toNumber(normalizedCoverage[definition.id]);
       const status = fieldMappingCoverageStatus({
@@ -365,7 +299,7 @@ export async function getMarch2026FieldMappingReport(
         rawCoveragePercent: coveragePercent(rawPresentRows, rawSampleCoverage.sampleRows),
         normalizedPresentRows,
         normalizedCoveragePercent: coveragePercent(normalizedPresentRows, totalRows),
-        sampleValues: sampleValuesForDefinition(definition, rawSamples),
+        sampleValues: fieldMappingSampleValues(definition, rawSamples),
         tradeRecordsHref: fieldMappingSearchHref(tradeFlow),
         sourceHref: sourceContext
           ? `/sources/${sourceContext.sourceFileId}#batch-${sourceContext.importBatchId}`
