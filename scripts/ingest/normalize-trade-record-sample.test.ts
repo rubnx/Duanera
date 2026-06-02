@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { parseIntegerValue, rawValuesRecord } from "./normalize-trade-record-sample";
+import {
+  parseIntegerValue,
+  parseNormalizePeriod,
+  rawValuesRecord,
+} from "./normalize-trade-record-sample";
 
 test("parses trade record integer fields strictly", () => {
   assert.equal(parseIntegerValue("1"), 1);
@@ -29,5 +33,23 @@ test("validates normalizer raw value payloads", () => {
   assert.throws(
     () => rawValuesRecord({ NUMITEM: 1 }, "row-4"),
     /row-4 raw_values contains non-string values for: NUMITEM/,
+  );
+});
+
+test("parses optional normalizer period filters", () => {
+  assert.equal(parseNormalizePeriod(""), null);
+  assert.deepEqual(parseNormalizePeriod("2026-04"), {
+    year: 2026,
+    month: 4,
+    period: "2026-04",
+  });
+
+  assert.throws(
+    () => parseNormalizePeriod("2026-4"),
+    /must use YYYY-MM format/,
+  );
+  assert.throws(
+    () => parseNormalizePeriod("2026-13"),
+    /month must be between 01 and 12/,
   );
 });

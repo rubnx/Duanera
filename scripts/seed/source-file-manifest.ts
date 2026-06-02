@@ -38,11 +38,28 @@ const manifestPaths = [
   "data/sources/chile-aduana/aduana-cl/manifests/cl_aduana_aduana_cl_source_files_manifest.csv",
 ];
 
-const selectedRawFilenames = new Set([
+const defaultSelectedRawFilenames = [
   "cl_aduana_imports_2026_03_raw.rar",
   "cl_aduana_exports_2026_03_raw.rar",
   "cl_aduana_code_tables_2026_05_26_raw.xlsx",
-]);
+];
+
+export function selectedRawFilenamesFromEnv(value = process.env.SOURCE_FILE_MANIFEST_RAW_FILENAMES) {
+  if (!value?.trim()) {
+    return new Set(defaultSelectedRawFilenames);
+  }
+
+  const filenames = value
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  if (filenames.length === 0) {
+    throw new Error("SOURCE_FILE_MANIFEST_RAW_FILENAMES must include at least one filename.");
+  }
+
+  return new Set(filenames);
+}
 
 function nullable(value: string | undefined): string | null {
   if (!value || value === "unknown") {
@@ -220,6 +237,7 @@ async function upsertSourceFile(
 export async function runSourceFileManifestSeed(db: DbClient) {
   let inserted = 0;
   let updated = 0;
+  const selectedRawFilenames = selectedRawFilenamesFromEnv();
 
   for (const manifestPath of manifestPaths) {
     const rows = await readManifest(manifestPath);

@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 
 import type { DbClient } from "../../src/db/client";
 import { sourceTradeParticipants } from "../../src/db/schema";
@@ -15,6 +15,18 @@ type ParticipantStats = {
   lastSeenYear: number;
   lastSeenMonth: number;
 };
+
+export function uniqueParticipantIds(stats: Iterable<ParticipantStats>): string[] {
+  return [...new Set([...stats].map((entry) => entry.id))];
+}
+
+function chunkValues<T>(values: T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let index = 0; index < values.length; index += size) {
+    chunks.push(values.slice(index, index + size));
+  }
+  return chunks;
+}
 
 function participantKey(
   tradeFlow: string,
@@ -127,18 +139,76 @@ export class TradeParticipantTracker {
   }
 
   async refreshStats(): Promise<void> {
-    for (const stats of this.stats.values()) {
-      await this.db
-        .update(sourceTradeParticipants)
-        .set({
-          recordCount: stats.count,
-          firstSeenYear: stats.firstSeenYear,
-          firstSeenMonth: stats.firstSeenMonth,
-          lastSeenYear: stats.lastSeenYear,
-          lastSeenMonth: stats.lastSeenMonth,
-          updatedAt: new Date(),
-        })
-        .where(eq(sourceTradeParticipants.id, stats.id));
+    const participantIds = uniqueParticipantIds(this.stats.values());
+    if (participantIds.length === 0) {
+      return;
+    }
+
+    for (const chunk of chunkValues(participantIds, 1000)) {
+      const touchedValues = sql.join(
+        chunk.map((id) => sql`(${id}::uuid)`),
+        sql`, `,
+      );
+
+      await this.db.execute(sql`
+        with touched(id) as (
+          values ${touchedValues}
+        ),
+        participant_counts as (
+          select
+            tr.importer_participant_id as id,
+            count(*)::integer as record_count,
+            min(tr.period_year * 100 + tr.period_month)::integer as first_key,
+            max(tr.period_year * 100 + tr.period_month)::integer as last_key
+          from trade_records tr
+          join touched on touched.id = tr.importer_participant_id
+          where tr.importer_participant_id is not null
+          group by tr.importer_participant_id
+
+          union all
+
+          select
+            tr.exporter_primary_participant_id as id,
+            count(*)::integer as record_count,
+            min(tr.period_year * 100 + tr.period_month)::integer as first_key,
+            max(tr.period_year * 100 + tr.period_month)::integer as last_key
+          from trade_records tr
+          join touched on touched.id = tr.exporter_primary_participant_id
+          where tr.exporter_primary_participant_id is not null
+          group by tr.exporter_primary_participant_id
+
+          union all
+
+          select
+            tr.exporter_secondary_participant_id as id,
+            count(*)::integer as record_count,
+            min(tr.period_year * 100 + tr.period_month)::integer as first_key,
+            max(tr.period_year * 100 + tr.period_month)::integer as last_key
+          from trade_records tr
+          join touched on touched.id = tr.exporter_secondary_participant_id
+          where tr.exporter_secondary_participant_id is not null
+          group by tr.exporter_secondary_participant_id
+        ),
+        participant_rollup as (
+          select
+            id,
+            sum(record_count)::integer as record_count,
+            min(first_key)::integer as first_key,
+            max(last_key)::integer as last_key
+          from participant_counts
+          group by id
+        )
+        update source_trade_participants p
+        set
+          record_count = participant_rollup.record_count,
+          first_seen_year = (participant_rollup.first_key / 100)::integer,
+          first_seen_month = (participant_rollup.first_key % 100)::integer,
+          last_seen_year = (participant_rollup.last_key / 100)::integer,
+          last_seen_month = (participant_rollup.last_key % 100)::integer,
+          updated_at = now()
+        from participant_rollup
+        where p.id = participant_rollup.id
+      `);
     }
   }
 

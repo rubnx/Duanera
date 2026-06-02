@@ -6,6 +6,7 @@ import {
   parseManifestMonth,
   parseSourceFileManifest,
   periodDate,
+  selectedRawFilenamesFromEnv,
 } from "./source-file-manifest";
 
 const manifestHeader = [
@@ -104,5 +105,26 @@ test("rejects source manifest rows missing required columns", () => {
   assert.throws(
     () => parseSourceFileManifest(manifestCsv(columns)),
     /missing string column raw_checksum_sha256/,
+  );
+});
+
+test("selects default or explicit source manifest raw filenames", () => {
+  assert.deepEqual(
+    [...selectedRawFilenamesFromEnv("")].sort(),
+    [
+      "cl_aduana_code_tables_2026_05_26_raw.xlsx",
+      "cl_aduana_exports_2026_03_raw.rar",
+      "cl_aduana_imports_2026_03_raw.rar",
+    ],
+  );
+
+  assert.deepEqual(
+    [...selectedRawFilenamesFromEnv(
+      " cl_aduana_imports_2026_04_raw.rar,cl_aduana_exports_2026_04_raw.rar ",
+    )].sort(),
+    [
+      "cl_aduana_exports_2026_04_raw.rar",
+      "cl_aduana_imports_2026_04_raw.rar",
+    ],
   );
 });

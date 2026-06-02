@@ -31,6 +31,25 @@ function tradeRecordBatchSize(): number {
   );
 }
 
+export function parseNormalizePeriod(value = process.env.NORMALIZE_PERIOD) {
+  if (!value?.trim()) {
+    return null;
+  }
+
+  const match = /^(\d{4})-(\d{2})$/.exec(value.trim());
+  if (!match) {
+    throw new Error(`NORMALIZE_PERIOD must use YYYY-MM format, got ${value}.`);
+  }
+
+  const year = Number.parseInt(match[1] ?? "", 10);
+  const month = Number.parseInt(match[2] ?? "", 10);
+  if (month < 1 || month > 12) {
+    throw new Error(`NORMALIZE_PERIOD month must be between 01 and 12, got ${value}.`);
+  }
+
+  return { year, month, period: value.trim() };
+}
+
 async function flushTradeRecordBatch(
   database: DbClient,
   batch: Array<typeof tradeRecords.$inferInsert>,
@@ -102,15 +121,32 @@ export async function runTradeRecordNormalizer(database: DbClient) {
   let normalized = 0;
   const chunkSize = rawChunkSize();
   const insertBatchSize = tradeRecordBatchSize();
+  const period = parseNormalizePeriod();
   const tradeRecordBatch: Array<typeof tradeRecords.$inferInsert> = [];
   const participants = new TradeParticipantTracker(database);
 
   await participants.loadExisting();
 
+  if (period) {
+    process.stdout.write(`Normalizing raw trade rows for period ${period.period} only.\n`);
+  }
+
   for (const tradeFlow of ["export", "import"] as const) {
     let lastRowNumber = 0;
 
     while (true) {
+      const filters = [
+        eq(rawTradeRows.parseStatus, "parsed"),
+        eq(rawTradeRows.tradeFlow, tradeFlow),
+        isNotNull(rawTradeRows.rawValues),
+        gt(rawTradeRows.rowNumber, lastRowNumber),
+      ];
+
+      if (period) {
+        filters.push(eq(rawTradeRows.periodYear, period.year));
+        filters.push(eq(rawTradeRows.periodMonth, period.month));
+      }
+
       const rows = await database
         .select({
           id: rawTradeRows.id,
@@ -123,14 +159,7 @@ export async function runTradeRecordNormalizer(database: DbClient) {
           rawValues: rawTradeRows.rawValues,
         })
         .from(rawTradeRows)
-        .where(
-          and(
-            eq(rawTradeRows.parseStatus, "parsed"),
-            eq(rawTradeRows.tradeFlow, tradeFlow),
-            isNotNull(rawTradeRows.rawValues),
-            gt(rawTradeRows.rowNumber, lastRowNumber),
-          ),
-        )
+        .where(and(...filters))
         .orderBy(asc(rawTradeRows.rowNumber))
         .limit(chunkSize);
 

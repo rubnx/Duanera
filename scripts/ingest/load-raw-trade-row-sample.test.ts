@@ -2,7 +2,10 @@ import assert from "node:assert/strict";
 import path from "node:path";
 import test from "node:test";
 
-import { resolveWorkingStoragePath } from "./load-raw-trade-row-sample";
+import {
+  rawTradeRowSourceFilenamesFromEnv,
+  resolveWorkingStoragePath,
+} from "./load-raw-trade-row-sample";
 
 test("resolves working storage paths inside the ignored data archive", () => {
   assert.equal(
@@ -37,5 +40,22 @@ test("rejects working storage paths outside the ignored data archive", () => {
   assert.throws(
     () => resolveWorkingStoragePath("scripts/not-data.txt"),
     /must be inside the ignored data\/ archive/,
+  );
+});
+
+test("selects default or explicit raw row source filenames", () => {
+  assert.deepEqual(rawTradeRowSourceFilenamesFromEnv(""), [
+    { normalizedRawFilename: "cl_aduana_imports_2026_03_raw.rar" },
+    { normalizedRawFilename: "cl_aduana_exports_2026_03_raw.rar" },
+  ]);
+
+  assert.deepEqual(
+    rawTradeRowSourceFilenamesFromEnv(
+      " cl_aduana_imports_2026_04_raw.rar,cl_aduana_exports_2026_04_raw.rar ",
+    ),
+    [
+      { normalizedRawFilename: "cl_aduana_imports_2026_04_raw.rar" },
+      { normalizedRawFilename: "cl_aduana_exports_2026_04_raw.rar" },
+    ],
   );
 });

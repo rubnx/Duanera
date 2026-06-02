@@ -30,20 +30,36 @@ const defaultBatchSize = 250;
 const repoRoot = process.cwd();
 
 type SampleSource = {
-  tradeFlow: "import" | "export";
   normalizedRawFilename: string;
 };
 
 const sampleSources: SampleSource[] = [
   {
-    tradeFlow: "import",
     normalizedRawFilename: "cl_aduana_imports_2026_03_raw.rar",
   },
   {
-    tradeFlow: "export",
     normalizedRawFilename: "cl_aduana_exports_2026_03_raw.rar",
   },
 ];
+
+export function rawTradeRowSourceFilenamesFromEnv(
+  value = process.env.RAW_TRADE_ROW_SOURCE_FILENAMES,
+): SampleSource[] {
+  if (!value?.trim()) {
+    return sampleSources;
+  }
+
+  const filenames = value
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  if (filenames.length === 0) {
+    throw new Error("RAW_TRADE_ROW_SOURCE_FILENAMES must include at least one filename.");
+  }
+
+  return filenames.map((normalizedRawFilename) => ({ normalizedRawFilename }));
+}
 
 function rowLimit(): number {
   return positiveIntegerEnvValue("SAMPLE_ROW_LIMIT", process.env.SAMPLE_ROW_LIMIT, defaultLimit);
@@ -91,6 +107,8 @@ async function getSource(database: DbClient, source: SampleSource) {
     .select({
       id: sourceFiles.id,
       workingStorageKey: sourceFiles.workingStorageKey,
+      tradeFlow: sourceFiles.tradeFlow,
+      sourceCategory: sourceFiles.sourceCategory,
       periodYear: sourceFiles.periodYear,
       periodMonth: sourceFiles.periodMonth,
     })
@@ -104,7 +122,18 @@ async function getSource(database: DbClient, source: SampleSource) {
     );
   }
 
-  return rows[0];
+  const tradeFlow = rows[0].tradeFlow;
+  if (tradeFlow !== "import" && tradeFlow !== "export") {
+    throw new Error(`${source.normalizedRawFilename} must have import/export trade_flow.`);
+  }
+
+  if (rows[0].sourceCategory !== "dataset_resource") {
+    throw new Error(
+      `${source.normalizedRawFilename} is ${rows[0].sourceCategory ?? "uncategorized"}; raw row loading only accepts main dataset_resource files.`,
+    );
+  }
+
+  return { ...rows[0], tradeFlow };
 }
 
 async function getLayout(database: DbClient, tradeFlow: string) {
@@ -185,7 +214,7 @@ async function loadSample(
   payloadRetentionMode: ReturnType<typeof parseRawRowPayloadRetentionMode>,
 ) {
   const sourceFile = await getSource(database, source);
-  const layout = await getLayout(database, source.tradeFlow);
+  const layout = await getLayout(database, sourceFile.tradeFlow);
   const importBatchId = await upsertImportBatch(database, sourceFile.id);
   const workingPath = resolveWorkingStoragePath(sourceFile.workingStorageKey);
 
@@ -256,7 +285,7 @@ async function loadSample(
       sourceFileId: sourceFile.id,
       importBatchId,
       sourceLayoutId: layout.id,
-      tradeFlow: source.tradeFlow,
+      tradeFlow: sourceFile.tradeFlow,
       periodYear: sourceFile.periodYear,
       periodMonth: sourceFile.periodMonth,
       rowNumber: parsed.rowNumber,
@@ -283,7 +312,7 @@ async function loadSample(
 
     if (rowsRead % 25000 === 0) {
       process.stdout.write(
-        `${source.tradeFlow}: read ${rowsRead}, parsed ${rowsParsed}, failed ${rowsFailed}.\n`,
+        `${sourceFile.tradeFlow}: read ${rowsRead}, parsed ${rowsParsed}, failed ${rowsFailed}.\n`,
       );
     }
   }
@@ -304,7 +333,7 @@ async function loadSample(
     .where(eq(importBatches.id, importBatchId));
 
   process.stdout.write(
-    `Loaded ${source.tradeFlow} raw rows: ${rowsParsed} parsed, ${rowsFailed} failed.\n`,
+    `Loaded ${sourceFile.tradeFlow} raw rows: ${rowsParsed} parsed, ${rowsFailed} failed.\n`,
   );
 }
 
@@ -316,7 +345,7 @@ export async function runRawTradeRowSampleLoader(database: DbClient) {
 
   process.stdout.write(`Raw row payload retention mode: ${payloadRetentionMode}.\n`);
 
-  for (const source of sampleSources) {
+  for (const source of rawTradeRowSourceFilenamesFromEnv()) {
     await loadSample(database, source, limit, payloadRetentionMode);
   }
 
