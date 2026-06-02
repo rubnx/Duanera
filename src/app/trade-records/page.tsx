@@ -1776,6 +1776,7 @@ export default async function TradeRecordsPage({
         <Link
           aria-disabled={!hasPrevious}
           href={hasPrevious ? buildPageHref(effectiveSearchParams, { offset: previousOffset }) : "#"}
+          tabIndex={hasPrevious ? undefined : -1}
           className="inline-flex h-8 items-center rounded-lg border border-border px-2.5 text-sm font-medium aria-disabled:pointer-events-none aria-disabled:opacity-40 hover:bg-muted"
         >
           Anterior
@@ -1783,6 +1784,7 @@ export default async function TradeRecordsPage({
         <Link
           aria-disabled={!hasNext}
           href={hasNext ? nextHref : "#"}
+          tabIndex={hasNext ? undefined : -1}
           className="inline-flex h-8 items-center rounded-lg border border-border px-2.5 text-sm font-medium aria-disabled:pointer-events-none aria-disabled:opacity-40 hover:bg-muted"
         >
           Siguiente
