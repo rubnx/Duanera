@@ -122,6 +122,22 @@ test("rejects invalid period and month values", () => {
     () => parseTradeRecordSearchParams({ periodMonth: "13" }),
     TradeRecordSearchError,
   );
+  assert.throws(
+    () => parseTradeRecordSearchParams({ periodMonth: "0" }),
+    TradeRecordSearchError,
+  );
+});
+
+test("parses pagination integers with strict positive limits and zero offset", () => {
+  assert.equal(parseTradeRecordSearchParams({ offset: "0" }).offset, 0);
+  assert.throws(
+    () => parseTradeRecordSearchParams({ limit: "0" }),
+    TradeRecordSearchError,
+  );
+  assert.throws(
+    () => parseTradeRecordSearchParams({ offset: "-1" }),
+    TradeRecordSearchError,
+  );
 });
 
 test("rejects invalid numeric filters and ranges", () => {

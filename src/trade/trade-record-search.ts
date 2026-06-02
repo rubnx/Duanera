@@ -95,7 +95,7 @@ function codeLookup(input: TradeRecordSearchInput, key: string): string | undefi
   return displayValueMatch?.[1] ?? value;
 }
 
-function integer(input: TradeRecordSearchInput, key: string): number | undefined {
+function positiveInteger(input: TradeRecordSearchInput, key: string): number | undefined {
   const value = text(input, key);
   if (!value) {
     return undefined;
@@ -103,6 +103,24 @@ function integer(input: TradeRecordSearchInput, key: string): number | undefined
 
   if (!/^\d+$/.test(value)) {
     throw new TradeRecordSearchError(`${key} must be a positive integer.`);
+  }
+
+  const parsed = Number.parseInt(value, 10);
+  if (parsed < 1) {
+    throw new TradeRecordSearchError(`${key} must be a positive integer.`);
+  }
+
+  return parsed;
+}
+
+function nonNegativeInteger(input: TradeRecordSearchInput, key: string): number | undefined {
+  const value = text(input, key);
+  if (!value) {
+    return undefined;
+  }
+
+  if (!/^\d+$/.test(value)) {
+    throw new TradeRecordSearchError(`${key} must be a non-negative integer.`);
   }
 
   return Number.parseInt(value, 10);
@@ -294,7 +312,7 @@ export function parseTradeRecordSearchParams(
 ): TradeRecordFilters {
   const afterCursor = cursor(input);
   const hasOffsetParam = text(input, "offset") !== undefined;
-  const offset = integer(input, "offset");
+  const offset = nonNegativeInteger(input, "offset");
 
   if (afterCursor && hasOffsetParam) {
     throw new TradeRecordSearchError("Use either after or offset, not both.");
@@ -302,8 +320,8 @@ export function parseTradeRecordSearchParams(
 
   const filters: TradeRecordFilters = {
     tradeFlow: tradeFlow(input),
-    periodYear: integer(input, "periodYear"),
-    periodMonth: integer(input, "periodMonth"),
+    periodYear: positiveInteger(input, "periodYear"),
+    periodMonth: positiveInteger(input, "periodMonth"),
     periodFrom: period(input, "periodFrom"),
     periodTo: period(input, "periodTo"),
     hsCodePrefix: text(input, "hsCodePrefix"),
@@ -328,7 +346,7 @@ export function parseTradeRecordSearchParams(
     sort: tradeRecordSort(input),
     sourceFileId: uuid(input, "sourceFileId"),
     importBatchId: uuid(input, "importBatchId"),
-    limit: integer(input, "limit"),
+    limit: positiveInteger(input, "limit"),
     offset,
     afterCursor,
   };
