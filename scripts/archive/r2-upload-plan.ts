@@ -5,19 +5,19 @@ import { pathToFileURL } from "node:url";
 import { parse } from "csv-parse/sync";
 
 import { requiredCliValue } from "../../src/lib/cli-args";
+import {
+  archiveFileRoleFor,
+  archivePeriodFor,
+  archiveR2KeyFor,
+  archiveR2MetadataFor,
+  archiveSourceDomainFor,
+  archiveSourceKindFor,
+  archiveTradeFlowFor,
+  classifyArchivePath,
+  type ArchiveManifestReference,
+} from "./r2-upload-policy";
 
 type SourceManifestRow = Record<string, string | undefined>;
-
-type ManifestReference = {
-  country?: string;
-  sourceCategory?: string;
-  sourceDomain?: string;
-  sourceManifestPath: string;
-  tradeFlow?: string;
-  period?: string;
-  fileRole?: string;
-  checksumSha256?: string;
-};
 
 type UploadCandidate = {
   localPath: string;
@@ -219,8 +219,8 @@ function splitManifestPaths(value: string | undefined): string[] {
     .filter(Boolean);
 }
 
-function buildManifestReferences(rows: SourceManifestRow[]): Map<string, ManifestReference> {
-  const references = new Map<string, ManifestReference>();
+function buildManifestReferences(rows: SourceManifestRow[]): Map<string, ArchiveManifestReference> {
+  const references = new Map<string, ArchiveManifestReference>();
 
   for (const row of rows) {
     const sourceManifestPath = row.__sourceManifestPath;
@@ -259,235 +259,21 @@ function buildManifestReferences(rows: SourceManifestRow[]): Map<string, Manifes
   return references;
 }
 
-function classify(relativePath: string): string {
-  const basename = path.posix.basename(relativePath);
-  if (basename === ".DS_Store" || basename.endsWith(".download")) {
-    return "disposable";
-  }
-
-  if (relativePath.includes("/manifests/") || relativePath === "data/sources/chile-aduana/README.md") {
-    return "source_manifest";
-  }
-
-  if (relativePath.startsWith("data/research/chile-aduana-identity-validation/")) {
-    return "generated_validation";
-  }
-
-  if (relativePath.startsWith("data/research/")) {
-    return "research_evidence";
-  }
-
-  if (relativePath.includes("/raw/")) {
-    return "official_source_raw";
-  }
-
-  if (relativePath.includes("/working/")) {
-    return "working_file";
-  }
-
-  return "unknown";
-}
-
-function sourceDomainFor(relativePath: string, reference?: ManifestReference) {
-  if (reference?.sourceDomain) {
-    return reference.sourceDomain;
-  }
-  if (relativePath.includes("/datos-gob-cl/")) {
-    return "datos.gob.cl";
-  }
-  if (relativePath.includes("/aduana-cl/")) {
-    return "aduana.cl";
-  }
-  return null;
-}
-
-function tradeFlowFor(relativePath: string, reference?: ManifestReference) {
-  if (reference?.tradeFlow) {
-    return reference.tradeFlow;
-  }
-  if (relativePath.includes("/imports/")) {
-    return "import";
-  }
-  if (relativePath.includes("/exports/")) {
-    return "export";
-  }
-  if (relativePath.includes("/references/") || relativePath.includes("/code-tables/")) {
-    return "reference";
-  }
-  return null;
-}
-
-function sourceKindFor(classification: string, relativePath: string) {
-  if (classification === "generated_validation") {
-    return "generated_validation";
-  }
-  if (classification === "research_evidence") {
-    return "research_evidence";
-  }
-  if (classification === "disposable") {
-    return "disposable";
-  }
-  if (relativePath.startsWith("data/sources/")) {
-    return "official_source";
-  }
-  return "unknown";
-}
-
-function fileRoleFor(classification: string, reference?: ManifestReference) {
-  if (reference?.fileRole) {
-    return reference.fileRole;
-  }
-
-  const roles: Record<string, string> = {
-    disposable: "disposable",
-    generated_validation: "generated_validation",
-    official_source_raw: "official_source_file",
-    research_evidence: "research_evidence",
-    source_manifest: "source_manifest",
-    unknown: "unknown",
-    working_file: "working_file",
-  };
-
-  return roles[classification] ?? "unknown";
-}
-
-function periodFor(relativePath: string, reference?: ManifestReference) {
-  if (reference?.period) {
-    return reference.period;
-  }
-
-  const monthMatch = /_(\d{4})_(\d{2})(?:_|\.|$)/.exec(relativePath);
-  if (monthMatch) {
-    return `${monthMatch[1]}-${monthMatch[2]}`;
-  }
-
-  const yearMatch = /_(\d{4})(?:_|\.|$)/.exec(relativePath);
-  return yearMatch?.[1] ?? null;
-}
-
-function periodKey(period: string | null) {
-  if (!period) {
-    return "undated";
-  }
-
-  const monthMatch = /^(\d{4})-(\d{2})$/.exec(period);
-  if (monthMatch) {
-    return `${monthMatch[1]}/${monthMatch[2]}`;
-  }
-
-  return period;
-}
-
-function sourceGroup(relativePath: string) {
-  if (relativePath.includes("/imports/")) {
-    return "imports";
-  }
-  if (relativePath.includes("/exports/")) {
-    return "exports";
-  }
-  if (relativePath.includes("/code-tables/")) {
-    return "code-tables";
-  }
-  if (relativePath.includes("/references/")) {
-    return "references";
-  }
-  return "misc";
-}
-
-function roleDirectory(relativePath: string, classification: string) {
-  if (relativePath.includes("/raw/")) {
-    return "raw";
-  }
-  if (relativePath.includes("/working/")) {
-    return "working";
-  }
-  return classification;
-}
-
-function r2KeyFor(relativePath: string, classification: string, reference?: ManifestReference) {
-  const basename = path.posix.basename(relativePath);
-  const sourceDomain = sourceDomainFor(relativePath, reference)?.replaceAll(".", "-");
-  const period = periodFor(relativePath, reference);
-
-  if (classification === "disposable") {
-    return null;
-  }
-
-  if (classification === "source_manifest") {
-    if (sourceDomain) {
-      return `manifests/cl/aduana/${sourceDomain}/${basename}`;
-    }
-    return `manifests/cl/aduana/${basename}`;
-  }
-
-  if (relativePath.startsWith("data/sources/chile-aduana/")) {
-    const domainSegment = sourceDomain ?? "unknown-source";
-    return [
-      "sources",
-      "cl",
-      "aduana",
-      domainSegment,
-      sourceGroup(relativePath),
-      periodKey(period),
-      roleDirectory(relativePath, classification),
-      basename,
-    ].join("/");
-  }
-
-  if (classification === "generated_validation") {
-    const suffix = relativePath.replace("data/research/chile-aduana-identity-validation/", "");
-    return `research/cl/aduana/identity-validation/${suffix}`;
-  }
-
-  if (classification === "research_evidence") {
-    const suffix = relativePath.replace("data/research/", "");
-    return `research/cl/aduana/${suffix}`;
-  }
-
-  return `unclassified/${relativePath.replace(/^data\//, "")}`;
-}
-
-function r2MetadataFor(candidate: Omit<UploadCandidate, "metadata">): Record<string, string> {
-  const metadata: Record<string, string> = {
-    file_role: candidate.fileRole,
-    sha256: candidate.sha256,
-    source_kind: candidate.sourceKind,
-  };
-
-  if (candidate.country) {
-    metadata.country = candidate.country;
-  }
-  if (candidate.sourceDomain) {
-    metadata.source_domain = candidate.sourceDomain;
-  }
-  if (candidate.tradeFlow) {
-    metadata.trade_flow = candidate.tradeFlow;
-  }
-  if (candidate.period) {
-    metadata.period = candidate.period;
-  }
-  if (candidate.sourceManifestPath) {
-    metadata.manifest_local_path = candidate.sourceManifestPath;
-  }
-
-  return metadata;
-}
-
 async function buildCandidate(
   absolutePath: string,
   bucket: string,
-  references: Map<string, ManifestReference>,
+  references: Map<string, ArchiveManifestReference>,
 ): Promise<UploadCandidate> {
   const localPath = repoRelativePath(absolutePath);
-  const classification = classify(localPath);
+  const classification = classifyArchivePath(localPath);
   const reference = references.get(localPath);
   const sizeBytes = statSync(absolutePath).size;
   const sha256 = await sha256File(absolutePath);
   const manifestSha256 = reference?.checksumSha256 ?? null;
   const checksumMatchesManifest = manifestSha256 ? manifestSha256 === sha256 : null;
-  const sourceKind = sourceKindFor(classification, localPath);
-  const fileRole = fileRoleFor(classification, reference);
-  const r2Key = r2KeyFor(localPath, classification, reference);
+  const sourceKind = archiveSourceKindFor(classification, localPath);
+  const fileRole = archiveFileRoleFor(classification, reference);
+  const r2Key = archiveR2KeyFor(localPath, classification, reference);
   const includeInUpload = classification !== "disposable";
   const baseCandidate = {
     localPath,
@@ -496,10 +282,10 @@ async function buildCandidate(
     classification,
     sourceKind,
     fileRole,
-    sourceDomain: sourceDomainFor(localPath, reference),
+    sourceDomain: archiveSourceDomainFor(localPath, reference),
     country: reference?.country ?? (localPath.includes("chile-aduana") ? "CL" : null),
-    tradeFlow: tradeFlowFor(localPath, reference),
-    period: periodFor(localPath, reference),
+    tradeFlow: archiveTradeFlowFor(localPath, reference),
+    period: archivePeriodFor(localPath, reference),
     sizeBytes,
     sha256,
     sourceManifestPath: reference?.sourceManifestPath ?? null,
@@ -511,7 +297,7 @@ async function buildCandidate(
 
   return {
     ...baseCandidate,
-    metadata: r2MetadataFor(baseCandidate),
+    metadata: archiveR2MetadataFor(baseCandidate),
   };
 }
 
