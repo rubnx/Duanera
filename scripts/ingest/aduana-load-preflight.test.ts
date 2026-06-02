@@ -10,7 +10,7 @@ import {
   runAduanaLoadPreflight,
   type PreflightManifestRow,
 } from "./aduana-load-preflight";
-import { importFieldNames } from "../seed/source-layout-metadata";
+import { importFieldNames } from "../../src/ingest/aduana-source-layouts";
 
 const testDir = "data/.duanera-test-aduana-preflight";
 const workingPath = `${testDir}/cl_aduana_imports_2026_04.txt`;

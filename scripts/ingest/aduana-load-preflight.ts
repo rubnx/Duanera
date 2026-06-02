@@ -13,7 +13,7 @@ import {
   exportCodedFields,
   exportFieldNames,
   codeTableKeyForSourceField,
-} from "../seed/source-layout-metadata";
+} from "../../src/ingest/aduana-source-layouts";
 import { parseAduanaRow } from "../../src/ingest/aduana-main-file";
 import {
   parsePositiveSafeIntegerCliValue,

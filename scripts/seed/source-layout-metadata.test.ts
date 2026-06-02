@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { codeTableKeyForSourceField } from "./source-layout-metadata";
+import { codeTableKeyForSourceField } from "../../src/ingest/aduana-source-layouts";
 
 test("maps source layout coded fields to existing Aduana code-table keys", () => {
   assert.equal(codeTableKeyForSourceField("ADU"), "chile_aduana:aduanas");
