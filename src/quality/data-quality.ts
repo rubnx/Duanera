@@ -2,7 +2,6 @@ import {
   and,
   asc,
   count,
-  desc,
   eq,
   inArray,
   sql,
@@ -21,13 +20,9 @@ import {
 } from "@/quality/field-coverage";
 import {
   labelCoverageFromRows,
-  type CodeCountRow,
   type DataQualityLabelCoverage,
-  type DataQualityLabelDimensionKey,
 } from "@/quality/label-coverage";
 import {
-  codeTables,
-  codeValues,
   importBatches,
   rawTradeRows,
   sourceFiles,
@@ -70,6 +65,11 @@ import {
   type DataQualityFinding,
   type DataQualityPayloadCoverage,
 } from "@/quality/data-quality-findings";
+import {
+  codeCountsForDimension,
+  loadCodeValueSets,
+  type CodeValueSetMap,
+} from "@/quality/code-value-sets";
 
 const reportPeriod = march2026ReportPeriod;
 
@@ -116,13 +116,6 @@ export {
   type DataQualityPayloadCoverage,
 } from "@/quality/data-quality-findings";
 
-const codeTableKeys = {
-  countries: "chile_aduana:paises",
-  customsOffices: "chile_aduana:aduanas",
-  ports: "chile_aduana:puertos",
-  transportModes: "chile_aduana:vias_de_transporte",
-} satisfies Record<DataQualityLabelDimensionKey, string>;
-
 export type DataQualityReport = {
   period: typeof reportPeriod;
   totals: {
@@ -142,8 +135,6 @@ export type DataQualityReport = {
   sourceBatchRemediation: DataQualitySourceBatchRemediation[];
   findings: DataQualityFinding[];
 };
-
-type CodeValueSetMap = Record<DataQualityLabelDimensionKey, Set<string>>;
 
 const toNumber = countValueToNumber;
 
@@ -481,63 +472,6 @@ async function loadFieldCoverage(db: DbClient): Promise<DataQualityFieldCoverage
   ]);
 
   return [...imports, ...exports];
-}
-
-async function loadCodeValueSets(db: DbClient): Promise<CodeValueSetMap> {
-  const rows = await db
-    .select({
-      codeTableKey: codeTables.codeTableKey,
-      codeValue: codeValues.codeValue,
-    })
-    .from(codeValues)
-    .innerJoin(codeTables, eq(codeValues.codeTableId, codeTables.id))
-    .where(inArray(codeTables.codeTableKey, Object.values(codeTableKeys)));
-
-  const sets: CodeValueSetMap = {
-    countries: new Set(),
-    customsOffices: new Set(),
-    ports: new Set(),
-    transportModes: new Set(),
-  };
-
-  const keyByCodeTable = new Map<string, DataQualityLabelDimensionKey>(
-    Object.entries(codeTableKeys).map(([key, codeTableKey]) => [
-      codeTableKey,
-      key as DataQualityLabelDimensionKey,
-    ]),
-  );
-
-  for (const row of rows) {
-    const dimensionKey = keyByCodeTable.get(row.codeTableKey);
-    const normalizedCode = normalizeCodeForCoverage(row.codeValue);
-    if (dimensionKey && normalizedCode) {
-      sets[dimensionKey].add(normalizedCode);
-    }
-  }
-
-  return sets;
-}
-
-async function codeCountsForDimension(
-  db: DbClient,
-  tradeFlow: TradeFlow,
-  expression: SQL<string>,
-): Promise<CodeCountRow[]> {
-  return db
-    .select({
-      code: expression,
-      records: count(),
-    })
-    .from(tradeRecords)
-    .where(
-      and(
-        marchTradeWhere(tradeFlow),
-        sql`${expression} is not null`,
-        sql`${expression} <> ''`,
-      ),
-    )
-    .groupBy(expression)
-    .orderBy(desc(sql<number>`count(*)`));
 }
 
 async function loadLabelCoverage(db: DbClient): Promise<DataQualityLabelCoverage[]> {
