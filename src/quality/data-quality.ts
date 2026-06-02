@@ -36,8 +36,8 @@ import {
 } from "@/quality/data-quality-findings";
 import {
   loadFieldCoverage,
-  loadLabelCoverage,
 } from "@/quality/data-quality-coverage-loaders";
+import { loadLabelCoverage } from "@/quality/data-quality-label-coverage-loader";
 import { getMarch2026SourceBatchRemediation } from "@/quality/data-quality-source-batch-remediation";
 
 const reportPeriod = march2026ReportPeriod;
