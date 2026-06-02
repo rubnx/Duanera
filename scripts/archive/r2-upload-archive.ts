@@ -219,13 +219,16 @@ function metadataField(value: Record<string, unknown>): Record<string, string> {
     throw new Error("Plan file field metadata must be an object with string values.");
   }
 
+  const metadata: Record<string, string> = {};
   for (const [key, metadataValue] of Object.entries(fieldValue)) {
     if (typeof metadataValue !== "string") {
       throw new Error(`Plan metadata field ${key} must be a string.`);
     }
+
+    metadata[key] = metadataValue;
   }
 
-  return fieldValue as Record<string, string>;
+  return metadata;
 }
 
 function parsePlanObject(value: unknown, index: number): PlanObject {
