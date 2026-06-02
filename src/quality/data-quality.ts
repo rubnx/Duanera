@@ -33,7 +33,6 @@ import {
   sourceFiles,
   tradeRecords,
 } from "@/db/schema";
-import { sourceDisplayFilename, sourceTradeRecordsHref } from "@/sources/source-provenance";
 import type { TradeFlow, TradeRecordFilters } from "@/trade/trade-records";
 import {
   march2026RawTradeRowsWhere,
@@ -41,18 +40,19 @@ import {
   march2026TradeRecordsWhere,
 } from "@/quality/march-2026";
 import {
-  dataQualityRemediationNextStep,
-  dataQualityRemediationStatus,
-  dataQualityRemediationTotal,
+  addUndecodedSourceBatchCounts,
   dataQualitySourceBatchKey,
-  type DataQualityRemediationIssueCounts,
+  finalizeSourceBatchRemediationRows,
+  sourceBatchRemediationFromRow,
+  type DataQualitySourceBatchRemediation,
+  type SourceBatchCodeCountRow,
+  type SourceBatchRemediationBaseRow,
 } from "@/quality/source-batch-remediation";
 import {
   dataQualityIssueRecordHref,
   dataQualityIssueSampleFromRow,
   dataQualityIssueSearchHref,
   dataQualityIssueStatus,
-  dataQualitySourceBatchHref,
   type DataQualityIssueGroup,
   type DataQualityIssueKind,
   type DataQualityIssueSample,
@@ -64,7 +64,7 @@ import {
   type DataQualityFlowSummary,
   type DataQualitySourceCoverage,
 } from "@/quality/source-coverage";
-import { countValueToNumber, type CountValue } from "@/db/count-values";
+import { countValueToNumber } from "@/db/count-values";
 
 const reportPeriod = march2026ReportPeriod;
 
@@ -78,11 +78,17 @@ export {
 export { type DataQualityFieldCoverage } from "@/quality/field-coverage";
 export { type DataQualityLabelCoverage } from "@/quality/label-coverage";
 export {
+  addUndecodedSourceBatchCounts,
   dataQualityRemediationNextStep,
   dataQualityRemediationStatus,
   dataQualityRemediationTotal,
   dataQualitySourceBatchKey,
+  finalizeSourceBatchRemediationRows,
+  sourceBatchRemediationFromRow,
+  type DataQualitySourceBatchRemediation,
   type DataQualityRemediationIssueCounts,
+  type SourceBatchCodeCountRow,
+  type SourceBatchRemediationBaseRow,
 } from "@/quality/source-batch-remediation";
 export {
   dataQualityIssueRecordHref,
@@ -121,23 +127,6 @@ export type DataQualityFinding = {
   detail: string;
 };
 
-export type DataQualitySourceBatchRemediation = {
-  sourceFileId: string;
-  importBatchId: string;
-  tradeFlow: TradeFlow;
-  filename: string;
-  parserName: string;
-  parserVersion: string;
-  batchStatus: string;
-  tradeRecords: number;
-  issueCounts: DataQualityRemediationIssueCounts;
-  totalIssueSignals: number;
-  status: DataQualityStatus;
-  nextStep: string;
-  sourceHref: string;
-  tradeRecordsHref: string | null;
-};
-
 export type DataQualityReport = {
   period: typeof reportPeriod;
   totals: {
@@ -159,30 +148,6 @@ export type DataQualityReport = {
 };
 
 type CodeValueSetMap = Record<DataQualityLabelDimensionKey, Set<string>>;
-
-type SourceBatchRemediationBaseRow = {
-  sourceFileId: string;
-  importBatchId: string;
-  tradeFlow: string;
-  originalFilename: string;
-  normalizedRawFilename: string | null;
-  parserName: string;
-  parserVersion: string;
-  batchStatus: string;
-  tradeRecords: CountValue;
-  missingImportGrossWeightItem: CountValue;
-  missingOrZeroItemValue: CountValue;
-  missingOrZeroDeclarationFob: CountValue;
-  quantityUnitValueReview: CountValue;
-};
-
-type SourceBatchCodeCountRow = {
-  sourceFileId: string;
-  importBatchId: string;
-  tradeFlow: string;
-  code: string | null;
-  records: CountValue;
-};
 
 const toNumber = countValueToNumber;
 
@@ -1083,63 +1048,6 @@ async function loadIssueGroups(db: DbClient): Promise<DataQualityIssueGroup[]> {
   ]);
 }
 
-const emptyRemediationCounts: DataQualityRemediationIssueCounts = {
-  missingImportGrossWeightItem: 0,
-  undecodedCustomsOffice: 0,
-  undecodedPort: 0,
-  undecodedTransportMode: 0,
-  missingOrZeroItemValue: 0,
-  missingOrZeroDeclarationFob: 0,
-  quantityUnitValueReview: 0,
-};
-
-function remediationCountsFromRow(
-  row: SourceBatchRemediationBaseRow,
-): DataQualityRemediationIssueCounts {
-  return {
-    ...emptyRemediationCounts,
-    missingImportGrossWeightItem: toNumber(row.missingImportGrossWeightItem),
-    missingOrZeroItemValue: toNumber(row.missingOrZeroItemValue),
-    missingOrZeroDeclarationFob: toNumber(row.missingOrZeroDeclarationFob),
-    quantityUnitValueReview: toNumber(row.quantityUnitValueReview),
-  };
-}
-
-function sourceBatchRemediationFromRow(
-  row: SourceBatchRemediationBaseRow,
-): DataQualitySourceBatchRemediation | null {
-  if (row.tradeFlow !== "import" && row.tradeFlow !== "export") {
-    return null;
-  }
-
-  const issueCounts = remediationCountsFromRow(row);
-  const totalIssueSignals = dataQualityRemediationTotal(issueCounts);
-
-  return {
-    sourceFileId: row.sourceFileId,
-    importBatchId: row.importBatchId,
-    tradeFlow: row.tradeFlow,
-    filename: sourceDisplayFilename({
-      originalFilename: row.originalFilename,
-      normalizedRawFilename: row.normalizedRawFilename,
-    }),
-    parserName: row.parserName,
-    parserVersion: row.parserVersion,
-    batchStatus: row.batchStatus,
-    tradeRecords: toNumber(row.tradeRecords),
-    issueCounts,
-    totalIssueSignals,
-    status: dataQualityRemediationStatus(issueCounts),
-    nextStep: dataQualityRemediationNextStep(issueCounts),
-    sourceHref: dataQualitySourceBatchHref(row.sourceFileId, row.importBatchId),
-    tradeRecordsHref: sourceTradeRecordsHref({
-      sourceFileId: row.sourceFileId,
-      importBatchId: row.importBatchId,
-      tradeFlow: row.tradeFlow,
-    }),
-  };
-}
-
 function sourceBatchRemediationWhere(sourceFileId?: string): SQL {
   const conditions = [marchTradeWhere()];
 
@@ -1248,63 +1156,6 @@ async function sourceBatchCodeCounts({
     );
 }
 
-function addUndecodedCounts({
-  codeSet,
-  field,
-  ignoredSourceCodes = new Set<string>(),
-  remediationByKey,
-  rows,
-}: {
-  codeSet: Set<string>;
-  field: keyof Pick<
-    DataQualityRemediationIssueCounts,
-    "undecodedCustomsOffice" | "undecodedPort" | "undecodedTransportMode"
-  >;
-  ignoredSourceCodes?: Set<string>;
-  remediationByKey: Map<string, DataQualitySourceBatchRemediation>;
-  rows: SourceBatchCodeCountRow[];
-}) {
-  for (const row of rows) {
-    if (
-      !isActionableUndecodedCode({
-        code: row.code,
-        codeSet,
-        ignoredSourceCodes,
-      })
-    ) {
-      continue;
-    }
-
-    const remediation = remediationByKey.get(dataQualitySourceBatchKey(row));
-    if (!remediation) {
-      continue;
-    }
-
-    remediation.issueCounts[field] += toNumber(row.records);
-  }
-}
-
-function finalizeRemediationRows(rows: DataQualitySourceBatchRemediation[]) {
-  return rows
-    .map((row) => {
-      const totalIssueSignals = dataQualityRemediationTotal(row.issueCounts);
-      return {
-        ...row,
-        totalIssueSignals,
-        status: dataQualityRemediationStatus(row.issueCounts),
-        nextStep: dataQualityRemediationNextStep(row.issueCounts),
-      };
-    })
-    .filter((row) => row.totalIssueSignals > 0)
-    .sort((a, b) => {
-      if (a.totalIssueSignals !== b.totalIssueSignals) {
-        return b.totalIssueSignals - a.totalIssueSignals;
-      }
-
-      return a.filename.localeCompare(b.filename);
-    });
-}
-
 export async function getMarch2026SourceBatchRemediation(
   db: DbClient,
   options: {
@@ -1373,32 +1224,32 @@ export async function getMarch2026SourceBatchRemediation(
     }),
   ]);
 
-  addUndecodedCounts({
+  addUndecodedSourceBatchCounts({
     codeSet: codeSets.customsOffices,
     field: "undecodedCustomsOffice",
     remediationByKey,
     rows: [...importCustoms, ...exportCustoms],
   });
-  addUndecodedCounts({
+  addUndecodedSourceBatchCounts({
     codeSet: codeSets.ports,
     field: "undecodedPort",
     remediationByKey,
     rows: importPorts,
   });
-  addUndecodedCounts({
+  addUndecodedSourceBatchCounts({
     codeSet: codeSets.ports,
     field: "undecodedPort",
     ignoredSourceCodes: dusExportSpecialLogisticsCodes,
     remediationByKey,
     rows: exportPorts,
   });
-  addUndecodedCounts({
+  addUndecodedSourceBatchCounts({
     codeSet: codeSets.transportModes,
     field: "undecodedTransportMode",
     remediationByKey,
     rows: importTransport,
   });
-  addUndecodedCounts({
+  addUndecodedSourceBatchCounts({
     codeSet: codeSets.transportModes,
     field: "undecodedTransportMode",
     ignoredSourceCodes: dusExportSpecialLogisticsCodes,
@@ -1406,7 +1257,7 @@ export async function getMarch2026SourceBatchRemediation(
     rows: exportTransport,
   });
 
-  return finalizeRemediationRows(remediationRows).slice(0, options.limit ?? 8);
+  return finalizeSourceBatchRemediationRows(remediationRows).slice(0, options.limit ?? 8);
 }
 
 function buildFindings({
