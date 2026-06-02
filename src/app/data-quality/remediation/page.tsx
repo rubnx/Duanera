@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/table";
 import { db } from "@/db/client";
 import type { DataQualityStatus } from "@/quality/data-quality";
+import { formatIntegerEsCl } from "@/lib/format";
 import {
   getMarch2026RemediationQueueReport,
   type RemediationQueueConfidence,
@@ -31,11 +32,7 @@ import type { TradeFlow } from "@/trade/trade-records";
 
 export const dynamic = "force-dynamic";
 
-function formatNumber(value: number) {
-  return new Intl.NumberFormat("es-CL", {
-    maximumFractionDigits: 0,
-  }).format(value);
-}
+const formatNumber = formatIntegerEsCl;
 
 function flowLabel(value: TradeFlow | "mixed" | null) {
   if (value === "import") {

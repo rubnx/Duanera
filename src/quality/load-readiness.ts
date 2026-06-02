@@ -15,6 +15,7 @@ import {
   buildDataQualityRemediationQueueReport,
   type RemediationQueueReport,
 } from "@/quality/remediation-queue";
+import { formatIntegerEsCl } from "@/lib/format";
 
 const reportPeriod = {
   year: 2026,
@@ -76,11 +77,7 @@ export type LoadReadinessSourceReports = {
   remediation: RemediationQueueReport;
 };
 
-function formatNumber(value: number) {
-  return new Intl.NumberFormat("es-CL", {
-    maximumFractionDigits: 0,
-  }).format(value);
-}
+const formatNumber = formatIntegerEsCl;
 
 export function loadReadinessStatusRank(status: LoadReadinessStatus) {
   const ranks: Record<LoadReadinessStatus, number> = {

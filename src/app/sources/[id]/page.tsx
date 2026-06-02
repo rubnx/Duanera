@@ -24,6 +24,7 @@ import {
   type DataQualitySourceBatchRemediation,
   type DataQualityStatus,
 } from "@/quality/data-quality";
+import { formatNullableIntegerEsCl } from "@/lib/format";
 import {
   getSourceProvenanceById,
   safeSourcePageUrl,
@@ -42,15 +43,7 @@ type PageProps = {
   params: Promise<{ id: string }>;
 };
 
-function formatNumber(value: number | null | undefined) {
-  if (value === null || value === undefined) {
-    return "No informado";
-  }
-
-  return new Intl.NumberFormat("es-CL", {
-    maximumFractionDigits: 0,
-  }).format(value);
-}
+const formatNumber = formatNullableIntegerEsCl;
 
 function formatBytes(value: number | null) {
   if (!value) {

@@ -28,15 +28,12 @@ import {
   type LoadReadinessLink,
   type LoadReadinessStatus,
 } from "@/quality/load-readiness";
+import { formatIntegerEsCl } from "@/lib/format";
 import { isInternalToolsEnabled } from "@/research/internal-research-access";
 
 export const dynamic = "force-dynamic";
 
-function formatNumber(value: number) {
-  return new Intl.NumberFormat("es-CL", {
-    maximumFractionDigits: 0,
-  }).format(value);
-}
+const formatNumber = formatIntegerEsCl;
 
 function decisionClasses(value: LoadReadinessDecision) {
   const classes: Record<LoadReadinessDecision, string> = {

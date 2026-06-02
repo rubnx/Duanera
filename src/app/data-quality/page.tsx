@@ -31,22 +31,13 @@ import {
   type DataQualityStatus,
   type DataQualitySourceCoverage,
 } from "@/quality/data-quality";
+import { formatIntegerEsCl, formatPercentEsCl } from "@/lib/format";
 import type { TradeFlow } from "@/trade/trade-records";
 
 export const dynamic = "force-dynamic";
 
-function formatNumber(value: number) {
-  return new Intl.NumberFormat("es-CL", {
-    maximumFractionDigits: 0,
-  }).format(value);
-}
-
-function formatPercent(value: number) {
-  return new Intl.NumberFormat("es-CL", {
-    maximumFractionDigits: 1,
-    minimumFractionDigits: value % 1 === 0 ? 0 : 1,
-  }).format(value);
-}
+const formatNumber = formatIntegerEsCl;
+const formatPercent = formatPercentEsCl;
 
 function formatMaybe(value: string | number | null | undefined, fallback = "Sin dato") {
   if (value === null || value === undefined || value === "") {

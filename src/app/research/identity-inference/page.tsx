@@ -17,6 +17,7 @@ import {
   type IdentityEvidenceStrength,
 } from "@/research/identity-evidence";
 import { isInternalResearchEnabled } from "@/research/internal-research-access";
+import { formatIntegerEsCl } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -30,11 +31,7 @@ function flowFromParams(params: Record<string, string | string[] | undefined>) {
   return firstValue(params.tradeFlow) === "export" ? "export" : "import";
 }
 
-function formatNumber(value: number) {
-  return new Intl.NumberFormat("es-CL", {
-    maximumFractionDigits: 0,
-  }).format(value);
-}
+const formatNumber = formatIntegerEsCl;
 
 function formatMoney(value: string | null) {
   if (!value) {

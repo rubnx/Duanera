@@ -17,6 +17,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { db } from "@/db/client";
+import { formatIntegerEsCl } from "@/lib/format";
 import {
   listSourceProvenance,
   sourceDisplayFilename,
@@ -27,11 +28,7 @@ import {
 
 export const dynamic = "force-dynamic";
 
-function formatNumber(value: number) {
-  return new Intl.NumberFormat("es-CL", {
-    maximumFractionDigits: 0,
-  }).format(value);
-}
+const formatNumber = formatIntegerEsCl;
 
 function flowLabel(value: string | null) {
   if (value === "import") {

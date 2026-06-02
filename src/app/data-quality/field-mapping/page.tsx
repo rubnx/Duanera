@@ -27,23 +27,14 @@ import {
   type FieldMappingRow,
 } from "@/quality/field-mapping";
 import type { DataQualityStatus } from "@/quality/data-quality";
+import { formatIntegerEsCl, formatPercentEsCl } from "@/lib/format";
 import { isInternalToolsEnabled } from "@/research/internal-research-access";
 import type { TradeFlow } from "@/trade/trade-records";
 
 export const dynamic = "force-dynamic";
 
-function formatNumber(value: number) {
-  return new Intl.NumberFormat("es-CL", {
-    maximumFractionDigits: 0,
-  }).format(value);
-}
-
-function formatPercent(value: number) {
-  return new Intl.NumberFormat("es-CL", {
-    maximumFractionDigits: 1,
-    minimumFractionDigits: value % 1 === 0 ? 0 : 1,
-  }).format(value);
-}
+const formatNumber = formatIntegerEsCl;
+const formatPercent = formatPercentEsCl;
 
 function flowLabel(value: TradeFlow) {
   return value === "import" ? "Importaciones" : "Exportaciones";
