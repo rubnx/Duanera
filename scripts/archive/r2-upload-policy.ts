@@ -11,6 +11,8 @@ export type ArchiveManifestReference = {
   checksumSha256?: string;
 };
 
+export type ArchiveManifestKeyMode = "legacy" | "snapshot";
+
 export type ArchiveCandidateMetadataInput = {
   fileRole: string;
   sha256: string;
@@ -183,6 +185,10 @@ export function archiveR2KeyFor(
   relativePath: string,
   classification: string,
   reference?: ArchiveManifestReference,
+  options?: {
+    manifestKeyMode?: ArchiveManifestKeyMode;
+    sha256?: string;
+  },
 ): string | null {
   const basename = path.posix.basename(relativePath);
   const sourceDomain = archiveSourceDomainFor(relativePath, reference)?.replaceAll(".", "-");
@@ -193,6 +199,14 @@ export function archiveR2KeyFor(
   }
 
   if (classification === "source_manifest") {
+    if (options?.manifestKeyMode === "snapshot") {
+      if (!options.sha256) {
+        throw new Error(`${relativePath}: snapshot source manifest keys require a SHA-256 checksum.`);
+      }
+      const domainSegment = sourceDomain ?? "unknown-source";
+      return `manifests/cl/aduana/${domainSegment}/snapshots/${basename}/${options.sha256}/${basename}`;
+    }
+
     if (sourceDomain) {
       return `manifests/cl/aduana/${sourceDomain}/${basename}`;
     }

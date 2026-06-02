@@ -17,6 +17,7 @@ import {
   archiveSourceKindFor,
   archiveTradeFlowFor,
   classifyArchivePath,
+  type ArchiveManifestKeyMode,
   type ArchiveManifestReference,
 } from "./r2-upload-policy";
 
@@ -55,6 +56,7 @@ type Summary = {
 type Args = {
   bucket: string;
   dataDir: string;
+  manifestKeyMode: ArchiveManifestKeyMode;
   pretty: boolean;
 };
 
@@ -72,6 +74,7 @@ export type ArchiveUploadPlan = {
     publicAccess: "disabled";
     canonicalChecksum: "sha256";
     firstUploadPriority: "official_source_raw";
+    sourceManifestKeyMode: ArchiveManifestKeyMode;
   };
   summary: Summary;
   errors: string[];
@@ -86,6 +89,7 @@ function parseArgs(argv: string[]): Args {
   const args: Args = {
     bucket: defaultBucket,
     dataDir: "data",
+    manifestKeyMode: "legacy",
     pretty: false,
   };
 
@@ -108,10 +112,23 @@ function parseArgs(argv: string[]): Args {
       continue;
     }
 
+    if (arg === "--manifest-key-mode") {
+      args.manifestKeyMode = parseManifestKeyMode(requiredCliValue(argv, index, arg));
+      index += 1;
+      continue;
+    }
+
     throw new Error(`Unknown argument: ${arg}`);
   }
 
   return args;
+}
+
+function parseManifestKeyMode(value: string): ArchiveManifestKeyMode {
+  if (value === "legacy" || value === "snapshot") {
+    return value;
+  }
+  throw new Error("--manifest-key-mode must be legacy or snapshot.");
 }
 
 function toPosix(value: string) {
@@ -178,6 +195,7 @@ async function buildCandidate(
   absolutePath: string,
   bucket: string,
   references: Map<string, ArchiveManifestReference>,
+  manifestKeyMode: ArchiveManifestKeyMode,
 ): Promise<UploadCandidate> {
   const localPath = repoRelativePath(absolutePath);
   const classification = classifyArchivePath(localPath);
@@ -188,7 +206,10 @@ async function buildCandidate(
   const checksumMatchesManifest = manifestSha256 ? manifestSha256 === sha256 : null;
   const sourceKind = archiveSourceKindFor(classification, localPath);
   const fileRole = archiveFileRoleFor(classification, reference);
-  const r2Key = archiveR2KeyFor(localPath, classification, reference);
+  const r2Key = archiveR2KeyFor(localPath, classification, reference, {
+    manifestKeyMode,
+    sha256,
+  });
   const includeInUpload = classification !== "disposable";
   const baseCandidate = {
     localPath,
@@ -282,9 +303,11 @@ function summarize(candidates: UploadCandidate[]): Summary {
 export async function buildArchiveUploadPlan({
   bucket,
   dataDir,
+  manifestKeyMode = "legacy",
 }: {
   bucket: string;
   dataDir: string;
+  manifestKeyMode?: ArchiveManifestKeyMode;
 }): Promise<ArchiveUploadPlan> {
   const resolvedDataDir = resolveArchiveDataDirPath(dataDir);
   assertArchiveDataDirExists(resolvedDataDir);
@@ -293,7 +316,7 @@ export async function buildArchiveUploadPlan({
   const candidates = [];
 
   for (const filePath of walkFiles(resolvedDataDir)) {
-    candidates.push(await buildCandidate(filePath, bucket, references));
+    candidates.push(await buildCandidate(filePath, bucket, references, manifestKeyMode));
   }
 
   const validation = validateCandidates(candidates);
@@ -309,6 +332,7 @@ export async function buildArchiveUploadPlan({
       publicAccess: "disabled",
       canonicalChecksum: "sha256",
       firstUploadPriority: "official_source_raw",
+      sourceManifestKeyMode: manifestKeyMode,
     },
     summary: summarize(candidates),
     errors: validation.errors,
@@ -322,6 +346,7 @@ async function main() {
   const output = await buildArchiveUploadPlan({
     bucket: args.bucket,
     dataDir: args.dataDir,
+    manifestKeyMode: args.manifestKeyMode,
   });
 
   process.stdout.write(JSON.stringify(output, null, args.pretty ? 2 : 0));

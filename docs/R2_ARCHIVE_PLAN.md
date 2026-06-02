@@ -26,6 +26,7 @@ sources/cl/aduana/datos-gob-cl/imports/2026/03/working/cl_aduana_imports_2026_03
 sources/cl/aduana/datos-gob-cl/exports/2026/03/raw/cl_aduana_exports_2026_03_raw.rar
 sources/cl/aduana/aduana-cl/code-tables/2026/05/raw/cl_aduana_code_tables_2026_05_26_raw.xlsx
 manifests/cl/aduana/datos-gob-cl/cl_aduana_datos_gob_cl_2026_source_files_manifest.csv
+manifests/cl/aduana/datos-gob-cl/snapshots/cl_aduana_datos_gob_cl_2026_source_files_manifest.csv/<sha256>/cl_aduana_datos_gob_cl_2026_source_files_manifest.csv
 research/cl/aduana/identity-validation/run_summary.json
 ```
 
@@ -55,12 +56,38 @@ sha256=<hex>
 manifest_local_path=data/sources/chile-aduana/datos-gob-cl/manifests/...
 ```
 
+## Source Manifest Refresh Policy
+
+Official raw source objects are immutable and must never be overwritten. Source manifests and checksum files are also treated as provenance artifacts, but they can legitimately change as new official files are acquired. For example, the local 2026 datos.gob.cl manifests changed after the April 2026 acquisition because April package/resource rows and checksums were added after the earlier R2 upload.
+
+Do not overwrite an existing manifest object when a local manifest changes. Preserve the existing R2 object as a historical snapshot and upload the refreshed local manifest under a content-addressed snapshot key:
+
+```txt
+manifests/cl/aduana/{source-domain}/snapshots/{filename}/{sha256}/{filename}
+```
+
+The legacy non-snapshot manifest keys remain historical first-upload objects. Duanera does not currently maintain a mutable `latest` manifest pointer in R2; adding one would require a separate reviewed policy because it would intentionally overwrite or update a pointer-like object.
+
+To evaluate refreshed manifests without overwriting existing R2 objects, use snapshot mode:
+
+```bash
+npm run archive:r2:preflight -- --manifest-key-mode snapshot --pretty
+```
+
+Snapshot mode only changes `source_manifest` keys. Official raw files, working files, research evidence, generated validation outputs, and disposable-file behavior keep the normal archive layout.
+
 ## Dry-Run Manifest
 
 Generate a dry-run manifest:
 
 ```bash
 npm --silent run archive:r2:plan -- --pretty > /tmp/duanera-r2-upload-plan.json
+```
+
+For a reviewed source-manifest refresh, generate a snapshot-keyed plan instead:
+
+```bash
+npm --silent run archive:r2:plan -- --manifest-key-mode snapshot --pretty > /tmp/duanera-r2-upload-plan.json
 ```
 
 The command:
@@ -94,6 +121,8 @@ The command:
 - does not upload, delete, overwrite, mutate metadata, write local files, or touch the database
 
 The preflight exits non-zero if it finds plan errors, checksum mismatches, remote size/SHA mismatches, or unsafe upload candidates. Missing objects are not errors by themselves; they identify what is ready for an explicit upload pass. Private research evidence and generated validation outputs are reported as missing but require manual review before upload.
+
+If legacy preflight reports source-manifest remote mismatches, do not upload over the mismatched keys. Run snapshot preflight and snapshot planning, then upload only the `source_manifest` snapshot objects after review.
 
 If you need a machine-readable report, run the command directly or use npm's silent mode so stdout remains valid JSON:
 

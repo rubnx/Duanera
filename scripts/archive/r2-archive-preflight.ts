@@ -13,6 +13,7 @@ import {
   type ArchiveUploadCandidate,
   type ArchiveUploadPlan,
 } from "./r2-upload-plan";
+import type { ArchiveManifestKeyMode } from "./r2-upload-policy";
 
 type Env = {
   accountId: string;
@@ -25,6 +26,7 @@ type Env = {
 type Args = {
   bucket: string | null;
   dataDir: string;
+  manifestKeyMode: ArchiveManifestKeyMode;
   pretty: boolean;
 };
 
@@ -120,6 +122,7 @@ function parseArgs(argv: string[]): Args {
   const args: Args = {
     bucket: null,
     dataDir: "data",
+    manifestKeyMode: "legacy",
     pretty: false,
   };
 
@@ -142,10 +145,23 @@ function parseArgs(argv: string[]): Args {
       continue;
     }
 
+    if (arg === "--manifest-key-mode") {
+      args.manifestKeyMode = parseManifestKeyMode(requiredCliValue(argv, index, arg));
+      index += 1;
+      continue;
+    }
+
     throw new Error(`Unknown argument: ${arg}`);
   }
 
   return args;
+}
+
+function parseManifestKeyMode(value: string): ArchiveManifestKeyMode {
+  if (value === "legacy" || value === "snapshot") {
+    return value;
+  }
+  throw new Error("--manifest-key-mode must be legacy or snapshot.");
 }
 
 function requireEnv(name: string) {
@@ -298,6 +314,13 @@ function uploadCommandFor(classification: string) {
   ].join(" ");
 }
 
+function uploadPlanCommandFor(plan: ArchiveUploadPlan) {
+  const manifestKeyMode = plan.policy.sourceManifestKeyMode;
+  const manifestKeyArg =
+    manifestKeyMode === "snapshot" ? " --manifest-key-mode snapshot" : "";
+  return `npm --silent run archive:r2:plan -- --pretty${manifestKeyArg} > ${uploadPlanPath}`;
+}
+
 export function buildArchivePreflightReport({
   access,
   generatedAt,
@@ -446,7 +469,7 @@ export function buildArchivePreflightReport({
       remoteMismatches: aprilObjects.filter((object) => object.status === "remote_mismatch").length,
       objects: aprilObjects,
     },
-    uploadPlanCommand: `npm --silent run archive:r2:plan -- --pretty > ${uploadPlanPath}`,
+    uploadPlanCommand: uploadPlanCommandFor(plan),
     uploadCommands,
     errors,
     warnings,
@@ -470,6 +493,7 @@ async function main() {
     buildArchiveUploadPlan({
       bucket,
       dataDir: args.dataDir,
+      manifestKeyMode: args.manifestKeyMode,
     }),
   ]);
 

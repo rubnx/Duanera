@@ -48,6 +48,7 @@ function plan(objects: ArchiveUploadCandidate[]): ArchiveUploadPlan {
       firstUploadPriority: "official_source_raw",
       provider: "Cloudflare R2",
       publicAccess: "disabled",
+      sourceManifestKeyMode: "legacy",
     },
     summary: {
       byClassification: {},
@@ -148,6 +149,28 @@ test("generates guarded upload commands only for safe missing batches", () => {
   assert.match(report.uploadCommands[0]?.command ?? "", /--confirm-upload/);
   assert.equal(report.warnings.length, 1);
   assert.match(report.warnings[0] ?? "", /requires manual review before upload/);
+});
+
+test("keeps snapshot manifest mode in generated plan command", () => {
+  const manifest = candidate({
+    classification: "source_manifest",
+    localPath: "data/sources/chile-aduana/datos-gob-cl/manifests/source.csv",
+    r2Key:
+      "manifests/cl/aduana/datos-gob-cl/snapshots/source.csv/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/source.csv",
+    sizeBytes: 5,
+  });
+  const snapshotPlan = plan([manifest]);
+  snapshotPlan.policy.sourceManifestKeyMode = "snapshot";
+
+  const report = buildArchivePreflightReport({
+    access: access(),
+    generatedAt: "2026-06-02T00:00:00.000Z",
+    plan: snapshotPlan,
+    remoteByKey: new Map(),
+  });
+
+  assert.match(report.uploadPlanCommand, /--manifest-key-mode snapshot/);
+  assert.equal(report.uploadCommands[0]?.classification, "source_manifest");
 });
 
 test("keeps April 2026 objects visible in the preflight report", () => {

@@ -73,6 +73,17 @@ test("classifies Aduana archive paths and builds stable R2 keys", () => {
     archiveR2KeyFor(manifestPath, "source_manifest"),
     "manifests/cl/aduana/datos-gob-cl/source_manifest.csv",
   );
+  assert.equal(
+    archiveR2KeyFor(manifestPath, "source_manifest", undefined, {
+      manifestKeyMode: "snapshot",
+      sha256: "a".repeat(64),
+    }),
+    `manifests/cl/aduana/datos-gob-cl/snapshots/source_manifest.csv/${"a".repeat(64)}/source_manifest.csv`,
+  );
+  assert.throws(
+    () => archiveR2KeyFor(manifestPath, "source_manifest", undefined, { manifestKeyMode: "snapshot" }),
+    /snapshot source manifest keys require a SHA-256 checksum/,
+  );
 });
 
 test("builds R2 metadata from archive candidate provenance", () => {
