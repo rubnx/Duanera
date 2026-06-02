@@ -29,8 +29,6 @@ const defaultLimit = 100;
 const defaultBatchSize = 250;
 const repoRoot = process.cwd();
 
-let db: DbClient;
-
 type SampleSource = {
   tradeFlow: "import" | "export";
   normalizedRawFilename: string;
@@ -88,8 +86,8 @@ export function resolveWorkingStoragePath(value: string | null): string {
   return absolutePath;
 }
 
-async function getSource(source: SampleSource) {
-  const rows = await db
+async function getSource(database: DbClient, source: SampleSource) {
+  const rows = await database
     .select({
       id: sourceFiles.id,
       workingStorageKey: sourceFiles.workingStorageKey,
@@ -109,8 +107,8 @@ async function getSource(source: SampleSource) {
   return rows[0];
 }
 
-async function getLayout(tradeFlow: string) {
-  const rows = await db
+async function getLayout(database: DbClient, tradeFlow: string) {
+  const rows = await database
     .select({ id: sourceLayouts.id })
     .from(sourceLayouts)
     .where(
@@ -127,7 +125,7 @@ async function getLayout(tradeFlow: string) {
     throw new Error(`Source layout for ${tradeFlow} main_data is missing.`);
   }
 
-  const fields = await db
+  const fields = await database
     .select({ sourceFieldName: sourceLayoutFields.sourceFieldName })
     .from(sourceLayoutFields)
     .where(eq(sourceLayoutFields.sourceLayoutId, rows[0].id))
@@ -139,8 +137,8 @@ async function getLayout(tradeFlow: string) {
   };
 }
 
-async function upsertImportBatch(sourceFileId: string) {
-  const existing = await db
+async function upsertImportBatch(database: DbClient, sourceFileId: string) {
+  const existing = await database
     .select({ id: importBatches.id })
     .from(importBatches)
     .where(
@@ -167,27 +165,28 @@ async function upsertImportBatch(sourceFileId: string) {
   };
 
   if (existing[0]) {
-    await db
+    await database
       .update(importBatches)
       .set({ ...values, updatedAt: new Date() })
       .where(eq(importBatches.id, existing[0].id));
     return existing[0].id;
   }
 
-  const [inserted] = await db.insert(importBatches).values(values).returning({
+  const [inserted] = await database.insert(importBatches).values(values).returning({
     id: importBatches.id,
   });
   return inserted.id;
 }
 
 async function loadSample(
+  database: DbClient,
   source: SampleSource,
   limit: number,
   payloadRetentionMode: ReturnType<typeof parseRawRowPayloadRetentionMode>,
 ) {
-  const sourceFile = await getSource(source);
-  const layout = await getLayout(source.tradeFlow);
-  const importBatchId = await upsertImportBatch(sourceFile.id);
+  const sourceFile = await getSource(database, source);
+  const layout = await getLayout(database, source.tradeFlow);
+  const importBatchId = await upsertImportBatch(database, sourceFile.id);
   const workingPath = resolveWorkingStoragePath(sourceFile.workingStorageKey);
 
   let rowsRead = 0;
@@ -205,7 +204,7 @@ async function loadSample(
       return;
     }
 
-    await db
+    await database
       .insert(rawTradeRows)
       .values(batch)
       .onConflictDoUpdate({
@@ -291,7 +290,7 @@ async function loadSample(
 
   await flushBatch();
 
-  await db
+  await database
     .update(importBatches)
     .set({
       status: rowsFailed > 0 ? "partial" : "completed",
@@ -310,8 +309,6 @@ async function loadSample(
 }
 
 export async function runRawTradeRowSampleLoader(database: DbClient) {
-  db = database;
-
   const limit = rowLimit();
   const payloadRetentionMode = parseRawRowPayloadRetentionMode(
     process.env.RAW_ROW_PAYLOAD_RETENTION,
@@ -320,7 +317,7 @@ export async function runRawTradeRowSampleLoader(database: DbClient) {
   process.stdout.write(`Raw row payload retention mode: ${payloadRetentionMode}.\n`);
 
   for (const source of sampleSources) {
-    await loadSample(source, limit, payloadRetentionMode);
+    await loadSample(database, source, limit, payloadRetentionMode);
   }
 
   process.stdout.write(`Raw trade row sample load complete. Limit per flow: ${limit}.\n`);
