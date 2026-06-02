@@ -6,6 +6,7 @@ import { and, asc, eq, sql } from "drizzle-orm";
 import iconv from "iconv-lite";
 
 import { assertDevDatabaseTarget } from "../../src/db/dev-guard";
+import { positiveIntegerEnvValue } from "../../src/lib/env";
 import { parseAduanaRow } from "../../src/ingest/aduana-main-file";
 import {
   parseRawRowPayloadRetentionMode,
@@ -50,31 +51,15 @@ const sampleSources: SampleSource[] = [
 ];
 
 function rowLimit(): number {
-  const raw = process.env.SAMPLE_ROW_LIMIT;
-  if (!raw) {
-    return defaultLimit;
-  }
-
-  const parsed = Number.parseInt(raw, 10);
-  if (!Number.isFinite(parsed) || parsed <= 0) {
-    throw new Error(`SAMPLE_ROW_LIMIT must be a positive integer, got ${raw}.`);
-  }
-
-  return parsed;
+  return positiveIntegerEnvValue("SAMPLE_ROW_LIMIT", process.env.SAMPLE_ROW_LIMIT, defaultLimit);
 }
 
 function batchSize(): number {
-  const raw = process.env.RAW_LOAD_BATCH_SIZE;
-  if (!raw) {
-    return defaultBatchSize;
-  }
-
-  const parsed = Number.parseInt(raw, 10);
-  if (!Number.isFinite(parsed) || parsed <= 0) {
-    throw new Error(`RAW_LOAD_BATCH_SIZE must be a positive integer, got ${raw}.`);
-  }
-
-  return parsed;
+  return positiveIntegerEnvValue(
+    "RAW_LOAD_BATCH_SIZE",
+    process.env.RAW_LOAD_BATCH_SIZE,
+    defaultBatchSize,
+  );
 }
 
 function singleWorkingPath(value: string | null): string {

@@ -7,6 +7,7 @@ import {
   parseAduanaDate,
   parseDecimalComma,
 } from "../../src/ingest/aduana-main-file";
+import { positiveIntegerEnvValue } from "../../src/lib/env";
 import {
   rawTradeRows,
   sourceTradeParticipants,
@@ -40,31 +41,19 @@ const participantStats = new Map<string, ParticipantStats>();
 const participantIds = new Map<string, string>();
 
 function rawChunkSize(): number {
-  const raw = process.env.NORMALIZE_RAW_CHUNK_SIZE;
-  if (!raw) {
-    return defaultRawChunkSize;
-  }
-
-  const parsed = Number.parseInt(raw, 10);
-  if (!Number.isFinite(parsed) || parsed <= 0) {
-    throw new Error(`NORMALIZE_RAW_CHUNK_SIZE must be a positive integer, got ${raw}.`);
-  }
-
-  return parsed;
+  return positiveIntegerEnvValue(
+    "NORMALIZE_RAW_CHUNK_SIZE",
+    process.env.NORMALIZE_RAW_CHUNK_SIZE,
+    defaultRawChunkSize,
+  );
 }
 
 function tradeRecordBatchSize(): number {
-  const raw = process.env.TRADE_RECORD_BATCH_SIZE;
-  if (!raw) {
-    return defaultTradeRecordBatchSize;
-  }
-
-  const parsed = Number.parseInt(raw, 10);
-  if (!Number.isFinite(parsed) || parsed <= 0) {
-    throw new Error(`TRADE_RECORD_BATCH_SIZE must be a positive integer, got ${raw}.`);
-  }
-
-  return parsed;
+  return positiveIntegerEnvValue(
+    "TRADE_RECORD_BATCH_SIZE",
+    process.env.TRADE_RECORD_BATCH_SIZE,
+    defaultTradeRecordBatchSize,
+  );
 }
 
 function text(values: RawValues, key: string): string | null {

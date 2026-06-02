@@ -2,6 +2,7 @@ import { config } from "dotenv";
 import { sql } from "drizzle-orm";
 
 import { assertDevDatabaseTarget } from "../../src/db/dev-guard";
+import { positiveIntegerEnvValue } from "../../src/lib/env";
 
 config({ path: ".env.local" });
 config();
@@ -25,17 +26,7 @@ type PrunedRow = {
 };
 
 function positiveIntegerEnv(name: string, defaultValue: number): number {
-  const raw = process.env[name];
-  if (!raw) {
-    return defaultValue;
-  }
-
-  const parsed = Number.parseInt(raw, 10);
-  if (!Number.isFinite(parsed) || parsed <= 0) {
-    throw new Error(`${name} must be a positive integer, got ${raw}.`);
-  }
-
-  return parsed;
+  return positiveIntegerEnvValue(name, process.env[name], defaultValue);
 }
 
 function flowFilter() {
