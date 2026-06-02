@@ -11,8 +11,6 @@ import {
 
 import type { DbClient } from "@/db/client";
 import {
-  coveragePercent,
-  coverageStatus,
   isActionableUndecodedCode,
   normalizeCodeForCoverage,
   type DataQualityStatus,
@@ -21,6 +19,12 @@ import {
   fieldCoverageRows,
   type DataQualityFieldCoverage,
 } from "@/quality/field-coverage";
+import {
+  labelCoverageFromRows,
+  type CodeCountRow,
+  type DataQualityLabelCoverage,
+  type DataQualityLabelDimensionKey,
+} from "@/quality/label-coverage";
 import {
   codeTables,
   codeValues,
@@ -63,6 +67,7 @@ export {
   type DataQualityStatus,
 } from "@/quality/coverage";
 export { type DataQualityFieldCoverage } from "@/quality/field-coverage";
+export { type DataQualityLabelCoverage } from "@/quality/label-coverage";
 export {
   dataQualityRemediationNextStep,
   dataQualityRemediationStatus,
@@ -84,9 +89,7 @@ const codeTableKeys = {
   customsOffices: "chile_aduana:aduanas",
   ports: "chile_aduana:puertos",
   transportModes: "chile_aduana:vias_de_transporte",
-} as const;
-
-type LabelDimensionKey = keyof typeof codeTableKeys;
+} satisfies Record<DataQualityLabelDimensionKey, string>;
 
 export type DataQualityFlowSummary = {
   tradeFlow: TradeFlow;
@@ -111,20 +114,6 @@ export type DataQualitySourceCoverage = {
   tradeRecords: number;
   sourceHref: string;
   tradeRecordsHref: string | null;
-};
-
-export type DataQualityLabelCoverage = {
-  tradeFlow: TradeFlow;
-  key: LabelDimensionKey;
-  label: string;
-  distinctCodes: number;
-  decodedCodes: number;
-  undecodedCodes: string[];
-  recordsWithCode: number;
-  recordsWithDecodedCode: number;
-  percent: number;
-  status: DataQualityStatus;
-  caveat: string;
 };
 
 export type DataQualityPayloadCoverage = {
@@ -187,12 +176,7 @@ type FlowCountRow = {
   tradeRecords?: CountValue;
 };
 
-type CodeCountRow = {
-  code: string | null;
-  records: CountValue;
-};
-
-type CodeValueSetMap = Record<LabelDimensionKey, Set<string>>;
+type CodeValueSetMap = Record<DataQualityLabelDimensionKey, Set<string>>;
 
 type IssueSampleRow = {
   id: string;
@@ -669,10 +653,10 @@ async function loadCodeValueSets(db: DbClient): Promise<CodeValueSetMap> {
     transportModes: new Set(),
   };
 
-  const keyByCodeTable = new Map<string, LabelDimensionKey>(
+  const keyByCodeTable = new Map<string, DataQualityLabelDimensionKey>(
     Object.entries(codeTableKeys).map(([key, codeTableKey]) => [
       codeTableKey,
-      key as LabelDimensionKey,
+      key as DataQualityLabelDimensionKey,
     ]),
   );
 
@@ -707,71 +691,6 @@ async function codeCountsForDimension(
     )
     .groupBy(expression)
     .orderBy(desc(sql<number>`count(*)`));
-}
-
-function labelCoverageFromRows({
-  caveat,
-  codeSet,
-  ignoredSourceCodes = new Set<string>(),
-  key,
-  label,
-  rows,
-  tradeFlow,
-}: {
-  caveat: string;
-  codeSet: Set<string>;
-  ignoredSourceCodes?: Set<string>;
-  key: LabelDimensionKey;
-  label: string;
-  rows: CodeCountRow[];
-  tradeFlow: TradeFlow;
-}): DataQualityLabelCoverage {
-  const distinctCodes = new Set<string>();
-  const decodedCodes = new Set<string>();
-  const undecodedCodes = new Set<string>();
-  let recordsWithCode = 0;
-  let recordsWithDecodedCode = 0;
-
-  for (const row of rows) {
-    const normalizedCode = normalizeCodeForCoverage(row.code);
-    if (!normalizedCode) {
-      continue;
-    }
-
-    const records = toNumber(row.records);
-    if (ignoredSourceCodes.has(normalizedCode)) {
-      continue;
-    }
-
-    distinctCodes.add(normalizedCode);
-    recordsWithCode += records;
-
-    if (codeSet.has(normalizedCode)) {
-      decodedCodes.add(normalizedCode);
-      recordsWithDecodedCode += records;
-    } else {
-      undecodedCodes.add(normalizedCode);
-    }
-  }
-
-  return {
-    tradeFlow,
-    key,
-    label,
-    distinctCodes: distinctCodes.size,
-    decodedCodes: decodedCodes.size,
-    undecodedCodes: Array.from(undecodedCodes).sort().slice(0, 12),
-    recordsWithCode,
-    recordsWithDecodedCode,
-    percent: coveragePercent(recordsWithDecodedCode, recordsWithCode),
-    status: coverageStatus({
-      covered: recordsWithDecodedCode,
-      total: recordsWithCode,
-      okAt: 99,
-      warningBelow: 95,
-    }),
-    caveat,
-  };
 }
 
 async function loadLabelCoverage(db: DbClient): Promise<DataQualityLabelCoverage[]> {
