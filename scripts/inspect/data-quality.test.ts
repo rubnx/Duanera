@@ -427,12 +427,28 @@ test("plans Aduana port remediation inserts, updates, and noops idempotently", (
       reviewStatus: "reviewed_official_update",
       metadata: { remediation_id: "chile_aduana_ports_anexo_51_11_2026_06_01" },
     },
+    {
+      codeValue: "820",
+      labelEs: "Terminal Portuario Terquim",
+      normalizedLabelEs: "terminal portuario terquim",
+      reviewStatus: "reviewed_official_update",
+      metadata: [],
+    },
+    {
+      codeValue: "821",
+      labelEs: "Terminal Muelle Mecanizado Esperanza",
+      normalizedLabelEs: "terminal muelle mecanizado esperanza",
+      reviewStatus: "reviewed_official_update",
+      metadata: null,
+    },
   ]);
 
   const actionsByCode = new Map(plan.map((row) => [row.codeValue, row.action]));
   assert.equal(actionsByCode.get("817"), "noop");
   assert.equal(actionsByCode.get("818"), "update");
   assert.equal(actionsByCode.get("819"), "update");
+  assert.equal(actionsByCode.get("820"), "update");
+  assert.equal(actionsByCode.get("821"), "update");
   assert.equal(actionsByCode.get("225"), "insert");
 });
 
