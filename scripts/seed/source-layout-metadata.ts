@@ -1,18 +1,14 @@
 import { config } from "dotenv";
 import { and, eq } from "drizzle-orm";
+import { pathToFileURL } from "node:url";
 
+import type { DbClient } from "../../src/db/client";
 import {
   sourceFiles,
   sourceLayoutFields,
   sourceLayouts,
 } from "../../src/db/schema";
 import { assertDevDatabaseTarget } from "../../src/db/dev-guard";
-
-config({ path: ".env.local" });
-config();
-assertDevDatabaseTarget("source-layout-metadata seed");
-
-const { db } = await import("../../src/db/client");
 
 const DATA_DICTIONARY_URL =
   "https://datos.gob.cl/dataset/8e686c07-1e86-476e-87eb-d7dd243340a6/resource/792ca993-e4e4-4b83-a965-7aafca93fe2f/download/campos-de-dus-y-din-para-archivos-de-datos-abiertos-v2.0.xlsx";
@@ -388,7 +384,51 @@ type LayoutSeed = {
   notes: string;
 };
 
-async function upsertDictionarySourceFile() {
+const rawFieldCodeTableKeys = new Map<string, string>([
+  ["ADU", "chile_aduana:aduanas"],
+  ["ADU_MANIF", "chile_aduana:aduanas"],
+  ["ADUA_RS", "chile_aduana:aduanas"],
+  ["ADUCTROL", "chile_aduana:aduanas"],
+  ["ADUCON", "chile_aduana:aduanas"],
+  ["ADUANACONTROL", "chile_aduana:aduanas"],
+  ["ADUANAEMISORA", "chile_aduana:aduanas"],
+  ["ADUANAPRESENTACION", "chile_aduana:aduanas"],
+  ["CLAUSULAVENTA", "chile_aduana:clausulas_de_compra_venta"],
+  ["CL_COMPRA", "chile_aduana:clausulas_de_compra_venta"],
+  ["COD_FLE", "chile_aduana:moneda"],
+  ["COD_SEG", "chile_aduana:moneda"],
+  ["CODIGOFLETE", "chile_aduana:moneda"],
+  ["CODIGOSEG", "chile_aduana:moneda"],
+  ["CODPAISCIA", "chile_aduana:paises"],
+  ["CODPAISCON", "chile_aduana:paises"],
+  ["MONEDA", "chile_aduana:moneda"],
+  ["MODALIDADVENTA", "chile_aduana:modalidades_de_venta"],
+  ["PA_ADQ", "chile_aduana:paises"],
+  ["PA_ORIG", "chile_aduana:paises"],
+  ["PAISCONSIGNATARIO", "chile_aduana:paises"],
+  ["PAISDESTINO", "chile_aduana:paises"],
+  ["PAISORIGEN", "chile_aduana:paises"],
+  ["PAISPUERTOEMBARQUE", "chile_aduana:paises"],
+  ["PAISCIATRANSP", "chile_aduana:paises"],
+  ["PTO_DESEM", "chile_aduana:puertos"],
+  ["PTO_EMB", "chile_aduana:puertos"],
+  ["PUERTODESEMBARQUE", "chile_aduana:puertos"],
+  ["PUERTOEMBARQUE", "chile_aduana:puertos"],
+  ["REG_IMP", "chile_aduana:regimen_de_importacion"],
+  ["TIPOCARGA", "chile_aduana:tipos_de_carga"],
+  ["TIPOOPERACION", "chile_aduana:tipos_de_operacion"],
+  ["TPO_CARGA", "chile_aduana:tipos_de_carga"],
+  ["UNIDMER", "chile_aduana:unidades_de_medida"],
+  ["UNIDADMEDIDA", "chile_aduana:unidades_de_medida"],
+  ["VIA_TRAN", "chile_aduana:vias_de_transporte"],
+  ["VIATRANSPORTE", "chile_aduana:vias_de_transporte"],
+]);
+
+export function codeTableKeyForSourceField(sourceFieldName: string): string | null {
+  return rawFieldCodeTableKeys.get(sourceFieldName) ?? null;
+}
+
+async function upsertDictionarySourceFile(db: DbClient) {
   const values = {
     countryCode: "CL",
     sourceSystem: "chile_aduana",
@@ -429,7 +469,7 @@ async function upsertDictionarySourceFile() {
   return inserted.id;
 }
 
-async function upsertLayout(seed: LayoutSeed, dictionarySourceFileId: string) {
+async function upsertLayout(db: DbClient, seed: LayoutSeed, dictionarySourceFileId: string) {
   const values = {
     countryCode: seed.countryCode,
     sourceSystem: seed.sourceSystem,
@@ -478,7 +518,7 @@ async function upsertLayout(seed: LayoutSeed, dictionarySourceFileId: string) {
   return inserted.id;
 }
 
-async function replaceLayoutFields(layoutId: string, seed: LayoutSeed) {
+async function replaceLayoutFields(db: DbClient, layoutId: string, seed: LayoutSeed) {
   await db
     .delete(sourceLayoutFields)
     .where(eq(sourceLayoutFields.sourceLayoutId, layoutId));
@@ -490,7 +530,7 @@ async function replaceLayoutFields(layoutId: string, seed: LayoutSeed) {
       sourceFieldName,
       isCoded: seed.codedFields.has(sourceFieldName),
       codeTableKey: seed.codedFields.has(sourceFieldName)
-        ? `chile_aduana:${sourceFieldName.toLowerCase()}`
+        ? codeTableKeyForSourceField(sourceFieldName)
         : null,
     })),
   );
@@ -534,14 +574,33 @@ const layoutSeeds: LayoutSeed[] = [
 assertFieldCount("DIN import layout", importFieldNames, 178);
 assertFieldCount("DUS export layout", exportFieldNames, 84);
 
-const dictionarySourceFileId = await upsertDictionarySourceFile();
+export async function runSourceLayoutMetadataSeed(db: DbClient) {
+  const dictionarySourceFileId = await upsertDictionarySourceFile(db);
 
-for (const seed of layoutSeeds) {
-  const layoutId = await upsertLayout(seed, dictionarySourceFileId);
-  await replaceLayoutFields(layoutId, seed);
-  console.log(
-    `Seeded ${seed.tradeFlow} ${seed.recordRole} layout with ${seed.fieldNames.length} fields.`,
-  );
+  for (const seed of layoutSeeds) {
+    const layoutId = await upsertLayout(db, seed, dictionarySourceFileId);
+    await replaceLayoutFields(db, layoutId, seed);
+    process.stdout.write(
+      `Seeded ${seed.tradeFlow} ${seed.recordRole} layout with ${seed.fieldNames.length} fields.\n`,
+    );
+  }
+
+  process.stdout.write("Source layout metadata seed complete.\n");
 }
 
-console.log("Source layout metadata seed complete.");
+async function main() {
+  config({ path: ".env.local" });
+  config();
+  assertDevDatabaseTarget("source-layout-metadata seed");
+
+  const { db } = await import("../../src/db/client");
+  await runSourceLayoutMetadataSeed(db);
+}
+
+if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
+  main().catch((error: unknown) => {
+    const message = error instanceof Error ? error.message : String(error);
+    process.stderr.write(`Source layout metadata seed failed: ${message}\n`);
+    process.exitCode = 1;
+  });
+}
