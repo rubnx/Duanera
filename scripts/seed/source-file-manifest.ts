@@ -9,7 +9,7 @@ import type { DbClient } from "../../src/db/client";
 import { assertDevDatabaseTarget } from "../../src/db/dev-guard";
 import { sourceFiles } from "../../src/db/schema";
 
-type ManifestRow = {
+export type ManifestRow = {
   source_domain: string;
   source_page_url: string;
   resource_download_url: string;
@@ -102,13 +102,67 @@ export function periodDate(year: number | null, month: number | null, boundary: 
   return `${year}-${paddedMonth}-${String(end.getUTCDate()).padStart(2, "0")}`;
 }
 
-async function readManifest(path: string): Promise<ManifestRow[]> {
-  const input = await readFile(path, "utf8");
-  return parse(input, {
+function manifestColumnValue(
+  entries: Record<string, unknown>,
+  rowIndex: number,
+  column: keyof ManifestRow,
+): string {
+  const value = entries[column];
+  if (typeof value !== "string") {
+    throw new Error(`Source manifest row ${rowIndex} is missing string column ${column}.`);
+  }
+
+  return value;
+}
+
+function manifestRow(value: unknown, rowIndex: number): ManifestRow {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    throw new Error(`Source manifest row ${rowIndex} must be an object.`);
+  }
+
+  const entries = Object.fromEntries(Object.entries(value));
+  return {
+    source_domain: manifestColumnValue(entries, rowIndex, "source_domain"),
+    source_page_url: manifestColumnValue(entries, rowIndex, "source_page_url"),
+    resource_download_url: manifestColumnValue(entries, rowIndex, "resource_download_url"),
+    country: manifestColumnValue(entries, rowIndex, "country"),
+    trade_flow: manifestColumnValue(entries, rowIndex, "trade_flow"),
+    source_category: manifestColumnValue(entries, rowIndex, "source_category"),
+    year: manifestColumnValue(entries, rowIndex, "year"),
+    month: manifestColumnValue(entries, rowIndex, "month"),
+    period: manifestColumnValue(entries, rowIndex, "period"),
+    original_filename: manifestColumnValue(entries, rowIndex, "original_filename"),
+    normalized_raw_filename: manifestColumnValue(entries, rowIndex, "normalized_raw_filename"),
+    raw_path: manifestColumnValue(entries, rowIndex, "raw_path"),
+    raw_file_role: manifestColumnValue(entries, rowIndex, "raw_file_role"),
+    raw_file_format: manifestColumnValue(entries, rowIndex, "raw_file_format"),
+    raw_file_size: manifestColumnValue(entries, rowIndex, "raw_file_size"),
+    raw_checksum_sha256: manifestColumnValue(entries, rowIndex, "raw_checksum_sha256"),
+    normalized_working_filenames: manifestColumnValue(entries, rowIndex, "normalized_working_filenames"),
+    working_paths: manifestColumnValue(entries, rowIndex, "working_paths"),
+    working_file_formats: manifestColumnValue(entries, rowIndex, "working_file_formats"),
+    downloaded_at: manifestColumnValue(entries, rowIndex, "downloaded_at"),
+    notes: manifestColumnValue(entries, rowIndex, "notes"),
+  };
+}
+
+export function parseSourceFileManifest(input: string): ManifestRow[] {
+  const parsed: unknown = parse(input, {
     columns: true,
     skip_empty_lines: true,
     bom: true,
-  }) as ManifestRow[];
+  });
+
+  if (!Array.isArray(parsed)) {
+    throw new Error("Source manifest parser returned a non-array CSV result.");
+  }
+
+  return parsed.map((row, rowIndex) => manifestRow(row, rowIndex));
+}
+
+async function readManifest(path: string): Promise<ManifestRow[]> {
+  const input = await readFile(path, "utf8");
+  return parseSourceFileManifest(input);
 }
 
 async function upsertSourceFile(
