@@ -13,6 +13,6 @@ function getDatabaseUrl(): string {
 
 const sql = neon(getDatabaseUrl());
 
-export const db = drizzle(sql);
+export const db = drizzle({ client: sql });
 export { sql };
 export type DbClient = typeof db;

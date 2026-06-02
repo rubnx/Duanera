@@ -139,6 +139,28 @@ test("rejects invalid numeric filters and ranges", () => {
   );
 });
 
+test("rejects invalid source and batch UUID filters", () => {
+  assert.throws(
+    () => parseTradeRecordSearchParams({ sourceFileId: "source-1" }),
+    TradeRecordSearchError,
+  );
+  assert.throws(
+    () => parseTradeRecordSearchParams({ importBatchId: "batch-1" }),
+    TradeRecordSearchError,
+  );
+
+  assert.deepEqual(
+    parseTradeRecordSearchParams({
+      sourceFileId: "00000000-0000-4000-8000-0000000000AA",
+      importBatchId: "00000000-0000-4000-8000-0000000000BB",
+    }),
+    {
+      sourceFileId: "00000000-0000-4000-8000-0000000000aa",
+      importBatchId: "00000000-0000-4000-8000-0000000000bb",
+    },
+  );
+});
+
 test("rejects unsupported sort values", () => {
   assert.throws(
     () => parseTradeRecordSearchParams({ sort: "company_name" }),
@@ -234,6 +256,20 @@ test("rejects invalid cursor usage", () => {
           rawTradeRowId: "00000000-0000-4000-8000-000000000001",
         }),
         offset: "25",
+      }),
+    TradeRecordSearchError,
+  );
+  assert.throws(
+    () =>
+      parseTradeRecordSearchParams({
+        tradeFlow: "import",
+        periodFrom: "2026-03",
+        periodTo: "2026-03",
+        after: encodeTradeRecordCursor({
+          rawRowNumber: 100000,
+          rawTradeRowId: "00000000-0000-4000-8000-000000000001",
+        }),
+        offset: "0",
       }),
     TradeRecordSearchError,
   );

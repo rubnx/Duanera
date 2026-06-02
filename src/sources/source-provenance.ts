@@ -7,6 +7,7 @@ import {
   sourceFiles,
   tradeRecords,
 } from "../db/schema";
+import { isUuid } from "../lib/ids";
 
 type SourceFileRow = typeof sourceFiles.$inferSelect;
 type ImportBatchRow = typeof importBatches.$inferSelect;
@@ -99,9 +100,6 @@ const emptyCount: SourceCount = {
   failed: 0,
 };
 
-const uuidPattern =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
 function toNumber(value: number | string | null | undefined) {
   if (value === null || value === undefined) {
     return 0;
@@ -120,7 +118,7 @@ export function sourceFilenameLabel(filename: string | null | undefined) {
 }
 
 export function isSourceProvenanceId(value: string) {
-  return uuidPattern.test(value);
+  return isUuid(value);
 }
 
 function countFromRow(row?: SourceCountRow): SourceCount {

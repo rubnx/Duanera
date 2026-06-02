@@ -1,4 +1,5 @@
 import type { DbClient } from "../db/client";
+import { normalizeUuid } from "../lib/ids";
 import {
   enrichTradeRecordsWithLabels,
   type TradeRecordWithLabels,
@@ -116,6 +117,20 @@ function decimal(input: TradeRecordSearchInput, key: string): string | undefined
   const normalized = value.replace(",", ".");
   if (!/^\d+(\.\d+)?$/.test(normalized)) {
     throw new TradeRecordSearchError(`${key} must be a positive decimal number.`);
+  }
+
+  return normalized;
+}
+
+function uuid(input: TradeRecordSearchInput, key: string): string | undefined {
+  const value = text(input, key);
+  if (!value) {
+    return undefined;
+  }
+
+  const normalized = normalizeUuid(value);
+  if (!normalized) {
+    throw new TradeRecordSearchError(`${key} must be a valid UUID.`);
   }
 
   return normalized;
@@ -278,9 +293,10 @@ export function parseTradeRecordSearchParams(
   input: TradeRecordSearchInput,
 ): TradeRecordFilters {
   const afterCursor = cursor(input);
+  const hasOffsetParam = text(input, "offset") !== undefined;
   const offset = integer(input, "offset");
 
-  if (afterCursor && offset) {
+  if (afterCursor && hasOffsetParam) {
     throw new TradeRecordSearchError("Use either after or offset, not both.");
   }
 
@@ -310,8 +326,8 @@ export function parseTradeRecordSearchParams(
     minGrossWeightTotal: decimal(input, "minGrossWeightTotal"),
     maxGrossWeightTotal: decimal(input, "maxGrossWeightTotal"),
     sort: tradeRecordSort(input),
-    sourceFileId: text(input, "sourceFileId"),
-    importBatchId: text(input, "importBatchId"),
+    sourceFileId: uuid(input, "sourceFileId"),
+    importBatchId: uuid(input, "importBatchId"),
     limit: integer(input, "limit"),
     offset,
     afterCursor,

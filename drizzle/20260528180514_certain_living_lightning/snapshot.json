@@ -1,0 +1,3877 @@
+{
+  "id": "9e1d1fe7-ddb3-42f0-b482-a27c4ae022c6",
+  "prevIds": [
+    "d2a4a6e1-7d87-46d7-87ed-05e53674ecac"
+  ],
+  "version": "8",
+  "dialect": "postgres",
+  "ddl": [
+    {
+      "isRlsEnabled": false,
+      "name": "code_tables",
+      "schema": "public",
+      "entityType": "tables"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": false,
+      "name": "code_tables_pkey",
+      "schema": "public",
+      "table": "code_tables",
+      "entityType": "pks"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "gen_random_uuid()",
+      "generated": null,
+      "identity": null,
+      "name": "id",
+      "schema": "public",
+      "table": "code_tables",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "code_table_key",
+      "schema": "public",
+      "table": "code_tables",
+      "entityType": "columns"
+    },
+    {
+      "type": "varchar(2)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "country_code",
+      "schema": "public",
+      "table": "code_tables",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "source_system",
+      "schema": "public",
+      "table": "code_tables",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "source_domain",
+      "schema": "public",
+      "table": "code_tables",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "table_name",
+      "schema": "public",
+      "table": "code_tables",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "source_sheet_name",
+      "schema": "public",
+      "table": "code_tables",
+      "entityType": "columns"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "source_file_id",
+      "schema": "public",
+      "table": "code_tables",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "'seeded'",
+      "generated": null,
+      "identity": null,
+      "name": "review_status",
+      "schema": "public",
+      "table": "code_tables",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "notes",
+      "schema": "public",
+      "table": "code_tables",
+      "entityType": "columns"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "created_at",
+      "schema": "public",
+      "table": "code_tables",
+      "entityType": "columns"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "updated_at",
+      "schema": "public",
+      "table": "code_tables",
+      "entityType": "columns"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "code_table_key",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": true,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "code_tables_key_idx",
+      "schema": "public",
+      "table": "code_tables",
+      "entityType": "indexes"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "source_file_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "code_tables_source_file_idx",
+      "schema": "public",
+      "table": "code_tables",
+      "entityType": "indexes"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "source_file_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "source_files",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "RESTRICT",
+      "name": "code_tables_source_file_id_source_files_id_fk",
+      "schema": "public",
+      "table": "code_tables",
+      "entityType": "fks"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "code_values",
+      "schema": "public",
+      "entityType": "tables"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": false,
+      "name": "code_values_pkey",
+      "schema": "public",
+      "table": "code_values",
+      "entityType": "pks"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "gen_random_uuid()",
+      "generated": null,
+      "identity": null,
+      "name": "id",
+      "schema": "public",
+      "table": "code_values",
+      "entityType": "columns"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "code_table_id",
+      "schema": "public",
+      "table": "code_values",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "code_value",
+      "schema": "public",
+      "table": "code_values",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "label_es",
+      "schema": "public",
+      "table": "code_values",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "normalized_label_es",
+      "schema": "public",
+      "table": "code_values",
+      "entityType": "columns"
+    },
+    {
+      "type": "date",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "valid_from",
+      "schema": "public",
+      "table": "code_values",
+      "entityType": "columns"
+    },
+    {
+      "type": "date",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "valid_to",
+      "schema": "public",
+      "table": "code_values",
+      "entityType": "columns"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "sort_order",
+      "schema": "public",
+      "table": "code_values",
+      "entityType": "columns"
+    },
+    {
+      "type": "jsonb",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "metadata",
+      "schema": "public",
+      "table": "code_values",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "'seeded'",
+      "generated": null,
+      "identity": null,
+      "name": "review_status",
+      "schema": "public",
+      "table": "code_values",
+      "entityType": "columns"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "created_at",
+      "schema": "public",
+      "table": "code_values",
+      "entityType": "columns"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "updated_at",
+      "schema": "public",
+      "table": "code_values",
+      "entityType": "columns"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "code_table_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "code_value",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": true,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "code_values_table_value_idx",
+      "schema": "public",
+      "table": "code_values",
+      "entityType": "indexes"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "code_value",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "code_values_code_value_idx",
+      "schema": "public",
+      "table": "code_values",
+      "entityType": "indexes"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "normalized_label_es",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "code_values_normalized_label_idx",
+      "schema": "public",
+      "table": "code_values",
+      "entityType": "indexes"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "code_table_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "code_tables",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "name": "code_values_code_table_id_code_tables_id_fk",
+      "schema": "public",
+      "table": "code_values",
+      "entityType": "fks"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "import_batches",
+      "schema": "public",
+      "entityType": "tables"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": false,
+      "name": "import_batches_pkey",
+      "schema": "public",
+      "table": "import_batches",
+      "entityType": "pks"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "gen_random_uuid()",
+      "generated": null,
+      "identity": null,
+      "name": "id",
+      "schema": "public",
+      "table": "import_batches",
+      "entityType": "columns"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "source_file_id",
+      "schema": "public",
+      "table": "import_batches",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "parser_name",
+      "schema": "public",
+      "table": "import_batches",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "parser_version",
+      "schema": "public",
+      "table": "import_batches",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "'pending'",
+      "generated": null,
+      "identity": null,
+      "name": "status",
+      "schema": "public",
+      "table": "import_batches",
+      "entityType": "columns"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "started_at",
+      "schema": "public",
+      "table": "import_batches",
+      "entityType": "columns"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "completed_at",
+      "schema": "public",
+      "table": "import_batches",
+      "entityType": "columns"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "rows_total",
+      "schema": "public",
+      "table": "import_batches",
+      "entityType": "columns"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "rows_parsed",
+      "schema": "public",
+      "table": "import_batches",
+      "entityType": "columns"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "rows_failed",
+      "schema": "public",
+      "table": "import_batches",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "warning_summary",
+      "schema": "public",
+      "table": "import_batches",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "error_summary",
+      "schema": "public",
+      "table": "import_batches",
+      "entityType": "columns"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "created_at",
+      "schema": "public",
+      "table": "import_batches",
+      "entityType": "columns"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "updated_at",
+      "schema": "public",
+      "table": "import_batches",
+      "entityType": "columns"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "source_file_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "import_batches_source_file_idx",
+      "schema": "public",
+      "table": "import_batches",
+      "entityType": "indexes"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "status",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "import_batches_status_idx",
+      "schema": "public",
+      "table": "import_batches",
+      "entityType": "indexes"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "parser_name",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "parser_version",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "import_batches_parser_idx",
+      "schema": "public",
+      "table": "import_batches",
+      "entityType": "indexes"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "source_file_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "source_files",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "RESTRICT",
+      "name": "import_batches_source_file_id_source_files_id_fk",
+      "schema": "public",
+      "table": "import_batches",
+      "entityType": "fks"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "raw_trade_rows",
+      "schema": "public",
+      "entityType": "tables"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": false,
+      "name": "raw_trade_rows_pkey",
+      "schema": "public",
+      "table": "raw_trade_rows",
+      "entityType": "pks"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "gen_random_uuid()",
+      "generated": null,
+      "identity": null,
+      "name": "id",
+      "schema": "public",
+      "table": "raw_trade_rows",
+      "entityType": "columns"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "source_file_id",
+      "schema": "public",
+      "table": "raw_trade_rows",
+      "entityType": "columns"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "import_batch_id",
+      "schema": "public",
+      "table": "raw_trade_rows",
+      "entityType": "columns"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "source_layout_id",
+      "schema": "public",
+      "table": "raw_trade_rows",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "trade_flow",
+      "schema": "public",
+      "table": "raw_trade_rows",
+      "entityType": "columns"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "period_year",
+      "schema": "public",
+      "table": "raw_trade_rows",
+      "entityType": "columns"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "period_month",
+      "schema": "public",
+      "table": "raw_trade_rows",
+      "entityType": "columns"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "row_number",
+      "schema": "public",
+      "table": "raw_trade_rows",
+      "entityType": "columns"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "field_count",
+      "schema": "public",
+      "table": "raw_trade_rows",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "raw_text",
+      "schema": "public",
+      "table": "raw_trade_rows",
+      "entityType": "columns"
+    },
+    {
+      "type": "jsonb",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "raw_values",
+      "schema": "public",
+      "table": "raw_trade_rows",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "row_hash_sha256",
+      "schema": "public",
+      "table": "raw_trade_rows",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "'pending'",
+      "generated": null,
+      "identity": null,
+      "name": "parse_status",
+      "schema": "public",
+      "table": "raw_trade_rows",
+      "entityType": "columns"
+    },
+    {
+      "type": "jsonb",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "parse_errors",
+      "schema": "public",
+      "table": "raw_trade_rows",
+      "entityType": "columns"
+    },
+    {
+      "type": "jsonb",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "parse_warnings",
+      "schema": "public",
+      "table": "raw_trade_rows",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "parser_name",
+      "schema": "public",
+      "table": "raw_trade_rows",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "parser_version",
+      "schema": "public",
+      "table": "raw_trade_rows",
+      "entityType": "columns"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "created_at",
+      "schema": "public",
+      "table": "raw_trade_rows",
+      "entityType": "columns"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "updated_at",
+      "schema": "public",
+      "table": "raw_trade_rows",
+      "entityType": "columns"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "source_file_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "row_number",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": true,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "raw_trade_rows_source_file_row_number_idx",
+      "schema": "public",
+      "table": "raw_trade_rows",
+      "entityType": "indexes"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "import_batch_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "raw_trade_rows_import_batch_idx",
+      "schema": "public",
+      "table": "raw_trade_rows",
+      "entityType": "indexes"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "source_file_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "raw_trade_rows_source_file_idx",
+      "schema": "public",
+      "table": "raw_trade_rows",
+      "entityType": "indexes"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "source_layout_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "raw_trade_rows_source_layout_idx",
+      "schema": "public",
+      "table": "raw_trade_rows",
+      "entityType": "indexes"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "trade_flow",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "period_year",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "period_month",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "raw_trade_rows_trade_flow_period_idx",
+      "schema": "public",
+      "table": "raw_trade_rows",
+      "entityType": "indexes"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "trade_flow",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "period_year",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "period_month",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "row_number",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "raw_trade_rows_trade_flow_period_row_number_idx",
+      "schema": "public",
+      "table": "raw_trade_rows",
+      "entityType": "indexes"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "row_hash_sha256",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "raw_trade_rows_row_hash_idx",
+      "schema": "public",
+      "table": "raw_trade_rows",
+      "entityType": "indexes"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "parse_status",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "raw_trade_rows_parse_status_idx",
+      "schema": "public",
+      "table": "raw_trade_rows",
+      "entityType": "indexes"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "source_file_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "source_files",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "RESTRICT",
+      "name": "raw_trade_rows_source_file_id_source_files_id_fk",
+      "schema": "public",
+      "table": "raw_trade_rows",
+      "entityType": "fks"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "import_batch_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "import_batches",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "RESTRICT",
+      "name": "raw_trade_rows_import_batch_id_import_batches_id_fk",
+      "schema": "public",
+      "table": "raw_trade_rows",
+      "entityType": "fks"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "source_layout_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "source_layouts",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "RESTRICT",
+      "name": "raw_trade_rows_source_layout_id_source_layouts_id_fk",
+      "schema": "public",
+      "table": "raw_trade_rows",
+      "entityType": "fks"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "source_files",
+      "schema": "public",
+      "entityType": "tables"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": false,
+      "name": "source_files_pkey",
+      "schema": "public",
+      "table": "source_files",
+      "entityType": "pks"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "gen_random_uuid()",
+      "generated": null,
+      "identity": null,
+      "name": "id",
+      "schema": "public",
+      "table": "source_files",
+      "entityType": "columns"
+    },
+    {
+      "type": "varchar(2)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "country_code",
+      "schema": "public",
+      "table": "source_files",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "source_system",
+      "schema": "public",
+      "table": "source_files",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "source_domain",
+      "schema": "public",
+      "table": "source_files",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "source_name",
+      "schema": "public",
+      "table": "source_files",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "source_page_url",
+      "schema": "public",
+      "table": "source_files",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "resource_download_url",
+      "schema": "public",
+      "table": "source_files",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "acquisition_method",
+      "schema": "public",
+      "table": "source_files",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "original_filename",
+      "schema": "public",
+      "table": "source_files",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "normalized_raw_filename",
+      "schema": "public",
+      "table": "source_files",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "normalized_working_filename",
+      "schema": "public",
+      "table": "source_files",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "storage_bucket",
+      "schema": "public",
+      "table": "source_files",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "storage_key",
+      "schema": "public",
+      "table": "source_files",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "working_storage_key",
+      "schema": "public",
+      "table": "source_files",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "file_hash_sha256",
+      "schema": "public",
+      "table": "source_files",
+      "entityType": "columns"
+    },
+    {
+      "type": "bigint",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "file_size_bytes",
+      "schema": "public",
+      "table": "source_files",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "file_format",
+      "schema": "public",
+      "table": "source_files",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "compression_format",
+      "schema": "public",
+      "table": "source_files",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "file_role",
+      "schema": "public",
+      "table": "source_files",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "trade_flow",
+      "schema": "public",
+      "table": "source_files",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "source_category",
+      "schema": "public",
+      "table": "source_files",
+      "entityType": "columns"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "period_year",
+      "schema": "public",
+      "table": "source_files",
+      "entityType": "columns"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "period_month",
+      "schema": "public",
+      "table": "source_files",
+      "entityType": "columns"
+    },
+    {
+      "type": "date",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "period_start",
+      "schema": "public",
+      "table": "source_files",
+      "entityType": "columns"
+    },
+    {
+      "type": "date",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "period_end",
+      "schema": "public",
+      "table": "source_files",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "license_notes",
+      "schema": "public",
+      "table": "source_files",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "'pending'",
+      "generated": null,
+      "identity": null,
+      "name": "processing_status",
+      "schema": "public",
+      "table": "source_files",
+      "entityType": "columns"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "parent_source_file_id",
+      "schema": "public",
+      "table": "source_files",
+      "entityType": "columns"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "created_at",
+      "schema": "public",
+      "table": "source_files",
+      "entityType": "columns"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "updated_at",
+      "schema": "public",
+      "table": "source_files",
+      "entityType": "columns"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "source_domain",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "source_files_source_domain_idx",
+      "schema": "public",
+      "table": "source_files",
+      "entityType": "indexes"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "file_role",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "source_files_file_role_idx",
+      "schema": "public",
+      "table": "source_files",
+      "entityType": "indexes"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "trade_flow",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "period_year",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "period_month",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "source_files_trade_flow_period_idx",
+      "schema": "public",
+      "table": "source_files",
+      "entityType": "indexes"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "file_hash_sha256",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "source_files_hash_idx",
+      "schema": "public",
+      "table": "source_files",
+      "entityType": "indexes"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "parent_source_file_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "source_files_parent_idx",
+      "schema": "public",
+      "table": "source_files",
+      "entityType": "indexes"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "parent_source_file_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "source_files",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION",
+      "name": "source_files_parent_source_file_id_source_files_id_fk",
+      "schema": "public",
+      "table": "source_files",
+      "entityType": "fks"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "source_layout_fields",
+      "schema": "public",
+      "entityType": "tables"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": false,
+      "name": "source_layout_fields_pkey",
+      "schema": "public",
+      "table": "source_layout_fields",
+      "entityType": "pks"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "gen_random_uuid()",
+      "generated": null,
+      "identity": null,
+      "name": "id",
+      "schema": "public",
+      "table": "source_layout_fields",
+      "entityType": "columns"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "source_layout_id",
+      "schema": "public",
+      "table": "source_layout_fields",
+      "entityType": "columns"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "field_ordinal",
+      "schema": "public",
+      "table": "source_layout_fields",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "source_field_name",
+      "schema": "public",
+      "table": "source_layout_fields",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "source_description_es",
+      "schema": "public",
+      "table": "source_layout_fields",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "source_type",
+      "schema": "public",
+      "table": "source_layout_fields",
+      "entityType": "columns"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "source_length",
+      "schema": "public",
+      "table": "source_layout_fields",
+      "entityType": "columns"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "source_precision",
+      "schema": "public",
+      "table": "source_layout_fields",
+      "entityType": "columns"
+    },
+    {
+      "type": "boolean",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "false",
+      "generated": null,
+      "identity": null,
+      "name": "is_coded",
+      "schema": "public",
+      "table": "source_layout_fields",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "code_table_key",
+      "schema": "public",
+      "table": "source_layout_fields",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "notes",
+      "schema": "public",
+      "table": "source_layout_fields",
+      "entityType": "columns"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "created_at",
+      "schema": "public",
+      "table": "source_layout_fields",
+      "entityType": "columns"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "updated_at",
+      "schema": "public",
+      "table": "source_layout_fields",
+      "entityType": "columns"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "source_layout_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "field_ordinal",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": true,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "source_layout_fields_ordinal_idx",
+      "schema": "public",
+      "table": "source_layout_fields",
+      "entityType": "indexes"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "source_layout_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "source_field_name",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": true,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "source_layout_fields_name_idx",
+      "schema": "public",
+      "table": "source_layout_fields",
+      "entityType": "indexes"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "code_table_key",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "source_layout_fields_code_table_key_idx",
+      "schema": "public",
+      "table": "source_layout_fields",
+      "entityType": "indexes"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "source_layout_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "source_layouts",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "name": "source_layout_fields_source_layout_id_source_layouts_id_fk",
+      "schema": "public",
+      "table": "source_layout_fields",
+      "entityType": "fks"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "source_layouts",
+      "schema": "public",
+      "entityType": "tables"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": false,
+      "name": "source_layouts_pkey",
+      "schema": "public",
+      "table": "source_layouts",
+      "entityType": "pks"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "gen_random_uuid()",
+      "generated": null,
+      "identity": null,
+      "name": "id",
+      "schema": "public",
+      "table": "source_layouts",
+      "entityType": "columns"
+    },
+    {
+      "type": "varchar(2)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "country_code",
+      "schema": "public",
+      "table": "source_layouts",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "source_system",
+      "schema": "public",
+      "table": "source_layouts",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "source_domain",
+      "schema": "public",
+      "table": "source_layouts",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "trade_flow",
+      "schema": "public",
+      "table": "source_layouts",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "record_role",
+      "schema": "public",
+      "table": "source_layouts",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "layout_name",
+      "schema": "public",
+      "table": "source_layouts",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "layout_version",
+      "schema": "public",
+      "table": "source_layouts",
+      "entityType": "columns"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "source_file_id",
+      "schema": "public",
+      "table": "source_layouts",
+      "entityType": "columns"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "dictionary_source_file_id",
+      "schema": "public",
+      "table": "source_layouts",
+      "entityType": "columns"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "field_count",
+      "schema": "public",
+      "table": "source_layouts",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "delimiter",
+      "schema": "public",
+      "table": "source_layouts",
+      "entityType": "columns"
+    },
+    {
+      "type": "boolean",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "false",
+      "generated": null,
+      "identity": null,
+      "name": "has_header",
+      "schema": "public",
+      "table": "source_layouts",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "encoding",
+      "schema": "public",
+      "table": "source_layouts",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "notes",
+      "schema": "public",
+      "table": "source_layouts",
+      "entityType": "columns"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "created_at",
+      "schema": "public",
+      "table": "source_layouts",
+      "entityType": "columns"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "updated_at",
+      "schema": "public",
+      "table": "source_layouts",
+      "entityType": "columns"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "source_system",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "source_domain",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "trade_flow",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "record_role",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "layout_name",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "layout_version",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": true,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "source_layouts_identity_idx",
+      "schema": "public",
+      "table": "source_layouts",
+      "entityType": "indexes"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "source_file_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "source_layouts_source_file_idx",
+      "schema": "public",
+      "table": "source_layouts",
+      "entityType": "indexes"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "dictionary_source_file_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "source_layouts_dictionary_source_file_idx",
+      "schema": "public",
+      "table": "source_layouts",
+      "entityType": "indexes"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "source_file_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "source_files",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "RESTRICT",
+      "name": "source_layouts_source_file_id_source_files_id_fk",
+      "schema": "public",
+      "table": "source_layouts",
+      "entityType": "fks"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "dictionary_source_file_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "source_files",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "RESTRICT",
+      "name": "source_layouts_dictionary_source_file_id_source_files_id_fk",
+      "schema": "public",
+      "table": "source_layouts",
+      "entityType": "fks"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "source_trade_participants",
+      "schema": "public",
+      "entityType": "tables"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": false,
+      "name": "source_trade_participants_pkey",
+      "schema": "public",
+      "table": "source_trade_participants",
+      "entityType": "pks"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "gen_random_uuid()",
+      "generated": null,
+      "identity": null,
+      "name": "id",
+      "schema": "public",
+      "table": "source_trade_participants",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "trade_flow",
+      "schema": "public",
+      "table": "source_trade_participants",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "participant_role",
+      "schema": "public",
+      "table": "source_trade_participants",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "source_correlative_id",
+      "schema": "public",
+      "table": "source_trade_participants",
+      "entityType": "columns"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "first_seen_year",
+      "schema": "public",
+      "table": "source_trade_participants",
+      "entityType": "columns"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "first_seen_month",
+      "schema": "public",
+      "table": "source_trade_participants",
+      "entityType": "columns"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "last_seen_year",
+      "schema": "public",
+      "table": "source_trade_participants",
+      "entityType": "columns"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "last_seen_month",
+      "schema": "public",
+      "table": "source_trade_participants",
+      "entityType": "columns"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "0",
+      "generated": null,
+      "identity": null,
+      "name": "record_count",
+      "schema": "public",
+      "table": "source_trade_participants",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "'unknown'",
+      "generated": null,
+      "identity": null,
+      "name": "cross_year_stability_status",
+      "schema": "public",
+      "table": "source_trade_participants",
+      "entityType": "columns"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "created_at",
+      "schema": "public",
+      "table": "source_trade_participants",
+      "entityType": "columns"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "updated_at",
+      "schema": "public",
+      "table": "source_trade_participants",
+      "entityType": "columns"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "trade_flow",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "participant_role",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "source_correlative_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": true,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "source_trade_participants_identity_idx",
+      "schema": "public",
+      "table": "source_trade_participants",
+      "entityType": "indexes"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "source_correlative_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "source_trade_participants_correlative_idx",
+      "schema": "public",
+      "table": "source_trade_participants",
+      "entityType": "indexes"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "trade_records",
+      "schema": "public",
+      "entityType": "tables"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": false,
+      "name": "trade_records_pkey",
+      "schema": "public",
+      "table": "trade_records",
+      "entityType": "pks"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "gen_random_uuid()",
+      "generated": null,
+      "identity": null,
+      "name": "id",
+      "schema": "public",
+      "table": "trade_records",
+      "entityType": "columns"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "source_file_id",
+      "schema": "public",
+      "table": "trade_records",
+      "entityType": "columns"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "import_batch_id",
+      "schema": "public",
+      "table": "trade_records",
+      "entityType": "columns"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "raw_trade_row_id",
+      "schema": "public",
+      "table": "trade_records",
+      "entityType": "columns"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "importer_participant_id",
+      "schema": "public",
+      "table": "trade_records",
+      "entityType": "columns"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "exporter_primary_participant_id",
+      "schema": "public",
+      "table": "trade_records",
+      "entityType": "columns"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "exporter_secondary_participant_id",
+      "schema": "public",
+      "table": "trade_records",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "trade_flow",
+      "schema": "public",
+      "table": "trade_records",
+      "entityType": "columns"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "period_year",
+      "schema": "public",
+      "table": "trade_records",
+      "entityType": "columns"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "period_month",
+      "schema": "public",
+      "table": "trade_records",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "declaration_id_raw",
+      "schema": "public",
+      "table": "trade_records",
+      "entityType": "columns"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "item_number",
+      "schema": "public",
+      "table": "trade_records",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "acceptance_date_raw",
+      "schema": "public",
+      "table": "trade_records",
+      "entityType": "columns"
+    },
+    {
+      "type": "date",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "acceptance_date",
+      "schema": "public",
+      "table": "trade_records",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "importer_correlative_id",
+      "schema": "public",
+      "table": "trade_records",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "exporter_primary_correlative_id",
+      "schema": "public",
+      "table": "trade_records",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "exporter_secondary_correlative_id",
+      "schema": "public",
+      "table": "trade_records",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "hs_code_raw",
+      "schema": "public",
+      "table": "trade_records",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "hs_code_normalized",
+      "schema": "public",
+      "table": "trade_records",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "product_description_raw",
+      "schema": "public",
+      "table": "trade_records",
+      "entityType": "columns"
+    },
+    {
+      "type": "jsonb",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "product_attributes",
+      "schema": "public",
+      "table": "trade_records",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "product_search_text",
+      "schema": "public",
+      "table": "trade_records",
+      "entityType": "columns"
+    },
+    {
+      "type": "numeric(18,6)",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "quantity",
+      "schema": "public",
+      "table": "trade_records",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "quantity_unit_code",
+      "schema": "public",
+      "table": "trade_records",
+      "entityType": "columns"
+    },
+    {
+      "type": "numeric(18,6)",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "gross_weight_total",
+      "schema": "public",
+      "table": "trade_records",
+      "entityType": "columns"
+    },
+    {
+      "type": "numeric(18,6)",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "gross_weight_item",
+      "schema": "public",
+      "table": "trade_records",
+      "entityType": "columns"
+    },
+    {
+      "type": "numeric(18,2)",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "item_cif_value",
+      "schema": "public",
+      "table": "trade_records",
+      "entityType": "columns"
+    },
+    {
+      "type": "numeric(18,2)",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "item_fob_value",
+      "schema": "public",
+      "table": "trade_records",
+      "entityType": "columns"
+    },
+    {
+      "type": "numeric(18,2)",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "declaration_fob_value",
+      "schema": "public",
+      "table": "trade_records",
+      "entityType": "columns"
+    },
+    {
+      "type": "numeric(18,2)",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "freight_value",
+      "schema": "public",
+      "table": "trade_records",
+      "entityType": "columns"
+    },
+    {
+      "type": "numeric(18,2)",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "insurance_value",
+      "schema": "public",
+      "table": "trade_records",
+      "entityType": "columns"
+    },
+    {
+      "type": "numeric(18,2)",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "cif_value",
+      "schema": "public",
+      "table": "trade_records",
+      "entityType": "columns"
+    },
+    {
+      "type": "numeric(18,6)",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "unit_price_value",
+      "schema": "public",
+      "table": "trade_records",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "currency_code_raw",
+      "schema": "public",
+      "table": "trade_records",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "origin_country_code",
+      "schema": "public",
+      "table": "trade_records",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "acquisition_country_code",
+      "schema": "public",
+      "table": "trade_records",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "consignment_country_code",
+      "schema": "public",
+      "table": "trade_records",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "destination_country_code",
+      "schema": "public",
+      "table": "trade_records",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "destination_country_label_raw",
+      "schema": "public",
+      "table": "trade_records",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "customs_office_code",
+      "schema": "public",
+      "table": "trade_records",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "embark_port_code",
+      "schema": "public",
+      "table": "trade_records",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "embark_port_label_raw",
+      "schema": "public",
+      "table": "trade_records",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "disembark_port_code",
+      "schema": "public",
+      "table": "trade_records",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "disembark_port_label_raw",
+      "schema": "public",
+      "table": "trade_records",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "transport_mode_code",
+      "schema": "public",
+      "table": "trade_records",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "cargo_type_code",
+      "schema": "public",
+      "table": "trade_records",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "parser_name",
+      "schema": "public",
+      "table": "trade_records",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "parser_version",
+      "schema": "public",
+      "table": "trade_records",
+      "entityType": "columns"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "created_at",
+      "schema": "public",
+      "table": "trade_records",
+      "entityType": "columns"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "updated_at",
+      "schema": "public",
+      "table": "trade_records",
+      "entityType": "columns"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "raw_trade_row_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": true,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "trade_records_raw_trade_row_idx",
+      "schema": "public",
+      "table": "trade_records",
+      "entityType": "indexes"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "source_file_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "trade_records_source_file_idx",
+      "schema": "public",
+      "table": "trade_records",
+      "entityType": "indexes"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "import_batch_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "trade_records_import_batch_idx",
+      "schema": "public",
+      "table": "trade_records",
+      "entityType": "indexes"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "trade_flow",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "period_year",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "period_month",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "trade_records_trade_flow_period_idx",
+      "schema": "public",
+      "table": "trade_records",
+      "entityType": "indexes"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "trade_flow",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "period_year",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "period_month",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "origin_country_code",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "trade_records_trade_flow_period_origin_country_idx",
+      "schema": "public",
+      "table": "trade_records",
+      "entityType": "indexes"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "trade_flow",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "period_year",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "period_month",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "destination_country_code",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "trade_records_trade_flow_period_destination_country_idx",
+      "schema": "public",
+      "table": "trade_records",
+      "entityType": "indexes"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "trade_flow",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "period_year",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "period_month",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "customs_office_code",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "trade_records_trade_flow_period_customs_office_idx",
+      "schema": "public",
+      "table": "trade_records",
+      "entityType": "indexes"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "trade_flow",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "period_year",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "period_month",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "transport_mode_code",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "trade_records_trade_flow_period_transport_mode_idx",
+      "schema": "public",
+      "table": "trade_records",
+      "entityType": "indexes"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "hs_code_normalized",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "trade_records_hs_code_idx",
+      "schema": "public",
+      "table": "trade_records",
+      "entityType": "indexes"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "product_search_text",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": {
+            "name": "gin_trgm_ops",
+            "default": false
+          }
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "gin",
+      "concurrently": false,
+      "name": "trade_records_product_search_trgm_idx",
+      "schema": "public",
+      "table": "trade_records",
+      "entityType": "indexes"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "importer_correlative_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "trade_records_importer_correlative_idx",
+      "schema": "public",
+      "table": "trade_records",
+      "entityType": "indexes"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "exporter_primary_correlative_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "trade_records_exporter_primary_correlative_idx",
+      "schema": "public",
+      "table": "trade_records",
+      "entityType": "indexes"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "exporter_secondary_correlative_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "trade_records_exporter_secondary_correlative_idx",
+      "schema": "public",
+      "table": "trade_records",
+      "entityType": "indexes"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "source_file_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "source_files",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "RESTRICT",
+      "name": "trade_records_source_file_id_source_files_id_fk",
+      "schema": "public",
+      "table": "trade_records",
+      "entityType": "fks"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "import_batch_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "import_batches",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "RESTRICT",
+      "name": "trade_records_import_batch_id_import_batches_id_fk",
+      "schema": "public",
+      "table": "trade_records",
+      "entityType": "fks"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "raw_trade_row_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "raw_trade_rows",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "RESTRICT",
+      "name": "trade_records_raw_trade_row_id_raw_trade_rows_id_fk",
+      "schema": "public",
+      "table": "trade_records",
+      "entityType": "fks"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "importer_participant_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "source_trade_participants",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "RESTRICT",
+      "name": "trade_records_importer_participant_id_source_trade_participants",
+      "schema": "public",
+      "table": "trade_records",
+      "entityType": "fks"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "exporter_primary_participant_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "source_trade_participants",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "RESTRICT",
+      "name": "trade_records_exporter_primary_participant_id_source_trade_part",
+      "schema": "public",
+      "table": "trade_records",
+      "entityType": "fks"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "exporter_secondary_participant_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "source_trade_participants",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "RESTRICT",
+      "name": "trade_records_exporter_secondary_participant_id_source_trade_pa",
+      "schema": "public",
+      "table": "trade_records",
+      "entityType": "fks"
+    }
+  ],
+  "renames": []
+}

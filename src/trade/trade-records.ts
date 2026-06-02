@@ -22,6 +22,7 @@ import {
   sourceFiles,
   tradeRecords,
 } from "../db/schema";
+import { isUuid } from "../lib/ids";
 
 export type TradeFlow = "import" | "export";
 export type TradeRecordSort =
@@ -1088,6 +1089,10 @@ export async function getTradeRecordById(
   db: DbClient,
   id: string,
 ): Promise<TradeRecordDetail | null> {
+  if (!isUuid(id)) {
+    return null;
+  }
+
   const rows = await db
     .select({
       ...summaryColumns,
