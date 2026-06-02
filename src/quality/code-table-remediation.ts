@@ -5,8 +5,6 @@ import {
   desc,
   eq,
   inArray,
-  sql,
-  type SQL,
 } from "drizzle-orm";
 
 import type { DbClient } from "@/db/client";
@@ -32,6 +30,10 @@ import {
   presentTrimmedTextCondition,
 } from "@/quality/march-2026";
 import { countValueToNumber, type CountValue } from "@/db/count-values";
+import {
+  codeTableCodeExpression,
+  type SupportedNormalizedCodeField,
+} from "@/quality/code-table-remediation-fields";
 
 const reportPeriod = march2026ReportPeriod;
 
@@ -52,19 +54,6 @@ export type CodeTableRemediationFilterKind =
   | "customsOffice"
   | "port"
   | "transportMode";
-
-type SupportedNormalizedCodeField =
-  | "originCountryCode"
-  | "acquisitionCountryCode"
-  | "consignmentCountryCode"
-  | "destinationCountryCode"
-  | "customsOfficeCode"
-  | "embarkPortCode"
-  | "disembarkPortCode"
-  | "transportModeCode"
-  | "quantityUnitCode"
-  | "currencyCodeRaw"
-  | "cargoTypeCode";
 
 type CodeTableRemediationDefinition = {
   id: string;
@@ -420,33 +409,6 @@ const toNumber = countValueToNumber;
 const marchTradeWhere = march2026TradeRecordsWhere;
 const presentCondition = presentTrimmedTextCondition;
 
-function codeExpression(field: SupportedNormalizedCodeField): SQL<string> {
-  switch (field) {
-    case "originCountryCode":
-      return sql<string>`${tradeRecords.originCountryCode}`;
-    case "acquisitionCountryCode":
-      return sql<string>`${tradeRecords.acquisitionCountryCode}`;
-    case "consignmentCountryCode":
-      return sql<string>`${tradeRecords.consignmentCountryCode}`;
-    case "destinationCountryCode":
-      return sql<string>`${tradeRecords.destinationCountryCode}`;
-    case "customsOfficeCode":
-      return sql<string>`${tradeRecords.customsOfficeCode}`;
-    case "embarkPortCode":
-      return sql<string>`${tradeRecords.embarkPortCode}`;
-    case "disembarkPortCode":
-      return sql<string>`${tradeRecords.disembarkPortCode}`;
-    case "transportModeCode":
-      return sql<string>`${tradeRecords.transportModeCode}`;
-    case "quantityUnitCode":
-      return sql<string>`${tradeRecords.quantityUnitCode}`;
-    case "currencyCodeRaw":
-      return sql<string>`${tradeRecords.currencyCodeRaw}`;
-    case "cargoTypeCode":
-      return sql<string>`${tradeRecords.cargoTypeCode}`;
-  }
-}
-
 export function codeTableRemediationPriorityRank(
   priority: CodeTableRemediationPriority,
 ) {
@@ -703,7 +665,7 @@ async function codeCountsForDefinition(
   db: DbClient,
   definition: CodeTableRemediationDefinition,
 ) {
-  const expression = codeExpression(definition.normalizedField);
+  const expression = codeTableCodeExpression(definition.normalizedField);
 
   return db
     .select({
@@ -719,7 +681,7 @@ async function sourceContextForDefinition(
   db: DbClient,
   definition: CodeTableRemediationDefinition,
 ) {
-  const expression = codeExpression(definition.normalizedField);
+  const expression = codeTableCodeExpression(definition.normalizedField);
   const [row] = await db
     .select({
       sourceFileId: tradeRecords.sourceFileId,
