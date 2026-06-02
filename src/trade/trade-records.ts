@@ -3,20 +3,11 @@ import {
   asc,
   count,
   eq,
-  gt,
   ne,
-  or,
-  sql,
-  type SQL,
 } from "drizzle-orm";
 
 import type { DbClient } from "../db/client";
-import {
-  importBatches,
-  rawTradeRows,
-  sourceFiles,
-  tradeRecords,
-} from "../db/schema";
+import { rawTradeRows, tradeRecords } from "../db/schema";
 import { isUuid } from "../lib/ids";
 import {
   clampTradeRecordLimit,
@@ -29,6 +20,12 @@ import {
   exactMonthForRawOrderedList,
   tradeRecordOrderBy,
 } from "./trade-record-ordering";
+import {
+  baseRawOrderedTradeRecordSummaryQuery,
+  baseTradeRecordDetailQuery,
+  baseTradeRecordSummaryQuery,
+  rawTradeRecordCursorWhere,
+} from "./trade-record-summary-query";
 import { buildTradeRecordWhere } from "./trade-record-where";
 
 export {
@@ -174,81 +171,6 @@ export type TradeRecordRelatedGroup = {
 };
 export type TradeRecordRelatedGroupDefinition = Omit<TradeRecordRelatedGroup, "records">;
 
-const summaryColumns = {
-  id: tradeRecords.id,
-  tradeFlow: tradeRecords.tradeFlow,
-  periodYear: tradeRecords.periodYear,
-  periodMonth: tradeRecords.periodMonth,
-  declarationIdRaw: tradeRecords.declarationIdRaw,
-  itemNumber: tradeRecords.itemNumber,
-  acceptanceDate: tradeRecords.acceptanceDate,
-  importerCorrelativeId: tradeRecords.importerCorrelativeId,
-  exporterPrimaryCorrelativeId: tradeRecords.exporterPrimaryCorrelativeId,
-  exporterSecondaryCorrelativeId: tradeRecords.exporterSecondaryCorrelativeId,
-  hsCodeRaw: tradeRecords.hsCodeRaw,
-  hsCodeNormalized: tradeRecords.hsCodeNormalized,
-  productDescriptionRaw: tradeRecords.productDescriptionRaw,
-  quantity: tradeRecords.quantity,
-  quantityUnitCode: tradeRecords.quantityUnitCode,
-  grossWeightTotal: tradeRecords.grossWeightTotal,
-  grossWeightItem: tradeRecords.grossWeightItem,
-  itemCifValue: tradeRecords.itemCifValue,
-  itemFobValue: tradeRecords.itemFobValue,
-  declarationFobValue: tradeRecords.declarationFobValue,
-  currencyCodeRaw: tradeRecords.currencyCodeRaw,
-  originCountryCode: tradeRecords.originCountryCode,
-  acquisitionCountryCode: tradeRecords.acquisitionCountryCode,
-  consignmentCountryCode: tradeRecords.consignmentCountryCode,
-  destinationCountryCode: tradeRecords.destinationCountryCode,
-  destinationCountryLabelRaw: tradeRecords.destinationCountryLabelRaw,
-  customsOfficeCode: tradeRecords.customsOfficeCode,
-  embarkPortCode: tradeRecords.embarkPortCode,
-  embarkPortLabelRaw: tradeRecords.embarkPortLabelRaw,
-  disembarkPortCode: tradeRecords.disembarkPortCode,
-  disembarkPortLabelRaw: tradeRecords.disembarkPortLabelRaw,
-  transportModeCode: tradeRecords.transportModeCode,
-  cargoTypeCode: tradeRecords.cargoTypeCode,
-  sourceFileId: tradeRecords.sourceFileId,
-  sourceFilename: sql<string>`coalesce(${sourceFiles.normalizedRawFilename}, ${sourceFiles.originalFilename})`,
-  importBatchId: tradeRecords.importBatchId,
-  importBatchStatus: importBatches.status,
-  rawTradeRowId: tradeRecords.rawTradeRowId,
-  rawRowNumber: rawTradeRows.rowNumber,
-  payloadRetentionMode: rawTradeRows.payloadRetentionMode,
-  payloadRetainedReason: rawTradeRows.payloadRetainedReason,
-  payloadReconstructable: rawTradeRows.payloadReconstructable,
-  parserName: tradeRecords.parserName,
-  parserVersion: tradeRecords.parserVersion,
-};
-
-function baseSummaryQuery(db: DbClient) {
-  return db
-    .select(summaryColumns)
-    .from(tradeRecords)
-    .innerJoin(sourceFiles, eq(tradeRecords.sourceFileId, sourceFiles.id))
-    .innerJoin(importBatches, eq(tradeRecords.importBatchId, importBatches.id))
-    .innerJoin(rawTradeRows, eq(tradeRecords.rawTradeRowId, rawTradeRows.id));
-}
-
-function baseRawOrderedSummaryQuery(db: DbClient) {
-  return db
-    .select(summaryColumns)
-    .from(rawTradeRows)
-    .innerJoin(tradeRecords, eq(tradeRecords.rawTradeRowId, rawTradeRows.id))
-    .innerJoin(sourceFiles, eq(tradeRecords.sourceFileId, sourceFiles.id))
-    .innerJoin(importBatches, eq(tradeRecords.importBatchId, importBatches.id));
-}
-
-function rawCursorWhere(cursor: TradeRecordCursor): SQL {
-  return or(
-    gt(rawTradeRows.rowNumber, cursor.rawRowNumber),
-    and(
-      eq(rawTradeRows.rowNumber, cursor.rawRowNumber),
-      gt(rawTradeRows.id, cursor.rawTradeRowId),
-    ),
-  )!;
-}
-
 export async function listTradeRecords(
   db: DbClient,
   filters: TradeRecordFilters = {},
@@ -284,11 +206,11 @@ export async function listTradeRecords(
   const queryLimit = exactRawMonth ? limit + 1 : limit;
 
   const rawCursorCondition = filters.afterCursor
-    ? rawCursorWhere(filters.afterCursor)
+    ? rawTradeRecordCursorWhere(filters.afterCursor)
     : undefined;
 
   const rows = exactRawMonth
-    ? await baseRawOrderedSummaryQuery(db)
+    ? await baseRawOrderedTradeRecordSummaryQuery(db)
         .where(
           and(
             eq(rawTradeRows.tradeFlow, exactRawMonth.tradeFlow),
@@ -301,7 +223,7 @@ export async function listTradeRecords(
         .orderBy(asc(rawTradeRows.rowNumber), asc(rawTradeRows.id))
         .limit(queryLimit)
         .offset(usesCursor ? 0 : offset)
-    : await baseSummaryQuery(db)
+    : await baseTradeRecordSummaryQuery(db)
         .where(where)
         .orderBy(...tradeRecordOrderBy(filters))
         .limit(queryLimit)
@@ -336,24 +258,7 @@ export async function getTradeRecordById(
     return null;
   }
 
-  const rows = await db
-    .select({
-      ...summaryColumns,
-      productAttributes: tradeRecords.productAttributes,
-      freightValue: tradeRecords.freightValue,
-      insuranceValue: tradeRecords.insuranceValue,
-      cifValue: tradeRecords.cifValue,
-      unitPriceValue: tradeRecords.unitPriceValue,
-      rawText: rawTradeRows.rawText,
-      rawValues: rawTradeRows.rawValues,
-      payloadStorageKind: rawTradeRows.payloadStorageKind,
-      payloadHashSha256: rawTradeRows.payloadHashSha256,
-      payloadPrunedAt: rawTradeRows.payloadPrunedAt,
-    })
-    .from(tradeRecords)
-    .innerJoin(sourceFiles, eq(tradeRecords.sourceFileId, sourceFiles.id))
-    .innerJoin(importBatches, eq(tradeRecords.importBatchId, importBatches.id))
-    .innerJoin(rawTradeRows, eq(tradeRecords.rawTradeRowId, rawTradeRows.id))
+  const rows = await baseTradeRecordDetailQuery(db)
     .where(eq(tradeRecords.id, id))
     .limit(1);
 
@@ -368,7 +273,7 @@ async function listRelatedRecords(
 ): Promise<TradeRecordSummary[]> {
   const where = buildTradeRecordWhere(filters);
 
-  return baseSummaryQuery(db)
+  return baseTradeRecordSummaryQuery(db)
     .where(and(where, ne(tradeRecords.id, currentRecordId)))
     .orderBy(...tradeRecordOrderBy({ ...filters, sort: "source" }))
     .limit(limit);
