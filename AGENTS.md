@@ -98,6 +98,24 @@ Do not pause for plan approval unless the work is destructive, security-sensitiv
 
 ---
 
+## Validation scope
+
+Match validation to the risk and size of the change.
+
+For small visual polish, spacing, alignment, copy-only, or icon-size changes, prefer a fast
+validation pass: the smallest relevant lint guard, one focused component test only if markup
+or behavior changed, and one browser screenshot check for the affected page or viewport.
+
+Do not run full `tsc`, broad test suites, or repeated browser measurement loops for small UI
+polish unless the change touches types, data structures, routing, shared logic, billing,
+security, or the first focused check reveals a real problem.
+
+For feature work, shared infrastructure, data/model changes, pricing, billing, authentication,
+call lifecycle, SEO architecture, or public metadata, run the broader focused checks
+appropriate to the touched surface.
+
+---
+
 ## Decision log
 
 Use `docs/DECISIONS.md` for any change that introduces or modifies:
