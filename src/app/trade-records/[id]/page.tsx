@@ -27,6 +27,11 @@ import {
   type TradeRecordWithLabels,
 } from "@/trade/trade-record-labels";
 import {
+  formatTradeCodeLabel,
+  formatTradeMoney,
+  formatTradeQuantity,
+} from "@/trade/trade-record-format";
+import {
   buildTradeRecordSearchHref,
   filtersToTradeRecordSearchParams,
 } from "@/trade/trade-record-links";
@@ -58,32 +63,18 @@ function recordTradeFlow(value: string) {
   return value === "import" || value === "export" ? value : undefined;
 }
 
+const detailFallback = "No informado";
+
 function formatCodeLabel(code: string | null, label?: string) {
-  if (!code && !label) {
-    return "No informado";
-  }
-
-  if (code && label) {
-    return `${code} · ${label}`;
-  }
-
-  return code ?? label ?? "No informado";
+  return formatTradeCodeLabel(code, label, detailFallback);
 }
 
 function formatMoney(value: string | null, currency?: string) {
-  if (!value) {
-    return "No informado";
-  }
-
-  return currency ? `${value} ${currency}` : value;
+  return formatTradeMoney(value, currency, detailFallback);
 }
 
 function formatQuantity(value: string | null, unit?: string) {
-  if (!value) {
-    return "No informado";
-  }
-
-  return unit ? `${value} ${unit}` : value;
+  return formatTradeQuantity(value, unit, detailFallback);
 }
 
 function formatJson(value: unknown) {

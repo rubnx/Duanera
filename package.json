@@ -36,6 +36,7 @@
     "test:data-quality": "tsx --test scripts/inspect/data-quality.test.ts",
     "test:source-provenance": "tsx --test scripts/inspect/source-provenance.test.ts",
     "test:r2-plan": "tsx --test scripts/archive/r2-upload-plan.test.ts",
+    "test:trade-record-format": "tsx --test scripts/inspect/trade-record-format.test.ts",
     "test:r2-archive": "tsx --test scripts/archive/r2-upload-archive.test.ts",
     "test:env": "tsx --test scripts/inspect/env.test.ts",
     "test:source-file-manifest": "tsx --test scripts/seed/source-file-manifest.test.ts",

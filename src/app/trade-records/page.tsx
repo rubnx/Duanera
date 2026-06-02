@@ -32,6 +32,13 @@ import {
   type TradeRecordFilterOptions,
 } from "@/trade/trade-record-filter-options";
 import {
+  formatTradeCodeLabel,
+  formatTradeDecimal,
+  formatTradeMoney,
+  formatTradeQuantity,
+  formatTradeSummaryValue,
+} from "@/trade/trade-record-format";
+import {
   buildTradeRecordSearchHref,
   filtersToTradeRecordSearchParams,
   type TradeRecordDrilldownTarget,
@@ -74,61 +81,13 @@ function firstValue(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
 }
 
-function formatMoney(value: string | null, currency?: string) {
-  if (!value) {
-    return "—";
-  }
-
-  return currency ? `${value} ${currency}` : value;
-}
-
-function formatDecimal(value: string | number | null | undefined, fractionDigits = 2) {
-  if (value === null || value === undefined) {
-    return "—";
-  }
-
-  const numericValue = typeof value === "number" ? value : Number(value);
-  if (!Number.isFinite(numericValue)) {
-    return String(value);
-  }
-
-  return new Intl.NumberFormat("es-CL", {
-    maximumFractionDigits: fractionDigits,
-  }).format(numericValue);
-}
-
-function formatSummaryValue(
-  value: string | null,
-  suffix?: string,
-  fractionDigits = 2,
-) {
-  if (!value) {
-    return "—";
-  }
-
-  return suffix
-    ? `${formatDecimal(value, fractionDigits)} ${suffix}`
-    : formatDecimal(value, fractionDigits);
-}
-
-function formatCodeLabel(code: string | null, label?: string) {
-  if (!code && !label) {
-    return "—";
-  }
-
-  if (code && label) {
-    return `${code} · ${label}`;
-  }
-
-  return code ?? label ?? "—";
-}
+const formatMoney = formatTradeMoney;
+const formatDecimal = formatTradeDecimal;
+const formatSummaryValue = formatTradeSummaryValue;
+const formatCodeLabel = formatTradeCodeLabel;
 
 function formatQuantity(value: string | null, unitCode: string | null, unitLabel?: string) {
-  if (!value) {
-    return "—";
-  }
-
-  return `${value} ${unitLabel ?? unitCode ?? ""}`.trim();
+  return formatTradeQuantity(value, unitLabel ?? unitCode);
 }
 
 function optionLabel(options: TradeRecordFilterOption[], value: string | undefined) {
