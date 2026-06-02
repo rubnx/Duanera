@@ -4,7 +4,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { parse } from "csv-parse/sync";
 
-type SourceManifestRow = Record<string, string>;
+type SourceManifestRow = Record<string, string | undefined>;
 
 type ManifestReference = {
   country?: string;
@@ -156,6 +156,44 @@ function sha256File(filePath: string): Promise<string> {
   });
 }
 
+function sourceManifestRow(
+  value: unknown,
+  rowIndex: number,
+  sourceManifestPath: string,
+): SourceManifestRow {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    throw new Error(`${sourceManifestPath}: manifest row ${rowIndex} must be an object.`);
+  }
+
+  const row: SourceManifestRow = { __sourceManifestPath: sourceManifestPath };
+  for (const [key, cell] of Object.entries(value)) {
+    if (typeof cell !== "string") {
+      throw new Error(`${sourceManifestPath}: manifest row ${rowIndex} has non-string column ${key}.`);
+    }
+
+    row[key] = cell;
+  }
+
+  return row;
+}
+
+export function parseArchiveSourceManifestRows(
+  content: string,
+  sourceManifestPath: string,
+): SourceManifestRow[] {
+  const parsed: unknown = parse(content, {
+    bom: true,
+    columns: true,
+    skip_empty_lines: true,
+  });
+
+  if (!Array.isArray(parsed)) {
+    throw new Error(`${sourceManifestPath}: manifest parser returned a non-array CSV result.`);
+  }
+
+  return parsed.map((row, rowIndex) => sourceManifestRow(row, rowIndex, sourceManifestPath));
+}
+
 function readSourceManifestRows(dataDir: string): SourceManifestRow[] {
   const sourceRoot = path.join(dataDir, "sources", "chile-aduana");
   const rows: SourceManifestRow[] = [];
@@ -170,18 +208,7 @@ function readSourceManifestRows(dataDir: string): SourceManifestRow[] {
     }
 
     const content = readFileSync(filePath, "utf8");
-    const parsed = parse(content, {
-      bom: true,
-      columns: true,
-      skip_empty_lines: true,
-    }) as SourceManifestRow[];
-
-    rows.push(
-      ...parsed.map((row) => ({
-        ...row,
-        __sourceManifestPath: relativePath,
-      })),
-    );
+    rows.push(...parseArchiveSourceManifestRows(content, relativePath));
   }
 
   return rows;
