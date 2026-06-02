@@ -4,6 +4,8 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { parse } from "csv-parse/sync";
 
+import { requiredCliValue } from "../../src/lib/cli-args";
+
 type SourceManifestRow = Record<string, string | undefined>;
 
 type ManifestReference = {
@@ -71,13 +73,13 @@ function parseArgs(argv: string[]): Args {
     }
 
     if (arg === "--bucket") {
-      args.bucket = requiredValue(argv, index, arg);
+      args.bucket = requiredCliValue(argv, index, arg);
       index += 1;
       continue;
     }
 
     if (arg === "--data-dir") {
-      args.dataDir = requiredValue(argv, index, arg);
+      args.dataDir = requiredCliValue(argv, index, arg);
       index += 1;
       continue;
     }
@@ -86,14 +88,6 @@ function parseArgs(argv: string[]): Args {
   }
 
   return args;
-}
-
-function requiredValue(argv: string[], index: number, flag: string) {
-  const value = argv[index + 1];
-  if (!value || value.startsWith("--")) {
-    throw new Error(`${flag} requires a value.`);
-  }
-  return value;
 }
 
 function toPosix(value: string) {

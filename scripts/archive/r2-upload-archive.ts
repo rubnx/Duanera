@@ -11,6 +11,11 @@ import {
   S3Client,
 } from "@aws-sdk/client-s3";
 
+import {
+  parsePositiveSafeIntegerCliValue,
+  requiredCliValue,
+} from "../../src/lib/cli-args";
+
 export type PlanObject = {
   localPath: string;
   r2Bucket: string;
@@ -75,35 +80,30 @@ export function parseArchiveUploadArgs(argv: string[]): Args {
     }
 
     if (arg === "--plan-file") {
-      args.planFile = requiredValue(argv, index, arg);
+      args.planFile = requiredCliValue(argv, index, arg);
       index += 1;
       continue;
     }
 
     if (arg === "--include-classification") {
-      const value = requiredValue(argv, index, arg);
+      const value = requiredCliValue(argv, index, arg);
       args.includeClassifications.add(value);
       index += 1;
       continue;
     }
 
     if (arg === "--only-classification") {
-      const value = requiredValue(argv, index, arg);
+      const value = requiredCliValue(argv, index, arg);
       args.includeClassifications = new Set([value]);
       index += 1;
       continue;
     }
 
     if (arg === "--limit") {
-      const rawValue = requiredValue(argv, index, arg);
-      if (!/^\d+$/.test(rawValue)) {
-        throw new Error("--limit must be a positive integer.");
-      }
-      const value = Number(rawValue);
-      if (!Number.isSafeInteger(value) || value < 1) {
-        throw new Error("--limit must be a positive safe integer.");
-      }
-      args.limit = value;
+      args.limit = parsePositiveSafeIntegerCliValue(
+        requiredCliValue(argv, index, arg),
+        arg,
+      );
       index += 1;
       continue;
     }
@@ -112,14 +112,6 @@ export function parseArchiveUploadArgs(argv: string[]): Args {
   }
 
   return args;
-}
-
-function requiredValue(argv: string[], index: number, flag: string) {
-  const value = argv[index + 1];
-  if (!value || value.startsWith("--")) {
-    throw new Error(`${flag} requires a value.`);
-  }
-  return value;
 }
 
 function requireEnv(name: string) {

@@ -15,6 +15,10 @@ import {
   codeTableKeyForSourceField,
 } from "../seed/source-layout-metadata";
 import { parseAduanaRow } from "../../src/ingest/aduana-main-file";
+import {
+  parsePositiveSafeIntegerCliValue,
+  requiredCliValue,
+} from "../../src/lib/cli-args";
 
 export type PreflightStatus = "compatible" | "warning" | "manual_review" | "blocker";
 export type PreflightFlow = "import" | "export";
@@ -118,27 +122,6 @@ const statusRank: Record<PreflightStatus, number> = {
   blocker: 3,
 };
 
-function requiredValue(argv: string[], index: number, flag: string) {
-  const value = argv[index + 1];
-  if (!value || value.startsWith("--")) {
-    throw new Error(`${flag} requires a value.`);
-  }
-  return value;
-}
-
-function parsePositiveInteger(value: string, flag: string) {
-  if (!/^\d+$/.test(value)) {
-    throw new Error(`${flag} must be a positive integer.`);
-  }
-
-  const parsed = Number(value);
-  if (!Number.isSafeInteger(parsed) || parsed < 1) {
-    throw new Error(`${flag} must be a positive safe integer.`);
-  }
-
-  return parsed;
-}
-
 function parseFlow(value: string): PreflightFlow {
   if (value !== "import" && value !== "export") {
     throw new Error(`--trade-flow must be import or export, got ${value}.`);
@@ -187,27 +170,27 @@ export function parseAduanaLoadPreflightArgs(argv: string[]): Args {
       continue;
     }
     if (arg === "--manifest-file") {
-      args.manifestFiles.push(requiredValue(argv, index, arg));
+      args.manifestFiles.push(requiredCliValue(argv, index, arg));
       index += 1;
       continue;
     }
     if (arg === "--normalized-raw-filename") {
-      args.normalizedRawFilenames.push(requiredValue(argv, index, arg));
+      args.normalizedRawFilenames.push(requiredCliValue(argv, index, arg));
       index += 1;
       continue;
     }
     if (arg === "--working-path") {
-      args.workingPaths.push(requiredValue(argv, index, arg));
+      args.workingPaths.push(requiredCliValue(argv, index, arg));
       index += 1;
       continue;
     }
     if (arg === "--trade-flow") {
-      args.tradeFlow = parseFlow(requiredValue(argv, index, arg));
+      args.tradeFlow = parseFlow(requiredCliValue(argv, index, arg));
       index += 1;
       continue;
     }
     if (arg === "--period") {
-      const parsed = parsePeriod(requiredValue(argv, index, arg));
+      const parsed = parsePeriod(requiredCliValue(argv, index, arg));
       args.period = parsed.period;
       args.year = parsed.year;
       args.month = parsed.month;
@@ -215,7 +198,10 @@ export function parseAduanaLoadPreflightArgs(argv: string[]): Args {
       continue;
     }
     if (arg === "--sample-rows") {
-      args.sampleRows = parsePositiveInteger(requiredValue(argv, index, arg), arg);
+      args.sampleRows = parsePositiveSafeIntegerCliValue(
+        requiredCliValue(argv, index, arg),
+        arg,
+      );
       index += 1;
       continue;
     }
