@@ -155,10 +155,11 @@ export default async function DataQualityPage() {
           <CardTitle>Lectura segura</CardTitle>
           <CardDescription className="leading-6">
             Esta página es interna y no certifica calidad legal. Los valores se leen desde
-            la base dev actual; los correlativos importador/exportador son identificadores
-            anónimos de Aduana, no RUTs, razones sociales ni identidades verificadas. Las
-            métricas de importación y exportación se evalúan con campos distintos para no
-            tratar CIF vacío como defecto de exportación.
+            la base dev actual, pero este panel sigue acotado a Marzo 2026 aunque la base
+            dev ya incluya otros meses. Los correlativos importador/exportador son
+            identificadores anónimos de Aduana, no RUTs, razones sociales ni identidades
+            verificadas. Las métricas de importación y exportación se evalúan con campos
+            distintos para no tratar CIF vacío como defecto de exportación.
           </CardDescription>
         </CardHeader>
       </Card>

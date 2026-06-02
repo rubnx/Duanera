@@ -89,9 +89,10 @@ export default async function LoadReadinessPage() {
         <CardHeader>
           <CardTitle>Lectura segura</CardTitle>
           <CardDescription className="leading-6">
-            Este gate usa señales internas de la base dev March 2026. No modifica datos,
-            no carga archivos, no promueve producción y no convierte correlativos Aduana
-            en RUTs, razones sociales ni identidades legales verificadas.
+            Este gate usa señales internas March 2026 aunque la base dev ya contenga
+            otros meses. No modifica datos, no carga archivos, no promueve producción y
+            no convierte correlativos Aduana en RUTs, razones sociales ni identidades
+            legales verificadas.
           </CardDescription>
         </CardHeader>
       </Card>
