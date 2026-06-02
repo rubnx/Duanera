@@ -10,14 +10,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { db } from "@/db/client";
 import { getMarch2026SourceBatchRemediation } from "@/quality/data-quality";
 import { formatNullableIntegerEsCl } from "@/lib/format";
@@ -32,10 +24,10 @@ import {
   sourceTradeFlow,
   sourceTradeFlowLabel,
   sourceTradeRecordsHref,
-  type SourceFlowCoverage,
   type SourceProvenanceDetail,
 } from "@/sources/source-provenance";
 import { BatchRows } from "./batch-rows";
+import { FlowCoverageTable } from "./flow-coverage-table";
 import { SourceQaContext } from "./source-qa-context";
 
 export const dynamic = "force-dynamic";
@@ -64,10 +56,6 @@ function formatDateTime(value: Date | null) {
   }
 
   return value.toISOString();
-}
-
-function periodLabelForCoverage(coverage: SourceFlowCoverage) {
-  return `${coverage.periodYear}-${String(coverage.periodMonth).padStart(2, "0")}`;
 }
 
 function Field({
@@ -261,44 +249,7 @@ export default async function SourceDetailPage({ params }: PageProps) {
           </CardDescription>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Flujo</TableHead>
-                  <TableHead>Período</TableHead>
-                  <TableHead className="text-right">Filas crudas</TableHead>
-                  <TableHead className="text-right">Registros</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {source.flowCoverage.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={4} className="h-16 text-center text-muted-foreground">
-                      No hay cobertura de filas comerciales para esta fuente.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  source.flowCoverage.map((coverage) => (
-                    <TableRow
-                      key={`${coverage.tradeFlow}:${coverage.periodYear}:${coverage.periodMonth}`}
-                    >
-                      <TableCell>{sourceTradeFlowLabel(coverage.tradeFlow)}</TableCell>
-                      <TableCell className="font-mono text-xs">
-                        {periodLabelForCoverage(coverage)}
-                      </TableCell>
-                      <TableCell className="text-right font-mono text-xs">
-                        {formatNumber(coverage.rawRowCount)}
-                      </TableCell>
-                      <TableCell className="text-right font-mono text-xs">
-                        {formatNumber(coverage.tradeRecordCount)}
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
+          <FlowCoverageTable rows={source.flowCoverage} />
         </CardContent>
       </Card>
 
