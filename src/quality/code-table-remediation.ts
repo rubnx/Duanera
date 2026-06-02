@@ -25,7 +25,7 @@ import {
   coveragePercent,
   normalizeCodeForCoverage,
   type DataQualityStatus,
-} from "@/quality/data-quality";
+} from "@/quality/coverage";
 import {
   march2026ReportPeriod,
   march2026TradeRecordsWhere,

@@ -18,7 +18,7 @@ import {
 import { sourceDisplayFilename, sourceTradeRecordsHref } from "@/sources/source-provenance";
 import { buildTradeRecordSearchHref } from "@/trade/trade-record-links";
 import type { TradeFlow } from "@/trade/trade-records";
-import { coveragePercent, type DataQualityStatus } from "@/quality/data-quality";
+import { coveragePercent, type DataQualityStatus } from "@/quality/coverage";
 import {
   march2026RawTradeRowsWhere,
   march2026ReportPeriod,
