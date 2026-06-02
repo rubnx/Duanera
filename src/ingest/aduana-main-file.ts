@@ -20,14 +20,37 @@ export function rowHashSha256(rawText: string): string {
   return createHash("sha256").update(rawText, "utf8").digest("hex");
 }
 
+function csvStringRows(value: unknown): string[][] {
+  if (!Array.isArray(value)) {
+    throw new Error("Aduana parser returned a non-array CSV result.");
+  }
+
+  return value.map((row, rowIndex) => {
+    if (!Array.isArray(row)) {
+      throw new Error(`Aduana parser returned a non-array row at index ${rowIndex}.`);
+    }
+
+    return row.map((field, fieldIndex) => {
+      if (typeof field !== "string") {
+        throw new Error(
+          `Aduana parser returned a non-string field at row ${rowIndex}, field ${fieldIndex}.`,
+        );
+      }
+
+      return field;
+    });
+  });
+}
+
 export function parseDelimitedLine(rawText: string): string[] {
-  const rows = parse(rawText, {
+  const parsed: unknown = parse(rawText, {
     delimiter: ";",
     quote: false,
     relax_column_count: true,
     bom: false,
     trim: false,
-  }) as string[][];
+  });
+  const rows = csvStringRows(parsed);
 
   return rows[0] ?? [];
 }

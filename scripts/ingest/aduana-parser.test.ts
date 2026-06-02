@@ -6,6 +6,7 @@ import {
   decodeAduanaBuffer,
   normalizeHsCode,
   parseAduanaDate,
+  parseDelimitedLine,
   parseAduanaRow,
   parseDecimalComma,
   rowHashSha256,
@@ -37,6 +38,10 @@ test("reports wrong field count", () => {
 
   assert.equal(parsed.fieldCount, 2);
   assert.deepEqual(parsed.parseErrors, ["Expected 3 fields, got 2 fields."]);
+});
+
+test("parses semicolon-delimited source lines without trimming fields", () => {
+  assert.deepEqual(parseDelimitedLine(" a ;b;;c "), [" a ", "b", "", "c "]);
 });
 
 test("parses decimal comma values", () => {
