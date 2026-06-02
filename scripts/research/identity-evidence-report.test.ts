@@ -11,12 +11,18 @@ import {
 test("parses identity evidence report arguments with safe defaults", () => {
   assert.deepEqual(parseArgs([]), { flow: "import", limit: 5 });
   assert.deepEqual(parseArgs(["--export", "--limit=8"]), { flow: "export", limit: 8 });
+  assert.deepEqual(parseArgs(["--import", "--limit=3"]), { flow: "import", limit: 3 });
 });
 
-test("clamps identity evidence report limit", () => {
+test("clamps valid identity evidence report limits", () => {
   assert.equal(parseArgs(["--limit=0"]).limit, 1);
   assert.equal(parseArgs(["--limit=50"]).limit, 10);
-  assert.equal(parseArgs(["--limit=bad"]).limit, 5);
+});
+
+test("rejects invalid identity evidence report arguments", () => {
+  assert.throws(() => parseArgs(["--limit=bad"]), /positive integer/);
+  assert.throws(() => parseArgs(["--export", "--import"]), /either --import or --export/);
+  assert.throws(() => parseArgs(["--unknown"]), /Unknown argument/);
 });
 
 test("keeps useful export bulto marks and rejects generic values", () => {

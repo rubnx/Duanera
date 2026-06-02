@@ -25,13 +25,36 @@ type IdentityEvidenceReportArgs = {
 };
 
 export function parseArgs(argv: string[]): IdentityEvidenceReportArgs {
-  const flow = argv.includes("--export") ? "export" : "import";
-  const limitArg = argv.find((arg) => arg.startsWith("--limit="));
-  const limit = limitArg ? Number(limitArg.split("=")[1]) : 5;
+  let flow: "import" | "export" = "import";
+  let flowWasSet = false;
+  let limit = 5;
+
+  for (const arg of argv) {
+    if (arg === "--import" || arg === "--export") {
+      const nextFlow = arg === "--export" ? "export" : "import";
+      if (flowWasSet && flow !== nextFlow) {
+        throw new Error("Use either --import or --export, not both.");
+      }
+      flow = nextFlow;
+      flowWasSet = true;
+      continue;
+    }
+
+    if (arg.startsWith("--limit=")) {
+      const rawLimit = arg.slice("--limit=".length);
+      if (!/^\d+$/.test(rawLimit)) {
+        throw new Error("--limit must be a positive integer.");
+      }
+      limit = Number(rawLimit);
+      continue;
+    }
+
+    throw new Error(`Unknown argument: ${arg}`);
+  }
 
   return {
-    flow: flow as "import" | "export",
-    limit: Number.isFinite(limit) ? Math.min(Math.max(Math.trunc(limit), 1), 10) : 5,
+    flow,
+    limit: Math.min(Math.max(limit, 1), 10),
   };
 }
 
