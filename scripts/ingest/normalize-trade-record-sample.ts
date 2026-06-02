@@ -58,6 +58,25 @@ function text(values: RawValues, key: string): string | null {
   return value ? value : null;
 }
 
+export function rawValuesRecord(value: unknown, rowId = "unknown"): RawValues {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error(`Raw row ${rowId} raw_values must be an object.`);
+  }
+
+  const entries = Object.entries(value);
+  const invalidKeys = entries
+    .filter(([, rawValue]) => typeof rawValue !== "string")
+    .map(([key]) => key);
+
+  if (invalidKeys.length > 0) {
+    throw new Error(
+      `Raw row ${rowId} raw_values contains non-string values for: ${invalidKeys.join(", ")}.`,
+    );
+  }
+
+  return value as RawValues;
+}
+
 export function parseIntegerValue(value: string | null): number | null {
   if (!value) {
     return null;
@@ -441,7 +460,7 @@ export async function runTradeRecordNormalizer(database: DbClient) {
           throw new Error(`Raw row ${row.id} is missing period fields.`);
         }
 
-        const rawValues = row.rawValues as RawValues;
+        const rawValues = rawValuesRecord(row.rawValues, row.id);
         const mapped =
           row.tradeFlow === "import" ? importTradeValues(rawValues) : exportTradeValues(rawValues);
 
