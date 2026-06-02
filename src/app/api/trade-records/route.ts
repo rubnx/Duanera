@@ -23,7 +23,7 @@ export async function GET(request: Request) {
       );
     }
 
-    console.error(error);
+    process.stderr.write("Unexpected trade record search error.\n");
     return NextResponse.json(
       { error: "Unexpected trade record search error." },
       { status: 500 },

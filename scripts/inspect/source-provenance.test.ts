@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import {
   isSourceProvenanceId,
+  safeSourcePageUrl,
   sourceDisplayFilename,
   sourceFilenameLabel,
   sourcePeriodLabel,
@@ -46,6 +47,21 @@ test("validates source provenance route ids before database lookup", () => {
     isSourceProvenanceId("../../../data/sources/chile-aduana/raw/file.rar"),
     false,
   );
+});
+
+test("allows only http source page URLs for display", () => {
+  assert.equal(
+    safeSourcePageUrl("https://datos.gob.cl/dataset/aduana"),
+    "https://datos.gob.cl/dataset/aduana",
+  );
+  assert.equal(
+    safeSourcePageUrl("http://datos.gob.cl/dataset/aduana"),
+    "http://datos.gob.cl/dataset/aduana",
+  );
+  assert.equal(safeSourcePageUrl("javascript:alert(1)"), null);
+  assert.equal(safeSourcePageUrl("data:text/html,hello"), null);
+  assert.equal(safeSourcePageUrl("not a url"), null);
+  assert.equal(safeSourcePageUrl(null), null);
 });
 
 test("strips directory segments from displayed source filenames", () => {

@@ -26,6 +26,7 @@ import {
 } from "@/quality/data-quality";
 import {
   getSourceProvenanceById,
+  safeSourcePageUrl,
   sourceDisplayFilename,
   sourceFilenameLabel,
   sourcePeriodLabel,
@@ -375,6 +376,7 @@ export default async function SourceDetailPage({ params }: PageProps) {
     notFound();
   }
 
+  const publicSourcePageUrl = safeSourcePageUrl(source.sourcePageUrl);
   const qaRemediation = await getMarch2026SourceBatchRemediation(db, {
     limit: 6,
     sourceFileId: source.id,
@@ -451,7 +453,7 @@ export default async function SourceDetailPage({ params }: PageProps) {
               <Field label="Notas licencia" value={source.licenseNotes} />
               <Field
                 label="Página pública fuente"
-                value={source.sourcePageUrl ? "Registrada en metadatos" : "No informado"}
+                value={publicSourcePageUrl ? "Registrada en metadatos" : "No informado"}
               />
             </dl>
           </CardContent>
@@ -479,9 +481,9 @@ export default async function SourceDetailPage({ params }: PageProps) {
                   Esta fuente no tiene registros normalizados vinculados.
                 </p>
               )}
-              {source.sourcePageUrl ? (
+              {publicSourcePageUrl ? (
                 <Link
-                  href={source.sourcePageUrl}
+                  href={publicSourcePageUrl}
                   className="w-fit text-sm font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
                 >
                   Abrir página pública fuente
