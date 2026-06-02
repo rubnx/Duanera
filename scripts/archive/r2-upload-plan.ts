@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
-import { createReadStream, readdirSync, readFileSync, statSync } from "node:fs";
+import { createReadStream, existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import { parse } from "csv-parse/sync";
 
 type SourceManifestRow = Record<string, string>;
@@ -99,6 +100,34 @@ function toPosix(value: string) {
   return value.split(path.sep).join("/");
 }
 
+export function repoRelativePath(absolutePath: string): string {
+  const resolvedPath = path.resolve(absolutePath);
+  const relativePath = path.relative(repoRoot, resolvedPath);
+
+  if (relativePath.startsWith("..") || path.isAbsolute(relativePath)) {
+    throw new Error(`${absolutePath}: archive planner path must stay inside the repository.`);
+  }
+
+  return toPosix(relativePath);
+}
+
+export function resolveArchiveDataDirPath(dataDir: string): string {
+  const absolutePath = path.resolve(repoRoot, dataDir);
+  const relativePath = repoRelativePath(absolutePath);
+
+  if (relativePath !== "data" && !relativePath.startsWith("data/")) {
+    throw new Error(`${dataDir}: archive planner data directory must be inside the ignored data/ archive.`);
+  }
+
+  return absolutePath;
+}
+
+function assertArchiveDataDirExists(dataDir: string): void {
+  if (!existsSync(dataDir) || !statSync(dataDir).isDirectory()) {
+    throw new Error(`${dataDir}: archive planner data directory does not exist.`);
+  }
+}
+
 function walkFiles(root: string): string[] {
   const files: string[] = [];
 
@@ -132,7 +161,7 @@ function readSourceManifestRows(dataDir: string): SourceManifestRow[] {
   const rows: SourceManifestRow[] = [];
 
   for (const filePath of walkFiles(sourceRoot)) {
-    const relativePath = toPosix(path.relative(repoRoot, filePath));
+    const relativePath = repoRelativePath(filePath);
     if (!relativePath.includes("/manifests/") || !relativePath.endsWith(".csv")) {
       continue;
     }
@@ -428,7 +457,7 @@ async function buildCandidate(
   bucket: string,
   references: Map<string, ManifestReference>,
 ): Promise<UploadCandidate> {
-  const localPath = toPosix(path.relative(repoRoot, absolutePath));
+  const localPath = repoRelativePath(absolutePath);
   const classification = classify(localPath);
   const reference = references.get(localPath);
   const sizeBytes = statSync(absolutePath).size;
@@ -530,7 +559,8 @@ function summarize(candidates: UploadCandidate[]): Summary {
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
-  const dataDir = path.resolve(repoRoot, args.dataDir);
+  const dataDir = resolveArchiveDataDirPath(args.dataDir);
+  assertArchiveDataDirExists(dataDir);
   const sourceRows = readSourceManifestRows(dataDir);
   const references = buildManifestReferences(sourceRows);
   const candidates = [];
@@ -571,8 +601,10 @@ async function main() {
   }
 }
 
-main().catch((error: unknown) => {
-  const message = error instanceof Error ? error.message : String(error);
-  process.stderr.write(`R2 archive dry run failed: ${message}\n`);
-  process.exitCode = 1;
-});
+if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
+  main().catch((error: unknown) => {
+    const message = error instanceof Error ? error.message : String(error);
+    process.stderr.write(`R2 archive dry run failed: ${message}\n`);
+    process.exitCode = 1;
+  });
+}
