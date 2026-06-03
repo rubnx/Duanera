@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { Badge } from "@/components/ui/badge";
 import { TradeRecordCommercialComparison } from "@/components/trade-record-commercial-comparison";
+import { TradeRecordExportPanel } from "@/components/trade-record-export-panel";
 import { TradeRecordIntelligenceSummary } from "@/components/trade-record-intelligence-summary";
 import { TradeRecordPresetViews } from "@/components/trade-record-preset-views";
 import { TradeRecordResultsTable } from "@/components/trade-record-results-table";
@@ -217,6 +218,12 @@ export default async function TradeRecordsPage({
           </CardHeader>
         </Card>
       ) : null}
+
+      <TradeRecordExportPanel
+        params={effectiveSearchParams}
+        result={result}
+        view={tableView}
+      />
 
       <TradeRecordIntelligenceSummary
         filterOptions={filterOptions}
