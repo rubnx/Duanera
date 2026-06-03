@@ -74,7 +74,9 @@ export type TradeRecordExportPlan = {
 
 type ExportRecord = TradeRecordWithLabels<TradeRecordSummary>;
 
-type ExportColumn = TradeRecordExportColumn & {
+export type TradeRecordExportRow = ExportRecord;
+
+export type TradeRecordExportColumnDefinition = TradeRecordExportColumn & {
   value: (record: ExportRecord) => string;
 };
 
@@ -335,7 +337,7 @@ function quantity(record: ExportRecord) {
   );
 }
 
-function baseColumns(): Record<string, ExportColumn> {
+function baseColumns(): Record<string, TradeRecordExportColumnDefinition> {
   return {
     operation: {
       key: "operation",
@@ -503,7 +505,7 @@ function baseColumns(): Record<string, ExportColumn> {
 
 export function tradeRecordExportColumnsForView(
   view: TradeRecordTableViewId,
-): ExportColumn[] {
+): TradeRecordExportColumnDefinition[] {
   const columns = baseColumns();
   const viewColumns = {
     commercial: [
@@ -586,7 +588,7 @@ export function tradeRecordExportColumnsForView(
       columns.customsOffice,
       columns.relevantPort,
     ],
-  } satisfies Record<TradeRecordTableViewId, ExportColumn[]>;
+  } satisfies Record<TradeRecordTableViewId, TradeRecordExportColumnDefinition[]>;
 
   return viewColumns[view];
 }
@@ -630,7 +632,7 @@ function rowCountExportWarnings(totalRows: number | null) {
   if (totalRows > tradeRecordExportRowCap) {
     warnings.push({
       code: "row_cap_exceeded",
-      message: `El resultado tiene ${totalRows} registros y supera el tope CSV de ${tradeRecordExportRowCap}. Acota la búsqueda antes de descargar.`,
+      message: `El resultado tiene ${totalRows} registros y supera el tope CSV/XLSX de ${tradeRecordExportRowCap}. Acota la búsqueda antes de descargar.`,
     });
   }
 
@@ -730,7 +732,7 @@ export async function listTradeRecordsForExport(
   const plan = await planTradeRecordExport(db, cleanInput);
 
   if (!plan.allowed) {
-    return { plan, rows: [] };
+    return { filters, plan, rows: [] };
   }
 
   const result = await listTradeRecords(db, {
@@ -740,12 +742,19 @@ export async function listTradeRecordsForExport(
   });
   const rows = await enrichTradeRecordsWithLabels(db, result.records);
 
-  return { plan, rows };
+  return { filters, plan, rows };
+}
+
+export function spreadsheetSafeText(
+  value: string | number | boolean | null | undefined,
+) {
+  const text = value === null || value === undefined ? "" : String(value);
+
+  return /^[\s]*[=+\-@]/.test(text) ? `'${text}` : text;
 }
 
 export function csvSafeCell(value: string | number | boolean | null | undefined) {
-  const text = value === null || value === undefined ? "" : String(value);
-  const formulaSafeText = /^[\s]*[=+\-@]/.test(text) ? `'${text}` : text;
+  const formulaSafeText = spreadsheetSafeText(value);
 
   return `"${formulaSafeText.replace(/"/g, '""')}"`;
 }

@@ -6,11 +6,11 @@ Scope: roadmap only. This document does not approve schema changes, migrations, 
 
 ## Current State
 
-`/trade-records` has a controlled CSV export foundation for March and April 2026 dev data.
+`/trade-records` has a controlled CSV/XLSX export foundation for March and April 2026 dev data.
 
 The current export policy is intentionally narrow:
 
-- CSV only.
+- CSV and bounded XLSX.
 - Existing normalized `trade_records` fields only.
 - Selected table view controls the exported columns.
 - Exact trade flow is required.
@@ -20,6 +20,7 @@ The current export policy is intentionally narrow:
 - Broad preview requests are blocked before expensive row counts.
 - Table pagination params are stripped from export URLs.
 - CSV output includes metadata rows, applied filters, identity warning, traceability warning, and formula-safe cell escaping.
+- XLSX output uses the same export policy and adds `Registros`, `Resumen`, and `Filtros y trazabilidad` sheets.
 - No raw payloads, local paths, R2 keys, bucket URLs, credentials, or legal identity claims are exported.
 
 This is the right MVP baseline. The next work should improve business usefulness without weakening those guardrails.
@@ -30,7 +31,7 @@ This is the right MVP baseline. The next work should improve business usefulness
 
 CSV is useful for quick download and testing, but business users expect spreadsheet workbooks for repeated analysis. The local DataSur research showed a useful pattern: separate row data, summary, and applied-filter sheets. Duanera should adapt that idea in its own structure, using only Duanera fields and caveats.
 
-Recommended next step: add a bounded XLSX workbook route using the same export policy and row cap as CSV.
+Implemented MVP step: bounded XLSX workbooks now use the same export policy and row cap as CSV.
 
 ### Richer Export Metadata
 
@@ -105,26 +106,18 @@ Exports must keep Duanera's trust model:
 
 ### Immediate Read-Only Work
 
-1. Bounded XLSX workbook export.
-   - Same safety policy as CSV.
-   - Same 500-row cap.
-   - Sheets: `Registros`, `Resumen`, `Filtros y trazabilidad`.
-   - Existing normalized table-view fields only.
-   - Existing summary helpers only.
-   - No raw reconstruction.
-
-2. Export preview enrichment.
+1. Export preview enrichment.
    - Show whether CSV and XLSX are available.
    - Show exported row count vs estimated rows.
    - Show sheet/column counts.
    - Show why a workbook is blocked.
 
-3. Export column catalog.
+2. Export column catalog.
    - Document columns per table view in code and UI.
    - Keep labels Spanish-first.
    - Mark anonymous-correlative and provenance columns explicitly.
 
-4. Export smoke CLI or test helper.
+3. Export smoke CLI or test helper.
    - Verify representative safe import/export CSV and XLSX routes.
    - Verify broad exports stay blocked.
    - Verify no raw payload/storage fields leak.
@@ -147,15 +140,15 @@ Exports must keep Duanera's trust model:
 
 ## Recommended Next Implementation
 
-Build a bounded XLSX export/report workbook for `/trade-records` using the existing CSV export policy.
+Build an export preview enrichment and column-catalog pass for `/trade-records`.
 
 Why this is the best next step:
 
-- It is valuable to business users.
-- It matches the DataSur lesson without copying DataSur.
+- It helps business users understand exactly what they can download before they download it.
+- It builds on the CSV/XLSX foundation without changing the export policy.
 - It remains read-only.
-- It can reuse existing normalized fields and summary helpers.
+- It can reuse existing normalized field/view definitions.
 - It does not require schema changes, auth, billing, R2, ClickHouse, or raw reconstruction.
-- It gives Duanera a stronger export/report story before loading many more months.
+- It makes exports more trustworthy before larger, auth-gated export work exists.
 
 Keep the row cap at 500 until auth, billing, rate limits, and production export policy exist.

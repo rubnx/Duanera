@@ -33,6 +33,7 @@ export function TradeRecordExportPanel({
     view,
   });
   const downloadHref = buildTradeRecordExportHref(params, "/api/trade-records/export");
+  const xlsxHref = buildTradeRecordExportHref(params, "/api/trade-records/export-xlsx");
   const previewHref = buildTradeRecordExportHref(
     params,
     "/api/trade-records/export-preview",
@@ -50,12 +51,13 @@ export function TradeRecordExportPanel({
         <div className="flex min-w-0 flex-col gap-1.5">
           <CardTitle className="flex items-center gap-2">
             <FileText className="size-4" aria-hidden="true" />
-            Exportación CSV controlada
+            Exportación CSV/XLSX controlada
           </CardTitle>
           <CardDescription className="max-w-4xl break-words">
             Vista {plan.viewLabel.toLowerCase()}, {estimatedRowsLabel} y tope de{" "}
             {plan.rowCap} filas. La exportación usa solo campos Aduana normalizados
-            y conserva advertencias de identidad y trazabilidad.
+            y conserva advertencias de identidad y trazabilidad. CSV y XLSX usan la
+            misma política de seguridad.
           </CardDescription>
         </div>
         <div className="flex shrink-0 flex-wrap gap-2">
@@ -66,13 +68,22 @@ export function TradeRecordExportPanel({
             Ver plan JSON
           </Link>
           {plan.allowed ? (
-            <Link
-              href={downloadHref}
-              className={buttonVariants({ variant: "default", size: "sm" })}
-            >
-              <Download className="size-3.5" aria-hidden="true" />
-              Descargar CSV
-            </Link>
+            <>
+              <Link
+                href={downloadHref}
+                className={buttonVariants({ variant: "outline", size: "sm" })}
+              >
+                <Download className="size-3.5" aria-hidden="true" />
+                Descargar CSV
+              </Link>
+              <Link
+                href={xlsxHref}
+                className={buttonVariants({ variant: "default", size: "sm" })}
+              >
+                <Download className="size-3.5" aria-hidden="true" />
+                Descargar XLSX
+              </Link>
+            </>
           ) : (
             <span
               aria-disabled="true"
@@ -83,7 +94,7 @@ export function TradeRecordExportPanel({
               })}
             >
               <AlertTriangle className="size-3.5" aria-hidden="true" />
-              CSV bloqueado
+              Exportación bloqueada
             </span>
           )}
         </div>
@@ -91,7 +102,7 @@ export function TradeRecordExportPanel({
       <CardContent className="grid gap-4 p-4 lg:grid-cols-[minmax(0,1fr)_minmax(280px,0.8fr)]">
         <section className="flex min-w-0 flex-col gap-2" aria-label="Filtros exportados">
           <div className="text-xs font-medium uppercase text-muted-foreground">
-            Filtros aplicados al CSV
+            Filtros aplicados a la exportación
           </div>
           <div className="flex flex-wrap gap-1.5">
             {plan.appliedFilters.map((filter) => (
@@ -125,7 +136,7 @@ export function TradeRecordExportPanel({
             <div className="rounded-md border border-emerald-500/30 bg-emerald-50/50 p-3 text-sm">
               <div className="font-medium">Exportación permitida</div>
               <div className="text-muted-foreground">
-                El resultado está acotado y dentro del tope CSV MVP.
+                El resultado está acotado y dentro del tope CSV/XLSX MVP.
               </div>
             </div>
           )}
