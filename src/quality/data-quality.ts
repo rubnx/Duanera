@@ -200,8 +200,11 @@ async function loadPayloadCoverage(
       tradeFlow: rawTradeRows.tradeFlow,
       retentionMode: rawTradeRows.payloadRetentionMode,
       storageKind: rawTradeRows.payloadStorageKind,
+      retainedReason: rawTradeRows.payloadRetainedReason,
       reconstructable: rawTradeRows.payloadReconstructable,
       rows: count(),
+      retainedPayloadRows: sql<number>`count(*) filter (where ${rawTradeRows.rawText} is not null or ${rawTradeRows.rawValues} is not null)`,
+      prunedPayloadRows: sql<number>`count(*) filter (where ${rawTradeRows.rawText} is null and ${rawTradeRows.rawValues} is null)`,
     })
     .from(rawTradeRows)
     .where(qualityRawTradeRowsWhere(period))
@@ -209,12 +212,14 @@ async function loadPayloadCoverage(
       rawTradeRows.tradeFlow,
       rawTradeRows.payloadRetentionMode,
       rawTradeRows.payloadStorageKind,
+      rawTradeRows.payloadRetainedReason,
       rawTradeRows.payloadReconstructable,
     )
     .orderBy(
       asc(rawTradeRows.tradeFlow),
       asc(rawTradeRows.payloadRetentionMode),
       asc(rawTradeRows.payloadStorageKind),
+      asc(rawTradeRows.payloadRetainedReason),
     );
 
   return rows.map((row) => ({
@@ -222,8 +227,11 @@ async function loadPayloadCoverage(
       row.tradeFlow === "import" || row.tradeFlow === "export" ? row.tradeFlow : "unknown",
     retentionMode: row.retentionMode,
     storageKind: row.storageKind,
+    retainedReason: row.retainedReason,
     reconstructable: Boolean(row.reconstructable),
     rows: toNumber(row.rows),
+    retainedPayloadRows: toNumber(row.retainedPayloadRows),
+    prunedPayloadRows: toNumber(row.prunedPayloadRows),
   }));
 }
 

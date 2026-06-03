@@ -161,20 +161,20 @@ function payloadItems(report: DataQualityReport): RemediationQueueItemInput[] {
         return false;
       }
 
-      return !row.reconstructable || row.storageKind === "postgres";
+      return !row.reconstructable || row.retainedPayloadRows > 0;
     })
     .map((row: DataQualityPayloadCoverage) => ({
-      id: `payload:${row.tradeFlow}:${row.retentionMode}:${row.storageKind}:${row.reconstructable}`,
+      id: `payload:${row.tradeFlow}:${row.retentionMode}:${row.storageKind}:${row.retainedReason}:${row.reconstructable}`,
       issueType: "payload_retention",
       title: `Retención payload: ${row.retentionMode}`,
       description:
-        row.storageKind === "postgres"
-          ? "Las filas conservan payload completo en Postgres; esto es útil en dev pero debe revisarse antes de cargar más meses."
+        row.retainedPayloadRows > 0
+          ? "Las filas conservan payload crudo en Postgres; esto es útil en dev pero debe revisarse antes de cargar más meses."
           : "Revisar que el payload sea reconstruible desde fuente preservada o almacenamiento externo privado.",
       status: row.reconstructable ? "review" : "warning",
       impact: "payload",
       confidence: "verified_signal",
-      affectedRecords: row.rows,
+      affectedRecords: row.reconstructable ? row.retainedPayloadRows : row.rows,
       tradeFlow: row.tradeFlow === "unknown" ? null : row.tradeFlow,
       sourceFileId: null,
       importBatchId: null,
@@ -182,7 +182,7 @@ function payloadItems(report: DataQualityReport): RemediationQueueItemInput[] {
       nextAction:
         "Validar política de retención/pruning en una carga pequeña real antes de ampliar meses.",
       links: [{ href: dashboardHref, label: "Ver dashboard QA" }],
-      dedupeKey: `payload:${row.tradeFlow}:${row.retentionMode}:${row.storageKind}:${row.reconstructable}`,
+      dedupeKey: `payload:${row.tradeFlow}:${row.retentionMode}:${row.storageKind}:${row.retainedReason}:${row.reconstructable}`,
     }));
 }
 

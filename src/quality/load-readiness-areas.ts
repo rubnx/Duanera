@@ -283,14 +283,17 @@ function payloadRetentionArea(report: DataQualityReport): LoadReadinessArea {
   const nonReconstructableRows = report.payloadCoverage
     .filter((row) => !row.reconstructable)
     .reduce((total, row) => total + row.rows, 0);
-  const fullPostgresRows = report.payloadCoverage
-    .filter(
-      (row) => row.retentionMode === "full_postgres" || row.storageKind === "postgres",
-    )
-    .reduce((total, row) => total + row.rows, 0);
+  const retainedPayloadRows = report.payloadCoverage.reduce(
+    (total, row) => total + row.retainedPayloadRows,
+    0,
+  );
+  const prunedPayloadRows = report.payloadCoverage.reduce(
+    (total, row) => total + row.prunedPayloadRows,
+    0,
+  );
   const status = loadReadinessAreaStatusFromCounts({
     blockers: nonReconstructableRows,
-    warnings: fullPostgresRows,
+    warnings: retainedPayloadRows,
   });
 
   return {
@@ -300,7 +303,9 @@ function payloadRetentionArea(report: DataQualityReport): LoadReadinessArea {
     summary:
       status === "blocked"
         ? "Hay filas no reconstruibles; cargar más meses sin resolverlo debilita la trazabilidad."
-        : `La retención payload se evalúa para ${report.period.label}; no debe escalarse sin pruebas reales con retención selectiva.`,
+        : retainedPayloadRows > 0
+          ? `El período ${report.period.label} conserva payload crudo en Postgres; es una decisión dev que no debe escalarse sin pruning controlado.`
+          : `El período ${report.period.label} no conserva payload crudo exitoso y mantiene trazabilidad reconstruible desde fuente/lote/hash.`,
     evidence: safeLoadReadinessLinks([
       {
         label: "Filas no reconstruibles",
@@ -308,8 +313,13 @@ function payloadRetentionArea(report: DataQualityReport): LoadReadinessArea {
         href: "/data-quality",
       },
       {
-        label: "Filas con payload en Postgres",
-        value: formatNumber(fullPostgresRows),
+        label: "Filas con payload crudo retenido",
+        value: formatNumber(retainedPayloadRows),
+        href: "/data-quality",
+      },
+      {
+        label: "Filas con payload crudo podado",
+        value: formatNumber(prunedPayloadRows),
         href: "/data-quality",
       },
       {

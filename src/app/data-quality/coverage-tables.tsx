@@ -24,6 +24,11 @@ import {
 } from "@/quality/data-quality";
 import { formatIntegerEsCl, formatPercentEsCl } from "@/lib/format";
 import type { TradeFlow } from "@/trade/trade-records";
+import {
+  formatPayloadRetainedReason,
+  formatPayloadRetentionMode,
+  formatPayloadStorageKind,
+} from "@/trade/trade-record-provenance";
 
 export { SourceBatchRemediationTable } from "@/app/data-quality/source-batch-remediation-table";
 
@@ -167,27 +172,51 @@ export function PayloadCoverageTable({ rows }: { rows: DataQualityPayloadCoverag
       </CardHeader>
       <CardContent className="p-0">
         <div className="overflow-x-auto">
-          <Table className="min-w-[680px]">
+          <Table className="min-w-[920px]">
             <TableHeader>
               <TableRow>
                 <TableHead>Flujo</TableHead>
                 <TableHead>Retención</TableHead>
+                <TableHead>Motivo</TableHead>
                 <TableHead>Almacenamiento</TableHead>
                 <TableHead>Reconstruible</TableHead>
                 <TableHead className="text-right">Filas</TableHead>
+                <TableHead className="text-right">Payload retenido</TableHead>
+                <TableHead className="text-right">Payload podado</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {rows.map((row) => (
                 <TableRow
-                  key={`${row.tradeFlow}:${row.retentionMode}:${row.storageKind}:${row.reconstructable}`}
+                  key={`${row.tradeFlow}:${row.retentionMode}:${row.retainedReason}:${row.storageKind}:${row.reconstructable}`}
                 >
                   <TableCell>{flowLabel(row.tradeFlow)}</TableCell>
-                  <TableCell className="font-mono text-xs">{row.retentionMode}</TableCell>
-                  <TableCell className="font-mono text-xs">{row.storageKind}</TableCell>
+                  <TableCell className="text-sm">
+                    {formatPayloadRetentionMode(row.retentionMode)}
+                    <div className="mt-1 font-mono text-xs text-muted-foreground">
+                      {row.retentionMode}
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-sm">
+                    {formatPayloadRetainedReason(row.retainedReason)}
+                    {row.retainedReason ? (
+                      <div className="mt-1 font-mono text-xs text-muted-foreground">
+                        {row.retainedReason}
+                      </div>
+                    ) : null}
+                  </TableCell>
+                  <TableCell className="text-sm">
+                    {formatPayloadStorageKind(row.storageKind)}
+                  </TableCell>
                   <TableCell>{row.reconstructable ? "Sí" : "No"}</TableCell>
                   <TableCell className="text-right font-mono text-xs">
                     {formatNumber(row.rows)}
+                  </TableCell>
+                  <TableCell className="text-right font-mono text-xs">
+                    {formatNumber(row.retainedPayloadRows)}
+                  </TableCell>
+                  <TableCell className="text-right font-mono text-xs">
+                    {formatNumber(row.prunedPayloadRows)}
                   </TableCell>
                 </TableRow>
               ))}

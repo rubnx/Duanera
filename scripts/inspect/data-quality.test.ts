@@ -776,7 +776,10 @@ test("builds a remediation queue from existing QA reports", () => {
       {
         reconstructable: true,
         retentionMode: "full_postgres",
+        retainedPayloadRows: 100,
+        retainedReason: "existing_full_postgres_payload",
         rows: 100,
+        prunedPayloadRows: 0,
         storageKind: "postgres",
         tradeFlow: "import",
       },
@@ -840,6 +843,39 @@ test("builds a remediation queue from existing QA reports", () => {
   );
 });
 
+test("does not queue reconstructable pruned payload rows as retained Postgres payload", () => {
+  const dataQuality = {
+    fieldCoverage: [],
+    issueGroups: [],
+    payloadCoverage: [
+      {
+        prunedPayloadRows: 100,
+        reconstructable: true,
+        retainedPayloadRows: 0,
+        retainedReason: "pruned_after_normalization",
+        retentionMode: "errors_and_warnings",
+        rows: 100,
+        storageKind: "postgres",
+        tradeFlow: "import",
+      },
+    ],
+    sourceBatchRemediation: [],
+  } as unknown as DataQualityReport;
+  const fieldMapping = { rows: [] } as unknown as FieldMappingReport;
+  const codeTables = { rows: [] } as unknown as CodeTableRemediationReport;
+
+  const report = buildDataQualityRemediationQueueReport({
+    codeTables,
+    dataQuality,
+    fieldMapping,
+  });
+
+  assert.equal(
+    report.items.some((item) => item.issueType === "payload_retention"),
+    false,
+  );
+});
+
 test("classifies load-readiness statuses into overall decisions", () => {
   assert.equal(loadReadinessDecisionFromStatuses(["ready", "ready"]), "go");
   assert.equal(
@@ -887,12 +923,14 @@ function buildMinimalLoadReadinessReport({
   codeSummary = {},
   fieldRows = [],
   fieldSummary = {},
+  payloadCoverage = [],
   remediationSummary = {},
   sourceBatchStatus = "completed",
 }: {
   codeSummary?: Partial<CodeTableRemediationReport["summary"]>;
   fieldRows?: unknown[];
   fieldSummary?: Partial<FieldMappingReport["summary"]>;
+  payloadCoverage?: unknown[];
   remediationSummary?: Partial<RemediationQueueReport["summary"]>;
   sourceBatchStatus?: string;
 }) {
@@ -917,7 +955,7 @@ function buildMinimalLoadReadinessReport({
         warningRows: 0,
       },
     ],
-    payloadCoverage: [],
+    payloadCoverage,
     sourceCoverage: [
       {
         batchStatus: sourceBatchStatus,
@@ -1001,7 +1039,10 @@ test("builds load-readiness report with no-go when blockers remain", () => {
       {
         reconstructable: true,
         retentionMode: "full_postgres",
+        retainedPayloadRows: 100,
+        retainedReason: "existing_full_postgres_payload",
         rows: 100,
+        prunedPayloadRows: 0,
         storageKind: "postgres",
         tradeFlow: "import",
       },
@@ -1128,6 +1169,57 @@ test("keeps secondary export CIF mapping review from becoming a load-readiness b
   assert.equal(fieldMappingArea?.status, "review");
 });
 
+test("treats reconstructable pruned payload rows as ready for load-readiness", () => {
+  const report = buildMinimalLoadReadinessReport({
+    payloadCoverage: [
+      {
+        prunedPayloadRows: 100,
+        reconstructable: true,
+        retainedPayloadRows: 0,
+        retainedReason: "pruned_after_normalization",
+        retentionMode: "errors_and_warnings",
+        rows: 100,
+        storageKind: "postgres",
+        tradeFlow: "import",
+      },
+    ],
+  });
+  const payloadArea = report.areas.find((area) => area.key === "payload_retention");
+
+  assert.equal(payloadArea?.status, "ready");
+  assert.ok(
+    payloadArea?.evidence.some(
+      (item) => item.label === "Filas con payload crudo podado" && item.value === "100",
+    ),
+  );
+});
+
+test("keeps retained raw payload rows as a load-readiness review item", () => {
+  const report = buildMinimalLoadReadinessReport({
+    payloadCoverage: [
+      {
+        prunedPayloadRows: 0,
+        reconstructable: true,
+        retainedPayloadRows: 100,
+        retainedReason: "existing_full_postgres_payload",
+        retentionMode: "full_postgres",
+        rows: 100,
+        storageKind: "postgres",
+        tradeFlow: "import",
+      },
+    ],
+  });
+  const payloadArea = report.areas.find((area) => area.key === "payload_retention");
+
+  assert.equal(report.decision, "review-first");
+  assert.equal(payloadArea?.status, "review");
+  assert.ok(
+    payloadArea?.evidence.some(
+      (item) => item.label === "Filas con payload crudo retenido" && item.value === "100",
+    ),
+  );
+});
+
 test("keeps remediation queue warnings visible without duplicating blockers", () => {
   const report = buildMinimalLoadReadinessReport({
     remediationSummary: {
@@ -1172,7 +1264,10 @@ test("blocks load-readiness when source batches are incomplete", () => {
       {
         reconstructable: true,
         retentionMode: "full_postgres",
+        retainedPayloadRows: 100,
+        retainedReason: "existing_full_postgres_payload",
         rows: 100,
+        prunedPayloadRows: 0,
         storageKind: "postgres",
         tradeFlow: "import",
       },

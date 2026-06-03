@@ -8,8 +8,11 @@ export type DataQualityPayloadCoverage = {
   tradeFlow: TradeFlow | "unknown";
   retentionMode: string;
   storageKind: string;
+  retainedReason: string | null;
   reconstructable: boolean;
   rows: number;
+  retainedPayloadRows: number;
+  prunedPayloadRows: number;
 };
 
 export type DataQualityFinding = {
@@ -74,16 +77,20 @@ export function buildDataQualityFindings({
   }
 
   const prunedRows = payloadCoverage.reduce(
-    (total, row) => total + (row.retentionMode === "pruned" ? row.rows : 0),
+    (total, row) => total + row.prunedPayloadRows,
+    0,
+  );
+  const retainedRows = payloadCoverage.reduce(
+    (total, row) => total + row.retainedPayloadRows,
     0,
   );
   findings.push({
-    status: prunedRows > 0 ? "review" : "ok",
+    status: retainedRows > 0 ? "review" : "ok",
     title: "Payload crudo y trazabilidad",
     detail:
-      prunedRows > 0
-        ? `${prunedRows.toLocaleString("es-CL")} filas tienen payload podado; revisar reconstructibilidad antes de auditoría fina.`
-        : "Las filas evaluadas mantienen payload crudo completo en Postgres dev y trazabilidad a fuente/lote/fila.",
+      retainedRows > 0
+        ? `${retainedRows.toLocaleString("es-CL")} filas conservan payload crudo en Postgres dev; revisar política de retención antes de ampliar meses.`
+        : `${prunedRows.toLocaleString("es-CL")} filas tienen payload crudo podado y siguen reconstruibles desde fuente/lote/hash.`,
   });
 
   findings.push({
