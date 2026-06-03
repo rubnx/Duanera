@@ -24,6 +24,8 @@ import {
   coveragePercent,
   normalizeCodeForCoverage,
 } from "@/quality/coverage";
+import type { QualityReportPeriod } from "@/quality/march-2026";
+import { qualityPeriodHref } from "@/quality/quality-period-controls";
 
 const toNumber = countValueToNumber;
 
@@ -113,6 +115,7 @@ export function remediationRowFromCounts({
   definition,
   dictionaryProvenance,
   layoutFields,
+  period,
   sourceContext,
 }: {
   codeRows: CodeTableCodeCountInput[];
@@ -120,6 +123,7 @@ export function remediationRowFromCounts({
   definition: CodeTableRemediationDefinition;
   dictionaryProvenance: CodeTableDictionaryProvenance | null;
   layoutFields: LayoutFieldRow[];
+  period: QualityReportPeriod;
   sourceContext: CodeTableSourceContext | null;
 }): CodeTableRemediationRow {
   let decodedCodes = 0;
@@ -156,6 +160,7 @@ export function remediationRowFromCounts({
     codeSet,
     definition,
     ignoredSourceCodes: specialCodeSet,
+    period,
   });
   const distinctCodes = codeRows.filter((row) => {
     const normalizedCode = normalizeCodeForCoverage(row.code);
@@ -206,8 +211,8 @@ export function remediationRowFromCounts({
     sourceSpecialCodeNote: definition.sourceSpecialCodes?.note ?? null,
     sourceContext,
     dictionaryProvenance,
-    fieldMappingHref: "/data-quality/field-mapping",
-    tradeRecordsHref: codeTableRemediationHref({ definition }),
+    fieldMappingHref: qualityPeriodHref("/data-quality/field-mapping", period),
+    tradeRecordsHref: codeTableRemediationHref({ definition, period }),
     nextAction: codeTableRemediationNextAction({
       codeTableKey: definition.codeTableKey,
       codeTableFound,

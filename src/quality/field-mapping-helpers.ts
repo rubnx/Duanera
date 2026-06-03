@@ -2,12 +2,14 @@ import { coveragePercent, type DataQualityStatus } from "@/quality/coverage";
 import {
   type FieldMappingConfidence,
 } from "@/quality/field-mapping-definitions";
-import { march2026ReportPeriod } from "@/quality/march-2026";
+import {
+  march2026ReportPeriod,
+  qualityPeriodSearchParams,
+  type QualityReportPeriod,
+} from "@/quality/march-2026";
 import { sourceTradeRecordsHref } from "@/sources/source-provenance";
 import { buildTradeRecordSearchHref } from "@/trade/trade-record-links";
 import type { TradeFlow } from "@/trade/trade-records";
-
-const reportPeriod = march2026ReportPeriod;
 
 export function rawSampleValueRecord(value: unknown): Record<string, unknown> | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
@@ -17,11 +19,13 @@ export function rawSampleValueRecord(value: unknown): Record<string, unknown> | 
   return Object.fromEntries(Object.entries(value));
 }
 
-export function fieldMappingSearchHref(tradeFlow: TradeFlow) {
+export function fieldMappingSearchHref(
+  tradeFlow: TradeFlow,
+  period: QualityReportPeriod = march2026ReportPeriod,
+) {
   return buildTradeRecordSearchHref({
     tradeFlow,
-    periodYear: String(reportPeriod.year),
-    periodMonth: String(reportPeriod.month),
+    ...qualityPeriodSearchParams(period),
     limit: "25",
   });
 }

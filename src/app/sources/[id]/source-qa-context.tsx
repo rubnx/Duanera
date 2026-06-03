@@ -58,18 +58,15 @@ export function SourceQaContext({
   sourcePeriodLabel: string;
 }) {
   const totalSignals = rows.reduce((total, row) => total + row.totalIssueSignals, 0);
-  const isMarchSource = sourcePeriodLabel === "2026-03";
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Contexto QA marzo 2026</CardTitle>
+        <CardTitle>Contexto QA {sourcePeriodLabel}</CardTitle>
         <CardDescription>
           Guía interna para priorizar revisión técnica por lote. No certifica calidad
-          legal ni identifica empresas.
-          {isMarchSource
-            ? ""
-            : ` Esta fuente corresponde a ${sourcePeriodLabel}; este bloque solo muestra señales QA priorizadas de la línea base marzo 2026.`}
+          legal ni identifica empresas. Las señales se calculan para el período de esta
+          fuente cuando está registrado.
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-3 text-sm">
@@ -79,7 +76,7 @@ export function SourceQaContext({
         </div>
         {rows.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            Esta fuente no tiene señales QA priorizadas para marzo 2026 en la base dev
+            Esta fuente no tiene señales QA priorizadas para {sourcePeriodLabel} en la base dev
             actual.
           </p>
         ) : (

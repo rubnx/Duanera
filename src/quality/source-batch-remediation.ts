@@ -122,7 +122,7 @@ export function dataQualityRemediationNextStep(
     return "Revisar normalización de cantidad, unidad y precio unitario antes de comparar unidades.";
   }
 
-  return "Sin señales QA priorizadas para este lote en marzo 2026.";
+  return "Sin señales QA priorizadas para este lote en el período evaluado.";
 }
 
 const emptyRemediationCounts: DataQualityRemediationIssueCounts = {

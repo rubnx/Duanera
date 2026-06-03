@@ -1,14 +1,14 @@
 import type { DbClient } from "@/db/client";
 import {
-  getMarch2026CodeTableRemediationReport,
+  getCodeTableRemediationReport,
 } from "@/quality/code-table-remediation";
 import {
-  getMarch2026DataQualityReport,
+  getDataQualityReport,
   type DataQualityReport,
   type DataQualityStatus,
 } from "@/quality/data-quality";
 import {
-  getMarch2026FieldMappingReport,
+  getFieldMappingReport,
 } from "@/quality/field-mapping";
 import {
   dedupeRemediationQueueItems,
@@ -18,18 +18,16 @@ import {
   type RemediationQueueSourceReports,
 } from "@/quality/remediation-queue-items";
 import type { TradeFlow } from "@/trade/trade-records";
+import {
+  march2026ReportPeriod,
+  type QualityReportPeriod,
+} from "@/quality/march-2026";
 
 export {
   dedupeRemediationQueueItems,
   remediationQueueScore,
   remediationQueueSort,
 } from "@/quality/remediation-queue-ranking";
-
-const reportPeriod = {
-  year: 2026,
-  month: 3,
-  label: "2026-03",
-};
 
 export type RemediationQueueIssueType =
   | "source_batch"
@@ -80,7 +78,7 @@ export type RemediationQueueItem = RemediationQueueItemInput & {
 };
 
 export type RemediationQueueReport = {
-  period: typeof reportPeriod;
+  period: QualityReportPeriod;
   items: RemediationQueueItem[];
   summary: {
     totalItems: number;
@@ -96,12 +94,21 @@ export function buildDataQualityRemediationQueueReport({
   dataQuality,
   fieldMapping,
 }: RemediationQueueSourceReports): RemediationQueueReport {
+  const period = dataQuality.period ?? march2026ReportPeriod;
+  const scopedDataQuality = {
+    ...dataQuality,
+    period,
+  };
   const items = dedupeRemediationQueueItems(
-    remediationQueueItemInputs({ codeTables, dataQuality, fieldMapping }),
+    remediationQueueItemInputs({
+      codeTables,
+      dataQuality: scopedDataQuality,
+      fieldMapping,
+    }),
   );
 
   return {
-    period: reportPeriod,
+    period,
     items,
     summary: {
       totalItems: items.length,
@@ -119,10 +126,17 @@ export function buildDataQualityRemediationQueueReport({
 export async function getMarch2026RemediationQueueReport(
   db: DbClient,
 ): Promise<RemediationQueueReport> {
+  return getRemediationQueueReport(db, march2026ReportPeriod);
+}
+
+export async function getRemediationQueueReport(
+  db: DbClient,
+  period: QualityReportPeriod = march2026ReportPeriod,
+): Promise<RemediationQueueReport> {
   const [dataQuality, fieldMapping, codeTables] = await Promise.all([
-    getMarch2026DataQualityReport(db),
-    getMarch2026FieldMappingReport(db),
-    getMarch2026CodeTableRemediationReport(db),
+    getDataQualityReport(db, period),
+    getFieldMappingReport(db, period),
+    getCodeTableRemediationReport(db, period),
   ]);
 
   return buildDataQualityRemediationQueueReport({

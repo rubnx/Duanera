@@ -62,8 +62,10 @@ function issueCountSummary(row: DataQualitySourceBatchRemediation) {
 }
 
 export function SourceBatchRemediationTable({
+  periodLabel,
   rows,
 }: {
+  periodLabel: string;
   rows: DataQualitySourceBatchRemediation[];
 }) {
   return (
@@ -71,7 +73,7 @@ export function SourceBatchRemediationTable({
       <CardHeader className="border-b">
         <CardTitle>Fuentes y lotes para remediación QA</CardTitle>
         <CardDescription>
-          Ranking interno de fuentes/lotes con señales QA de marzo 2026. Es guía de
+          Ranking interno de fuentes/lotes con señales QA de {periodLabel}. Es guía de
           revisión técnica, no certificación legal ni evidencia de identidad de empresas.
         </CardDescription>
       </CardHeader>
@@ -92,7 +94,7 @@ export function SourceBatchRemediationTable({
               {rows.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="h-16 text-center text-muted-foreground">
-                    No hay fuentes/lotes con señales QA priorizadas para marzo 2026.
+                    No hay fuentes/lotes con señales QA priorizadas para {periodLabel}.
                   </TableCell>
                 </TableRow>
               ) : (

@@ -25,9 +25,10 @@ import {
 import type { TradeFlow } from "@/trade/trade-records";
 import { coveragePercent, type DataQualityStatus } from "@/quality/coverage";
 import {
-  march2026RawTradeRowsWhere,
   march2026ReportPeriod,
-  march2026TradeRecordsWhere,
+  qualityRawTradeRowsWhere,
+  qualityTradeRecordsWhere,
+  type QualityReportPeriod,
 } from "@/quality/march-2026";
 import { countValueToNumber, type CountValue } from "@/db/count-values";
 import {
@@ -43,8 +44,6 @@ import {
   fieldMappingSampleValues,
   type FieldMappingRawSampleRow,
 } from "@/quality/field-mapping-samples";
-
-const reportPeriod = march2026ReportPeriod;
 
 export {
   fieldMappingConfidenceLabel,
@@ -90,7 +89,7 @@ export type FieldMappingRow = {
 };
 
 export type FieldMappingReport = {
-  period: typeof reportPeriod;
+  period: QualityReportPeriod;
   rows: FieldMappingRow[];
   summary: {
     totalMappings: number;
@@ -118,9 +117,6 @@ type SourceContextRow = {
 };
 
 const toNumber = countValueToNumber;
-const marchRawWhere = march2026RawTradeRowsWhere;
-const marchTradeWhere = march2026TradeRecordsWhere;
-
 function layoutFieldMap(rows: LayoutFieldRow[]) {
   const map = new Map<string, FieldMappingRawField>();
 
@@ -176,7 +172,7 @@ async function loadLayoutFields(db: DbClient) {
     .orderBy(asc(sourceLayouts.tradeFlow), asc(sourceLayoutFields.fieldOrdinal));
 }
 
-async function loadRawSamples(db: DbClient) {
+async function loadRawSamples(db: DbClient, period: QualityReportPeriod) {
   const rows: FieldMappingRawSampleRow[] = [];
 
   for (const tradeFlow of ["import", "export"] satisfies TradeFlow[]) {
@@ -188,7 +184,7 @@ async function loadRawSamples(db: DbClient) {
       .from(rawTradeRows)
       .where(
         and(
-          marchRawWhere(tradeFlow),
+          qualityRawTradeRowsWhere(period, tradeFlow),
           eq(rawTradeRows.parseStatus, "parsed"),
           sql`${rawTradeRows.rawValues} is not null`,
         ),
@@ -202,7 +198,7 @@ async function loadRawSamples(db: DbClient) {
   return rows;
 }
 
-async function loadSourceContexts(db: DbClient) {
+async function loadSourceContexts(db: DbClient, period: QualityReportPeriod) {
   const contexts = new Map<TradeFlow, SourceContextRow>();
 
   for (const tradeFlow of ["import", "export"] satisfies TradeFlow[]) {
@@ -216,7 +212,7 @@ async function loadSourceContexts(db: DbClient) {
       })
       .from(tradeRecords)
       .innerJoin(sourceFiles, eq(tradeRecords.sourceFileId, sourceFiles.id))
-      .where(marchTradeWhere(tradeFlow))
+      .where(qualityTradeRecordsWhere(period, tradeFlow))
       .orderBy(asc(sourceFiles.originalFilename), asc(tradeRecords.importBatchId))
       .limit(1);
 
@@ -232,6 +228,7 @@ async function loadNormalizedCoverage(
   db: DbClient,
   tradeFlow: TradeFlow,
   definitions: FieldMappingDefinition[],
+  period: QualityReportPeriod,
 ) {
   const selectFields: Record<string, SQL<number>> = {
     total: count(),
@@ -244,19 +241,20 @@ async function loadNormalizedCoverage(
   const [row] = await db
     .select(selectFields)
     .from(tradeRecords)
-    .where(marchTradeWhere(tradeFlow));
+    .where(qualityTradeRecordsWhere(period, tradeFlow));
 
   return row ?? {};
 }
 
 
-export async function getMarch2026FieldMappingReport(
+export async function getFieldMappingReport(
   db: DbClient,
+  period: QualityReportPeriod = march2026ReportPeriod,
 ): Promise<FieldMappingReport> {
   const [layoutFields, rawSamples, sourceContexts] = await Promise.all([
     loadLayoutFields(db),
-    loadRawSamples(db),
-    loadSourceContexts(db),
+    loadRawSamples(db, period),
+    loadSourceContexts(db, period),
   ]);
   const fieldsByFlowAndName = layoutFieldMap(layoutFields);
 
@@ -266,7 +264,12 @@ export async function getMarch2026FieldMappingReport(
     const definitions = fieldMappingDefinitions.filter(
       (definition) => definition.tradeFlow === tradeFlow,
     );
-    const normalizedCoverage = await loadNormalizedCoverage(db, tradeFlow, definitions);
+    const normalizedCoverage = await loadNormalizedCoverage(
+      db,
+      tradeFlow,
+      definitions,
+      period,
+    );
     const totalRows = toNumber(normalizedCoverage.total);
     const sourceContext = sourceContexts.get(tradeFlow);
 
@@ -300,7 +303,7 @@ export async function getMarch2026FieldMappingReport(
         normalizedPresentRows,
         normalizedCoveragePercent: coveragePercent(normalizedPresentRows, totalRows),
         sampleValues: fieldMappingSampleValues(definition, rawSamples),
-        tradeRecordsHref: fieldMappingSearchHref(tradeFlow),
+        tradeRecordsHref: fieldMappingSearchHref(tradeFlow, period),
         sourceHref: sourceContext
           ? `/sources/${sourceContext.sourceFileId}#batch-${sourceContext.importBatchId}`
           : null,
@@ -315,7 +318,7 @@ export async function getMarch2026FieldMappingReport(
   }
 
   return {
-    period: reportPeriod,
+    period,
     rows,
     summary: {
       totalMappings: rows.length,
@@ -325,4 +328,10 @@ export async function getMarch2026FieldMappingReport(
       warningMappings: rows.filter((row) => row.status === "warning").length,
     },
   };
+}
+
+export async function getMarch2026FieldMappingReport(
+  db: DbClient,
+): Promise<FieldMappingReport> {
+  return getFieldMappingReport(db, march2026ReportPeriod);
 }

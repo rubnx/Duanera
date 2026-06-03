@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { Badge } from "@/components/ui/badge";
@@ -11,11 +10,18 @@ import {
 import { db } from "@/db/client";
 import { formatIntegerEsCl } from "@/lib/format";
 import {
-  getMarch2026CodeTableRemediationReport,
+  getCodeTableRemediationReport,
   type CodeTableRemediationPriority,
 } from "@/quality/code-table-remediation";
 import { isInternalToolsEnabled } from "@/research/internal-research-access";
+import { listTradeRecordPeriods } from "@/trade/trade-record-periods";
 import { RemediationRowsTable } from "./remediation-rows-table";
+import {
+  QualityNavLinks,
+  QualityPeriodScopeCard,
+  resolveQualityPeriod,
+  type DataQualityPageProps,
+} from "../quality-period-scope";
 
 export const dynamic = "force-dynamic";
 
@@ -39,12 +45,14 @@ function Metric({
   );
 }
 
-export default async function CodeTablesPage() {
+export default async function CodeTablesPage({ searchParams }: DataQualityPageProps) {
   if (!isInternalToolsEnabled()) {
     notFound();
   }
 
-  const report = await getMarch2026CodeTableRemediationReport(db);
+  const periods = await listTradeRecordPeriods(db);
+  const period = await resolveQualityPeriod({ periods, searchParams });
+  const report = await getCodeTableRemediationReport(db, period);
   const priorities: CodeTableRemediationPriority[] = ["high", "medium", "low"];
 
   return (
@@ -55,7 +63,7 @@ export default async function CodeTablesPage() {
             Diccionario QA interno
           </Badge>
           <h1 className="text-2xl font-semibold tracking-tight">
-            Tablas de códigos Aduana Marzo 2026
+            Tablas de códigos Aduana {report.period.label}
           </h1>
           <p className="max-w-5xl text-sm leading-6 text-muted-foreground">
             Vista solo lectura para priorizar brechas entre códigos fuente DIN/DUS,
@@ -63,54 +71,24 @@ export default async function CodeTablesPage() {
             de remediación; no cambia diccionarios ni certifica identidad de empresas.
           </p>
         </div>
-        <div className="flex flex-wrap gap-3 text-sm">
-          <Link
-            href="/data-quality/load-readiness"
-            className="font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-          >
-            Preparación carga
-          </Link>
-          <Link
-            href="/data-quality"
-            className="font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-          >
-            Calidad
-          </Link>
-          <Link
-            href="/data-quality/remediation"
-            className="font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-          >
-            Remediación
-          </Link>
-          <Link
-            href="/data-quality/field-mapping"
-            className="font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-          >
-            Mapeo de campos
-          </Link>
-          <Link
-            href="/sources"
-            className="font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-          >
-            Fuentes
-          </Link>
-          <Link
-            href="/trade-records"
-            className="font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-          >
-            Registros
-          </Link>
-        </div>
+        <QualityNavLinks period={report.period} />
       </header>
+
+      <QualityPeriodScopeCard
+        period={report.period}
+        periods={periods}
+        resetHref="/data-quality/code-tables"
+      />
 
       <Card className="border-amber-500/30 bg-amber-50/40">
         <CardHeader>
           <CardTitle>Lectura segura</CardTitle>
           <CardDescription className="leading-6">
             Esta página diagnostica etiquetas oficiales faltantes o cobertura incierta.
-            Los enlaces usan rutas internas seguras y no exponen rutas locales, claves R2,
-            credenciales ni identidad legal. Los correlativos importador/exportador siguen
-            siendo identificadores anónimos de Aduana.
+            Los conteos se calculan para {report.period.label}; los enlaces usan rutas
+            internas seguras y no exponen rutas locales, claves R2, credenciales ni
+            identidad legal. Los correlativos importador/exportador siguen siendo
+            identificadores anónimos de Aduana.
           </CardDescription>
         </CardHeader>
       </Card>

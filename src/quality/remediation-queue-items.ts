@@ -20,6 +20,8 @@ import {
   issueImpact,
   mappingConfidence,
 } from "@/quality/remediation-queue-classification";
+import { qualityPeriodSearchParams } from "@/quality/march-2026";
+import { buildTradeRecordSearchHref } from "@/trade/trade-record-links";
 import type { TradeFlow } from "@/trade/trade-records";
 
 export type RemediationQueueSourceReports = {
@@ -52,6 +54,7 @@ function flowFromIssueGroup(group: DataQualityIssueGroup): TradeFlow | "mixed" |
 }
 
 function issueGroupItems(report: DataQualityReport): RemediationQueueItemInput[] {
+  const dashboardHref = qualityScopedHref("/data-quality", report);
   return report.issueGroups
     .filter((group) => group.count > 0)
     .map((group) => {
@@ -74,7 +77,7 @@ function issueGroupItems(report: DataQualityReport): RemediationQueueItemInput[]
         }),
         nextAction: group.description,
         links: safeLinks([
-          { href: "/data-quality", label: "Ver dashboard QA" },
+          { href: dashboardHref, label: "Ver dashboard QA" },
           { href: group.tradeRecordsHref, label: "Ver registros filtrados" },
           sample ? { href: sample.sourceHref, label: "Ver fuente/lote muestra" } : null,
           sample ? { href: sample.recordHref, label: "Ver registro muestra" } : null,
@@ -85,6 +88,7 @@ function issueGroupItems(report: DataQualityReport): RemediationQueueItemInput[]
 }
 
 function sourceBatchItems(report: DataQualityReport): RemediationQueueItemInput[] {
+  const dashboardHref = qualityScopedHref("/data-quality", report);
   return report.sourceBatchRemediation
     .filter((row) => row.totalIssueSignals > 0)
     .map((row: DataQualitySourceBatchRemediation) => ({
@@ -109,13 +113,15 @@ function sourceBatchItems(report: DataQualityReport): RemediationQueueItemInput[
         row.tradeRecordsHref
           ? { href: row.tradeRecordsHref, label: "Ver registros del lote" }
           : null,
-        { href: "/data-quality", label: "Ver dashboard QA" },
+        { href: dashboardHref, label: "Ver dashboard QA" },
       ].filter((link): link is RemediationQueueLink => Boolean(link))),
       dedupeKey: `source-batch:${row.sourceFileId}:${row.importBatchId}:${row.tradeFlow}`,
     }));
 }
 
 function fieldCoverageItems(report: DataQualityReport): RemediationQueueItemInput[] {
+  const periodParams = qualityPeriodSearchParams(report.period);
+  const dashboardHref = qualityScopedHref("/data-quality", report);
   return report.fieldCoverage
     .filter((field) => field.status !== "ok")
     .map((field) => ({
@@ -133,9 +139,13 @@ function fieldCoverageItems(report: DataQualityReport): RemediationQueueItemInpu
       sourceLabel: null,
       nextAction: "Revisar mapeo y parser contra fuente oficial antes de cargar más meses.",
       links: [
-        { href: "/data-quality", label: "Ver dashboard QA" },
+        { href: dashboardHref, label: "Ver dashboard QA" },
         {
-          href: `/trade-records?tradeFlow=${field.tradeFlow}&periodYear=2026&periodMonth=3&limit=25`,
+          href: buildTradeRecordSearchHref({
+            ...periodParams,
+            tradeFlow: field.tradeFlow,
+            limit: "25",
+          }),
           label: "Ver registros del flujo",
         },
       ],
@@ -144,6 +154,7 @@ function fieldCoverageItems(report: DataQualityReport): RemediationQueueItemInpu
 }
 
 function payloadItems(report: DataQualityReport): RemediationQueueItemInput[] {
+  const dashboardHref = qualityScopedHref("/data-quality", report);
   return report.payloadCoverage
     .filter((row) => {
       if (row.rows <= 0) {
@@ -170,7 +181,7 @@ function payloadItems(report: DataQualityReport): RemediationQueueItemInput[] {
       sourceLabel: null,
       nextAction:
         "Validar política de retención/pruning en una carga pequeña real antes de ampliar meses.",
-      links: [{ href: "/data-quality", label: "Ver dashboard QA" }],
+      links: [{ href: dashboardHref, label: "Ver dashboard QA" }],
       dedupeKey: `payload:${row.tradeFlow}:${row.retentionMode}:${row.storageKind}:${row.reconstructable}`,
     }));
 }
@@ -178,6 +189,7 @@ function payloadItems(report: DataQualityReport): RemediationQueueItemInput[] {
 function fieldMappingItems(
   report: RemediationQueueSourceReports["fieldMapping"],
 ): RemediationQueueItemInput[] {
+  const fieldMappingHref = qualityScopedHref("/data-quality/field-mapping", report);
   return report.rows
     .filter((row) => row.status !== "ok" || row.confidence === "needs_review")
     .map((row) => ({
@@ -198,7 +210,7 @@ function fieldMappingItems(
       sourceLabel: row.sourceLabel,
       nextAction: "Contrastar campo fuente, parser y cobertura antes de usarlo como señal comercial.",
       links: safeLinks([
-        { href: "/data-quality/field-mapping", label: "Ver mapeo de campos" },
+        { href: fieldMappingHref, label: "Ver mapeo de campos" },
         { href: row.tradeRecordsHref, label: "Ver registros del flujo" },
         row.sourceHref ? { href: row.sourceHref, label: "Ver fuente/lote muestra" } : null,
       ].filter((link): link is RemediationQueueLink => Boolean(link))),
@@ -209,6 +221,7 @@ function fieldMappingItems(
 function codeTableItems(
   report: RemediationQueueSourceReports["codeTables"],
 ): RemediationQueueItemInput[] {
+  const codeTablesHref = qualityScopedHref("/data-quality/code-tables", report);
   return report.rows
     .filter((row) => row.status !== "ok" || row.recordsWithUndecodedCode > 0)
     .map((row) => ({
@@ -229,12 +242,24 @@ function codeTableItems(
       }),
       nextAction: row.nextAction,
       links: safeLinks([
-        { href: "/data-quality/code-tables", label: "Ver tablas de códigos" },
+        { href: codeTablesHref, label: "Ver tablas de códigos" },
         { href: row.tradeRecordsHref, label: "Ver registros del flujo" },
         row.sourceContext ? { href: row.sourceContext.sourceHref, label: "Ver fuente/lote" } : null,
       ].filter((link): link is RemediationQueueLink => Boolean(link))),
       dedupeKey: `code-table:${row.tradeFlow}:${row.normalizedField}`,
     }));
+}
+
+function qualityScopedHref(
+  pathname: string,
+  report: { period?: DataQualityReport["period"] },
+) {
+  if (!report.period) {
+    return pathname;
+  }
+
+  const query = new URLSearchParams(qualityPeriodSearchParams(report.period));
+  return `${pathname}?${query.toString()}`;
 }
 
 export function remediationQueueItemInputs({

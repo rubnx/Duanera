@@ -8,8 +8,22 @@ import {
 } from "@/quality/load-readiness-helpers";
 import type { LoadReadinessArea } from "@/quality/load-readiness";
 import type { RemediationQueueReport } from "@/quality/remediation-queue";
+import { qualityPeriodSearchParams } from "@/quality/march-2026";
+import { buildTradeRecordSearchHref } from "@/trade/trade-record-links";
 
 const formatNumber = formatIntegerEsCl;
+
+function qualityHref(pathname: string, report: { period: DataQualityReport["period"] }) {
+  const query = new URLSearchParams(qualityPeriodSearchParams(report.period));
+  return `${pathname}?${query.toString()}`;
+}
+
+function tradeHref(report: { period: DataQualityReport["period"] }) {
+  return buildTradeRecordSearchHref({
+    ...qualityPeriodSearchParams(report.period),
+    limit: "25",
+  });
+}
 
 function sourceArchiveProvenanceArea(
   report: DataQualityReport,
@@ -40,10 +54,10 @@ function sourceArchiveProvenanceArea(
     summary:
       status === "blocked"
         ? "Hay una brecha de proveniencia o de conteos fuente/lote que debe corregirse antes de cargar otro mes."
-        : "La carga March 2026 mantiene trazabilidad fuente/lote para revisar otro mes en dev.",
+        : `El período ${report.period.label} mantiene trazabilidad fuente/lote para revisión dev.`,
     evidence: safeLoadReadinessLinks([
       {
-        label: "Fuentes March 2026",
+        label: "Fuentes período evaluado",
         value: formatNumber(sources.size),
         href: "/sources",
       },
@@ -95,7 +109,7 @@ function parserFieldCountArea(report: DataQualityReport): LoadReadinessArea {
     summary:
       status === "blocked"
         ? "Los conteos de parser o normalización no cierran; no conviene cargar otro mes hasta resolverlos."
-        : "Los conteos March 2026 cierran para usar la misma ruta como validación dev, con vigilancia sobre advertencias.",
+        : `Los conteos ${report.period.label} cierran para usar la misma ruta como validación dev, con vigilancia sobre advertencias.`,
     evidence: safeLoadReadinessLinks([
       {
         label: "Filas raw",
@@ -105,7 +119,7 @@ function parserFieldCountArea(report: DataQualityReport): LoadReadinessArea {
       {
         label: "Registros normalizados",
         value: formatNumber(report.totals.tradeRecords),
-        href: "/trade-records?periodYear=2026&periodMonth=3&limit=25",
+        href: tradeHref(report),
       },
       {
         label: "Filas fallidas",
@@ -176,7 +190,7 @@ function fieldMappingArea(report: FieldMappingReport): LoadReadinessArea {
     summary:
       status === "blocked"
         ? "Hay mapeos visibles de valor, producto, logística o cantidad en estado de riesgo."
-        : "Los mapeos pueden usarse como evidencia March 2026, pero los campos inferidos deben vigilarse en el próximo mes.",
+        : `La cobertura normalizada se evalúa para ${report.period.label}; las definiciones de layout siguen basadas en los DIN/DUS main conocidos.`,
     evidence: safeLoadReadinessLinks([
       {
         label: "Mapeos totales",
@@ -211,7 +225,7 @@ function fieldMappingArea(report: FieldMappingReport): LoadReadinessArea {
         required: status === "blocked",
       },
       {
-        label: "Comparar ordinals/campos fuente del próximo mes contra las definiciones March 2026 y confirmar si DIN sigue sin peso bruto item.",
+        label: "Comparar ordinals/campos fuente del próximo mes contra las definiciones DIN/DUS main conocidas y confirmar si DIN sigue sin peso bruto item.",
         href: "/data-quality/field-mapping",
         required: true,
       },
@@ -286,7 +300,7 @@ function payloadRetentionArea(report: DataQualityReport): LoadReadinessArea {
     summary:
       status === "blocked"
         ? "Hay filas no reconstruibles; cargar más meses sin resolverlo debilita la trazabilidad."
-        : "March 2026 conserva payload completo en Postgres; es útil para dev, pero no debe escalarse sin una prueba real con retención selectiva.",
+        : `La retención payload se evalúa para ${report.period.label}; no debe escalarse sin pruebas reales con retención selectiva.`,
     evidence: safeLoadReadinessLinks([
       {
         label: "Filas no reconstruibles",
@@ -313,7 +327,7 @@ function payloadRetentionArea(report: DataQualityReport): LoadReadinessArea {
         required: true,
       },
       {
-        label: "Mantener pruning como dry-run salvo confirmación explícita; no tocar payloads March 2026 en este flujo.",
+        label: "Mantener pruning como dry-run salvo confirmación explícita; no tocar payloads desde este gate.",
         required: true,
       },
     ]),
@@ -344,9 +358,9 @@ function queryPerformanceArea({
       "Postgres es suficiente para el MVP dev con guardrails, pero otro mes aumentará costos de conteos, agregados y dashboards internos.",
     evidence: safeLoadReadinessLinks([
       {
-        label: "Registros March 2026",
+        label: "Registros período evaluado",
         value: formatNumber(dataQuality.totals.tradeRecords),
-        href: "/trade-records?periodYear=2026&periodMonth=3&limit=25",
+        href: tradeHref(dataQuality),
       },
       {
         label: "Items QA visibles/comerciales",
@@ -373,49 +387,50 @@ function queryPerformanceArea({
   };
 }
 
-function marchRemediationArea(report: RemediationQueueReport): LoadReadinessArea {
+function remediationArea(report: RemediationQueueReport): LoadReadinessArea {
   const status = loadReadinessAreaStatusFromCounts({
     blockers: 0,
     warnings: report.summary.warningItems + report.summary.reviewItems,
   });
+  const remediationHref = qualityHref("/data-quality/remediation", report);
 
   return {
     key: "march_remediation",
-    title: "Remediación March 2026 pendiente",
+    title: "Remediación del período pendiente",
     status,
     summary:
-      "La cola March 2026 resume blockers y revisiones ya expuestos en las áreas anteriores; úsala como checklist operativo.",
+      `La cola ${report.period.label} resume blockers y revisiones ya expuestos en las áreas anteriores; úsala como checklist operativo.`,
     evidence: safeLoadReadinessLinks([
       {
         label: "Items priorizados",
         value: formatNumber(report.summary.totalItems),
-        href: "/data-quality/remediation",
+        href: remediationHref,
       },
       {
         label: "Items riesgo",
         value: formatNumber(report.summary.warningItems),
-        href: "/data-quality/remediation",
+        href: remediationHref,
       },
       {
         label: "Items revisar",
         value: formatNumber(report.summary.reviewItems),
-        href: "/data-quality/remediation",
+        href: remediationHref,
       },
       {
         label: "Señales afectadas",
         value: formatNumber(report.summary.affectedRecordSignals),
-        href: "/data-quality/remediation",
+        href: remediationHref,
       },
     ]),
     actions: safeLoadReadinessLinks([
       {
         label: "Resolver o documentar los items de riesgo reales de la cola antes de cargar otro mes.",
-        href: "/data-quality/remediation",
+        href: remediationHref,
         required: false,
       },
       {
         label: "Usar la cola como checklist durante la validación del siguiente mes.",
-        href: "/data-quality/remediation",
+        href: remediationHref,
         required: true,
       },
     ]),
@@ -440,6 +455,6 @@ export function buildLoadReadinessAreas({
     codeTablesArea(codeTables),
     payloadRetentionArea(dataQuality),
     queryPerformanceArea({ dataQuality, remediation }),
-    marchRemediationArea(remediation),
+    remediationArea(remediation),
   ];
 }

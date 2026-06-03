@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { Badge } from "@/components/ui/badge";
@@ -11,11 +10,18 @@ import {
 import { MappingRowsTable } from "@/app/data-quality/field-mapping/mapping-rows-table";
 import { db } from "@/db/client";
 import {
-  getMarch2026FieldMappingReport,
+  getFieldMappingReport,
   type FieldMappingGroup,
 } from "@/quality/field-mapping";
 import { formatIntegerEsCl } from "@/lib/format";
 import { isInternalToolsEnabled } from "@/research/internal-research-access";
+import { listTradeRecordPeriods } from "@/trade/trade-record-periods";
+import {
+  QualityNavLinks,
+  QualityPeriodScopeCard,
+  resolveQualityPeriod,
+  type DataQualityPageProps,
+} from "../quality-period-scope";
 
 export const dynamic = "force-dynamic";
 
@@ -39,12 +45,14 @@ function Metric({
   );
 }
 
-export default async function FieldMappingPage() {
+export default async function FieldMappingPage({ searchParams }: DataQualityPageProps) {
   if (!isInternalToolsEnabled()) {
     notFound();
   }
 
-  const report = await getMarch2026FieldMappingReport(db);
+  const periods = await listTradeRecordPeriods(db);
+  const period = await resolveQualityPeriod({ periods, searchParams });
+  const report = await getFieldMappingReport(db, period);
   const groups: FieldMappingGroup[] = [
     "commercial_values",
     "quantity_weight",
@@ -62,7 +70,7 @@ export default async function FieldMappingPage() {
             Diccionario QA interno
           </Badge>
           <h1 className="text-2xl font-semibold tracking-tight">
-            Mapeo de campos Aduana Marzo 2026
+            Mapeo de campos Aduana {report.period.label}
           </h1>
           <p className="max-w-5xl text-sm leading-6 text-muted-foreground">
             Vista solo lectura para revisar cómo columnas DIN/DUS pasan a campos
@@ -70,54 +78,24 @@ export default async function FieldMappingPage() {
             requieren revisión antes de usar resultados como evidencia comercial.
           </p>
         </div>
-        <div className="flex flex-wrap gap-3 text-sm">
-          <Link
-            href="/data-quality/load-readiness"
-            className="font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-          >
-            Preparación carga
-          </Link>
-          <Link
-            href="/data-quality"
-            className="font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-          >
-            Calidad
-          </Link>
-          <Link
-            href="/data-quality/remediation"
-            className="font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-          >
-            Remediación
-          </Link>
-          <Link
-            href="/data-quality/code-tables"
-            className="font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-          >
-            Tablas de códigos
-          </Link>
-          <Link
-            href="/sources"
-            className="font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-          >
-            Fuentes
-          </Link>
-          <Link
-            href="/trade-records"
-            className="font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-          >
-            Registros
-          </Link>
-        </div>
+        <QualityNavLinks period={report.period} />
       </header>
+
+      <QualityPeriodScopeCard
+        period={report.period}
+        periods={periods}
+        resetHref="/data-quality/field-mapping"
+      />
 
       <Card className="border-amber-500/30 bg-amber-50/40">
         <CardHeader>
           <CardTitle>Lectura segura</CardTitle>
           <CardDescription className="leading-6">
             Esta página no cambia datos ni certifica la interpretación legal de campos.
-            Las muestras son valores fuente truncados por disponibilidad local. Los
-            correlativos importador/exportador siguen siendo identificadores anónimos de
-            Aduana, no empresas verificadas.
+            La cobertura se calcula para {report.period.label}; las definiciones de
+            layout siguen basadas en los DIN/DUS main conocidos. Los correlativos
+            importador/exportador siguen siendo identificadores anónimos de Aduana, no
+            empresas verificadas.
           </CardDescription>
         </CardHeader>
       </Card>

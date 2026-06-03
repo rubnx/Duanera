@@ -13,7 +13,11 @@ import {
   tradeRecords,
 } from "@/db/schema";
 import { loadCodeValueSets } from "@/quality/code-value-sets";
-import { march2026TradeRecordsWhere } from "@/quality/march-2026";
+import {
+  march2026ReportPeriod,
+  qualityTradeRecordsWhere,
+  type QualityReportPeriod,
+} from "@/quality/march-2026";
 import {
   addUndecodedSourceBatchCounts,
   dataQualitySourceBatchKey,
@@ -26,10 +30,11 @@ import {
 import { dusExportSpecialLogisticsCodes } from "@/quality/source-special-codes";
 import type { TradeFlow } from "@/trade/trade-records";
 
-const marchTradeWhere = march2026TradeRecordsWhere;
-
-function sourceBatchRemediationWhere(sourceFileId?: string): SQL {
-  const conditions = [marchTradeWhere()];
+function sourceBatchRemediationWhere(
+  period: QualityReportPeriod,
+  sourceFileId?: string,
+): SQL {
+  const conditions = [qualityTradeRecordsWhere(period)];
 
   if (sourceFileId) {
     conditions.push(eq(tradeRecords.sourceFileId, sourceFileId));
@@ -40,12 +45,14 @@ function sourceBatchRemediationWhere(sourceFileId?: string): SQL {
 
 async function loadSourceBatchRemediationBaseRows({
   db,
+  period,
   sourceFileId,
 }: {
   db: DbClient;
+  period: QualityReportPeriod;
   sourceFileId?: string;
 }): Promise<SourceBatchRemediationBaseRow[]> {
-  const where = sourceBatchRemediationWhere(sourceFileId);
+  const where = sourceBatchRemediationWhere(period, sourceFileId);
   const itemValueMissingOrZero = sql`
     (
       (${tradeRecords.tradeFlow} = 'import' and (${tradeRecords.itemCifValue} is null or ${tradeRecords.itemCifValue} <= 0))
@@ -100,16 +107,18 @@ async function loadSourceBatchRemediationBaseRows({
 async function sourceBatchCodeCounts({
   db,
   expression,
+  period,
   sourceFileId,
   tradeFlow,
 }: {
   db: DbClient;
   expression: SQL<string>;
+  period: QualityReportPeriod;
   sourceFileId?: string;
   tradeFlow: TradeFlow;
 }): Promise<SourceBatchCodeCountRow[]> {
   const conditions = [
-    marchTradeWhere(tradeFlow),
+    qualityTradeRecordsWhere(period, tradeFlow),
     sql`${expression} is not null`,
     sql`${expression} <> ''`,
   ];
@@ -136,16 +145,19 @@ async function sourceBatchCodeCounts({
     );
 }
 
-export async function getMarch2026SourceBatchRemediation(
+export async function getSourceBatchRemediation(
   db: DbClient,
   options: {
     limit?: number;
+    period?: QualityReportPeriod;
     sourceFileId?: string;
   } = {},
 ): Promise<DataQualitySourceBatchRemediation[]> {
+  const period = options.period ?? march2026ReportPeriod;
   const [baseRows, codeSets] = await Promise.all([
     loadSourceBatchRemediationBaseRows({
       db,
+      period,
       sourceFileId: options.sourceFileId,
     }),
     loadCodeValueSets(db),
@@ -169,36 +181,42 @@ export async function getMarch2026SourceBatchRemediation(
     sourceBatchCodeCounts({
       db,
       expression: sql<string>`${tradeRecords.customsOfficeCode}`,
+      period,
       sourceFileId: options.sourceFileId,
       tradeFlow: "import",
     }),
     sourceBatchCodeCounts({
       db,
       expression: sql<string>`${tradeRecords.customsOfficeCode}`,
+      period,
       sourceFileId: options.sourceFileId,
       tradeFlow: "export",
     }),
     sourceBatchCodeCounts({
       db,
       expression: sql<string>`${tradeRecords.disembarkPortCode}`,
+      period,
       sourceFileId: options.sourceFileId,
       tradeFlow: "import",
     }),
     sourceBatchCodeCounts({
       db,
       expression: sql<string>`${tradeRecords.embarkPortCode}`,
+      period,
       sourceFileId: options.sourceFileId,
       tradeFlow: "export",
     }),
     sourceBatchCodeCounts({
       db,
       expression: sql<string>`${tradeRecords.transportModeCode}`,
+      period,
       sourceFileId: options.sourceFileId,
       tradeFlow: "import",
     }),
     sourceBatchCodeCounts({
       db,
       expression: sql<string>`${tradeRecords.transportModeCode}`,
+      period,
       sourceFileId: options.sourceFileId,
       tradeFlow: "export",
     }),
@@ -238,4 +256,17 @@ export async function getMarch2026SourceBatchRemediation(
   });
 
   return finalizeSourceBatchRemediationRows(remediationRows).slice(0, options.limit ?? 8);
+}
+
+export async function getMarch2026SourceBatchRemediation(
+  db: DbClient,
+  options: {
+    limit?: number;
+    sourceFileId?: string;
+  } = {},
+): Promise<DataQualitySourceBatchRemediation[]> {
+  return getSourceBatchRemediation(db, {
+    ...options,
+    period: march2026ReportPeriod,
+  });
 }

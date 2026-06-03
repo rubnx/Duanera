@@ -19,7 +19,11 @@ import type {
   CodeCountRow,
   DataQualityLabelDimensionKey,
 } from "@/quality/label-coverage";
-import { march2026TradeRecordsWhere } from "@/quality/march-2026";
+import {
+  march2026ReportPeriod,
+  qualityTradeRecordsWhere,
+  type QualityReportPeriod,
+} from "@/quality/march-2026";
 import type { TradeFlow } from "@/trade/trade-records";
 
 export const codeTableKeys = {
@@ -30,8 +34,6 @@ export const codeTableKeys = {
 } satisfies Record<DataQualityLabelDimensionKey, string>;
 
 export type CodeValueSetMap = Record<DataQualityLabelDimensionKey, Set<string>>;
-
-const marchTradeWhere = march2026TradeRecordsWhere;
 
 export async function loadCodeValueSets(db: DbClient): Promise<CodeValueSetMap> {
   const rows = await db
@@ -72,6 +74,7 @@ export async function codeCountsForDimension(
   db: DbClient,
   tradeFlow: TradeFlow,
   expression: SQL<string>,
+  period: QualityReportPeriod = march2026ReportPeriod,
 ): Promise<CodeCountRow[]> {
   return db
     .select({
@@ -81,7 +84,7 @@ export async function codeCountsForDimension(
     .from(tradeRecords)
     .where(
       and(
-        marchTradeWhere(tradeFlow),
+        qualityTradeRecordsWhere(period, tradeFlow),
         sql`${expression} is not null`,
         sql`${expression} <> ''`,
       ),

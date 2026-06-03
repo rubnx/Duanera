@@ -83,7 +83,7 @@ export function buildDataQualityFindings({
     detail:
       prunedRows > 0
         ? `${prunedRows.toLocaleString("es-CL")} filas tienen payload podado; revisar reconstructibilidad antes de auditoría fina.`
-        : "Las filas de marzo 2026 mantienen payload crudo completo en Postgres dev y trazabilidad a fuente/lote/fila.",
+        : "Las filas evaluadas mantienen payload crudo completo en Postgres dev y trazabilidad a fuente/lote/fila.",
   });
 
   findings.push({

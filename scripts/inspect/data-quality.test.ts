@@ -52,6 +52,15 @@ import {
 import type { DataQualityReport } from "../../src/quality/data-quality";
 import type { FieldMappingReport } from "../../src/quality/field-mapping";
 import type { CodeTableRemediationReport } from "../../src/quality/code-table-remediation";
+import {
+  qualityPeriodFromExactMonth,
+  qualityPeriodFromRange,
+  qualityPeriodSearchParams,
+} from "../../src/quality/march-2026";
+import {
+  qualityPeriodFromSearchParams,
+  qualityPeriodHref,
+} from "../../src/quality/quality-period-controls";
 
 test("normalizes Aduana codes for label coverage comparisons", () => {
   assert.equal(normalizeCodeForCoverage("001"), "1");
@@ -195,7 +204,11 @@ test("builds field-mapping links through safe route contracts", () => {
 
   assert.equal(
     fieldMappingSearchHref("export"),
-    "/trade-records?tradeFlow=export&periodYear=2026&periodMonth=3&limit=25",
+    "/trade-records?tradeFlow=export&periodFrom=2026-03&periodTo=2026-03&limit=25",
+  );
+  assert.equal(
+    fieldMappingSearchHref("export", qualityPeriodFromExactMonth(2026, 4)),
+    "/trade-records?tradeFlow=export&periodFrom=2026-04&periodTo=2026-04&limit=25",
   );
   assert.equal(
     fieldMappingSourceTradeHref({
@@ -283,14 +296,15 @@ test("builds code-table sample links through supported /trade-records filters", 
       code: "076",
       definition: { filterKind: "originCountry", tradeFlow: "import" },
     }),
-    "/trade-records?tradeFlow=import&periodYear=2026&periodMonth=3&originCountry=076&limit=25",
+    "/trade-records?tradeFlow=import&periodFrom=2026-03&periodTo=2026-03&originCountry=076&limit=25",
   );
   assert.equal(
     codeTableRemediationHref({
       code: "099",
       definition: { tradeFlow: "export" },
+      period: qualityPeriodFromExactMonth(2026, 4),
     }),
-    "/trade-records?tradeFlow=export&periodYear=2026&periodMonth=3&limit=25",
+    "/trade-records?tradeFlow=export&periodFrom=2026-04&periodTo=2026-04&limit=25",
   );
 });
 
@@ -316,14 +330,45 @@ test("ranks top undecoded code-table gaps by affected records", () => {
       [
         "2",
         45,
-        "/trade-records?tradeFlow=import&periodYear=2026&periodMonth=3&customsOffice=002&limit=25",
+        "/trade-records?tradeFlow=import&periodFrom=2026-03&periodTo=2026-03&customsOffice=002&limit=25",
       ],
       [
         "3",
         40,
-        "/trade-records?tradeFlow=import&periodYear=2026&periodMonth=3&customsOffice=003&limit=25",
+        "/trade-records?tradeFlow=import&periodFrom=2026-03&periodTo=2026-03&customsOffice=003&limit=25",
       ],
     ],
+  );
+});
+
+test("parses and preserves data-quality period scopes", () => {
+  const periods = [
+    { month: 4, records: 10, value: "2026-04", year: 2026 },
+    { month: 3, records: 20, value: "2026-03", year: 2026 },
+  ];
+
+  assert.deepEqual(
+    qualityPeriodSearchParams(qualityPeriodFromExactMonth(2026, 4)),
+    { periodFrom: "2026-04", periodTo: "2026-04" },
+  );
+  assert.deepEqual(
+    qualityPeriodSearchParams(qualityPeriodFromRange("2026-03", "2026-04")),
+    { periodFrom: "2026-03", periodTo: "2026-04" },
+  );
+  assert.equal(
+    qualityPeriodFromSearchParams({ params: {}, periods }).label,
+    "2026-04",
+  );
+  assert.equal(
+    qualityPeriodFromSearchParams({
+      params: { periodFrom: "2026-04", periodTo: "2026-03" },
+      periods,
+    }).label,
+    "2026-03 a 2026-04",
+  );
+  assert.equal(
+    qualityPeriodHref("/data-quality/remediation", qualityPeriodFromExactMonth(2026, 4)),
+    "/data-quality/remediation?periodFrom=2026-04&periodTo=2026-04",
   );
 });
 

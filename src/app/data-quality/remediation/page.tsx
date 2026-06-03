@@ -21,14 +21,21 @@ import {
 import { db } from "@/db/client";
 import { formatIntegerEsCl } from "@/lib/format";
 import {
-  getMarch2026RemediationQueueReport,
+  getRemediationQueueReport,
   type RemediationQueueConfidence,
   type RemediationQueueImpact,
   type RemediationQueueIssueType,
   type RemediationQueueItem,
 } from "@/quality/remediation-queue";
 import { isInternalToolsEnabled } from "@/research/internal-research-access";
+import { listTradeRecordPeriods } from "@/trade/trade-record-periods";
 import type { TradeFlow } from "@/trade/trade-records";
+import {
+  QualityNavLinks,
+  QualityPeriodScopeCard,
+  resolveQualityPeriod,
+  type DataQualityPageProps,
+} from "../quality-period-scope";
 
 export const dynamic = "force-dynamic";
 
@@ -203,12 +210,16 @@ function QueueTable({ items }: { items: RemediationQueueItem[] }) {
   );
 }
 
-export default async function DataQualityRemediationPage() {
+export default async function DataQualityRemediationPage({
+  searchParams,
+}: DataQualityPageProps) {
   if (!isInternalToolsEnabled()) {
     notFound();
   }
 
-  const report = await getMarch2026RemediationQueueReport(db);
+  const periods = await listTradeRecordPeriods(db);
+  const period = await resolveQualityPeriod({ periods, searchParams });
+  const report = await getRemediationQueueReport(db, period);
 
   return (
     <main className="mx-auto flex w-full max-w-[1440px] flex-col gap-4 px-4 py-5 lg:px-6">
@@ -218,7 +229,7 @@ export default async function DataQualityRemediationPage() {
             Remediación QA interna
           </Badge>
           <h1 className="text-2xl font-semibold tracking-tight">
-            Cola de remediación Marzo 2026
+            Cola de remediación {report.period.label}
           </h1>
           <p className="max-w-5xl text-sm leading-6 text-muted-foreground">
             Vista solo lectura para decidir qué revisar antes de cargar más meses.
@@ -226,53 +237,22 @@ export default async function DataQualityRemediationPage() {
             fuente/lote sin modificar datos ni inferir identidad legal.
           </p>
         </div>
-        <div className="flex flex-wrap gap-3 text-sm">
-          <Link
-            href="/data-quality/load-readiness"
-            className="font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-          >
-            Preparación carga
-          </Link>
-          <Link
-            href="/data-quality"
-            className="font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-          >
-            Calidad
-          </Link>
-          <Link
-            href="/data-quality/field-mapping"
-            className="font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-          >
-            Mapeo de campos
-          </Link>
-          <Link
-            href="/data-quality/code-tables"
-            className="font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-          >
-            Tablas de códigos
-          </Link>
-          <Link
-            href="/sources"
-            className="font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-          >
-            Fuentes
-          </Link>
-          <Link
-            href="/trade-records"
-            className="font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-          >
-            Registros
-          </Link>
-        </div>
+        <QualityNavLinks period={report.period} />
       </header>
+
+      <QualityPeriodScopeCard
+        period={report.period}
+        periods={periods}
+        resetHref="/data-quality/remediation"
+      />
 
       <Card className="border-amber-500/30 bg-amber-50/40">
         <CardHeader>
           <CardTitle>Lectura segura</CardTitle>
           <CardDescription className="leading-6">
             Esta cola no cambia datos ni confirma que una brecha ya esté resuelta. Los
-            conteos son señales internas de la base dev actual; los correlativos Aduana
-            siguen siendo anónimos y no son RUTs, razones sociales ni identidades
+            conteos son señales internas para {report.period.label}; los correlativos
+            Aduana siguen siendo anónimos y no son RUTs, razones sociales ni identidades
             verificadas.
           </CardDescription>
         </CardHeader>

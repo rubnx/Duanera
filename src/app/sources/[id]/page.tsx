@@ -11,7 +11,11 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { db } from "@/db/client";
-import { getMarch2026SourceBatchRemediation } from "@/quality/data-quality";
+import { getSourceBatchRemediation } from "@/quality/data-quality";
+import {
+  march2026ReportPeriod,
+  qualityPeriodFromExactMonth,
+} from "@/quality/march-2026";
 import { formatNullableIntegerEsCl } from "@/lib/format";
 import {
   getSourceProvenanceById,
@@ -99,8 +103,13 @@ export default async function SourceDetailPage({ params }: PageProps) {
     sourceFileId: source.id,
     tradeFlow: sourceTradeFlow(source.tradeFlow),
   });
-  const qaRemediation = await getMarch2026SourceBatchRemediation(db, {
+  const sourceQualityPeriod =
+    source.periodYear && source.periodMonth
+      ? qualityPeriodFromExactMonth(source.periodYear, source.periodMonth)
+      : march2026ReportPeriod;
+  const qaRemediation = await getSourceBatchRemediation(db, {
     limit: 6,
+    period: sourceQualityPeriod,
     sourceFileId: source.id,
   });
 

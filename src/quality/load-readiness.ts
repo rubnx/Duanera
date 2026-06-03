@@ -1,14 +1,14 @@
 import type { DbClient } from "@/db/client";
 import {
-  getMarch2026CodeTableRemediationReport,
+  getCodeTableRemediationReport,
   type CodeTableRemediationReport,
 } from "@/quality/code-table-remediation";
 import {
-  getMarch2026DataQualityReport,
+  getDataQualityReport,
   type DataQualityReport,
 } from "@/quality/data-quality";
 import {
-  getMarch2026FieldMappingReport,
+  getFieldMappingReport,
   type FieldMappingReport,
 } from "@/quality/field-mapping";
 import {
@@ -17,7 +17,10 @@ import {
 } from "@/quality/remediation-queue";
 import { loadReadinessDecisionFromStatuses } from "@/quality/load-readiness-helpers";
 import { buildLoadReadinessAreas } from "@/quality/load-readiness-areas";
-import { march2026ReportPeriod } from "@/quality/march-2026";
+import {
+  march2026ReportPeriod,
+  type QualityReportPeriod,
+} from "@/quality/march-2026";
 
 export {
   loadReadinessAreaStatusFromCounts,
@@ -28,8 +31,6 @@ export {
   loadReadinessStatusRank,
   safeLoadReadinessLinks,
 } from "@/quality/load-readiness-helpers";
-
-const reportPeriod = march2026ReportPeriod;
 
 export type LoadReadinessStatus = "ready" | "review" | "blocked";
 
@@ -67,7 +68,7 @@ export type LoadReadinessArea = {
 };
 
 export type LoadReadinessReport = {
-  period: typeof reportPeriod;
+  period: QualityReportPeriod;
   decision: LoadReadinessDecision;
   summary: {
     readyAreas: number;
@@ -91,11 +92,24 @@ export function buildLoadReadinessReport({
   fieldMapping,
   remediation,
 }: LoadReadinessSourceReports): LoadReadinessReport {
+  const period = dataQuality.period ?? march2026ReportPeriod;
+  const scopedDataQuality = {
+    ...dataQuality,
+    period,
+  };
+  const scopedFieldMapping = {
+    ...fieldMapping,
+    period: fieldMapping.period ?? period,
+  };
+  const scopedRemediation = {
+    ...remediation,
+    period: remediation.period ?? period,
+  };
   const areas = buildLoadReadinessAreas({
     codeTables,
-    dataQuality,
-    fieldMapping,
-    remediation,
+    dataQuality: scopedDataQuality,
+    fieldMapping: scopedFieldMapping,
+    remediation: scopedRemediation,
   });
   const statuses = areas.map((area) => area.status);
   const readyAreas = statuses.filter((status) => status === "ready").length;
@@ -103,7 +117,7 @@ export function buildLoadReadinessReport({
   const blockedAreas = statuses.filter((status) => status === "blocked").length;
 
   return {
-    period: reportPeriod,
+    period,
     decision: loadReadinessDecisionFromStatuses(statuses),
     summary: {
       readyAreas,
@@ -118,10 +132,17 @@ export function buildLoadReadinessReport({
 export async function getMarch2026LoadReadinessReport(
   db: DbClient,
 ): Promise<LoadReadinessReport> {
+  return getLoadReadinessReport(db, march2026ReportPeriod);
+}
+
+export async function getLoadReadinessReport(
+  db: DbClient,
+  period: QualityReportPeriod = march2026ReportPeriod,
+): Promise<LoadReadinessReport> {
   const [dataQuality, fieldMapping, codeTables] = await Promise.all([
-    getMarch2026DataQualityReport(db),
-    getMarch2026FieldMappingReport(db),
-    getMarch2026CodeTableRemediationReport(db),
+    getDataQualityReport(db, period),
+    getFieldMappingReport(db, period),
+    getCodeTableRemediationReport(db, period),
   ]);
   const remediation = buildDataQualityRemediationQueueReport({
     codeTables,

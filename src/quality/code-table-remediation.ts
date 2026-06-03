@@ -6,7 +6,10 @@ import {
   type CodeTableRemediationPriority,
 } from "@/quality/code-table-remediation-definitions";
 import { type DataQualityStatus } from "@/quality/coverage";
-import { march2026ReportPeriod } from "@/quality/march-2026";
+import {
+  march2026ReportPeriod,
+  type QualityReportPeriod,
+} from "@/quality/march-2026";
 import { type SupportedNormalizedCodeField } from "@/quality/code-table-remediation-fields";
 import {
   codeCountsForDefinition,
@@ -24,8 +27,6 @@ import {
 import {
   codeTableRemediationPriorityRank,
 } from "@/quality/code-table-remediation-helpers";
-
-const reportPeriod = march2026ReportPeriod;
 
 export {
   codeTableRemediationDimensionLabel,
@@ -106,7 +107,7 @@ export type CodeTableRemediationRow = {
 };
 
 export type CodeTableRemediationReport = {
-  period: typeof reportPeriod;
+  period: QualityReportPeriod;
   rows: CodeTableRemediationRow[];
   summary: {
     totalDimensions: number;
@@ -122,8 +123,9 @@ export type CodeTableCodeCountInput = {
   records: number | string | null | undefined;
 };
 
-export async function getMarch2026CodeTableRemediationReport(
+export async function getCodeTableRemediationReport(
   db: DbClient,
+  period: QualityReportPeriod = march2026ReportPeriod,
 ): Promise<CodeTableRemediationReport> {
   const [layoutFields, codeValuesByKey, dictionaryRows] = await Promise.all([
     loadLayoutFields(db),
@@ -134,8 +136,8 @@ export async function getMarch2026CodeTableRemediationReport(
   const rows = await Promise.all(
     remediationDefinitions.map(async (definition) => {
       const [codeRows, sourceRow] = await Promise.all([
-        codeCountsForDefinition(db, definition),
-        sourceContextForDefinition(db, definition),
+        codeCountsForDefinition(db, definition, period),
+        sourceContextForDefinition(db, definition, period),
       ]);
       const codeSet = decodedCodeSet(codeValuesByKey.get(definition.codeTableKey) ?? []);
 
@@ -147,6 +149,7 @@ export async function getMarch2026CodeTableRemediationReport(
           dictionaryRows.get(definition.codeTableKey),
         ),
         layoutFields,
+        period,
         sourceContext: sourceContextFromRow(sourceRow, definition.tradeFlow),
       });
     }),
@@ -168,7 +171,7 @@ export async function getMarch2026CodeTableRemediationReport(
   });
 
   return {
-    period: reportPeriod,
+    period,
     rows: sortedRows,
     summary: {
       totalDimensions: sortedRows.length,
@@ -187,4 +190,10 @@ export async function getMarch2026CodeTableRemediationReport(
       ),
     },
   };
+}
+
+export async function getMarch2026CodeTableRemediationReport(
+  db: DbClient,
+): Promise<CodeTableRemediationReport> {
+  return getCodeTableRemediationReport(db, march2026ReportPeriod);
 }

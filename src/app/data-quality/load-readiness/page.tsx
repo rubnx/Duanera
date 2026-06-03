@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { Badge } from "@/components/ui/badge";
@@ -9,23 +8,32 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { db } from "@/db/client";
-import { getMarch2026LoadReadinessReport } from "@/quality/load-readiness";
+import { getLoadReadinessReport } from "@/quality/load-readiness";
 import { isInternalToolsEnabled } from "@/research/internal-research-access";
+import { listTradeRecordPeriods } from "@/trade/trade-record-periods";
 import {
   LoadReadinessAreaCards,
   LoadReadinessAreaTable,
   LoadReadinessDecisionCard,
   LoadReadinessSummaryMetrics,
 } from "./load-readiness-sections";
+import {
+  QualityNavLinks,
+  QualityPeriodScopeCard,
+  resolveQualityPeriod,
+  type DataQualityPageProps,
+} from "../quality-period-scope";
 
 export const dynamic = "force-dynamic";
 
-export default async function LoadReadinessPage() {
+export default async function LoadReadinessPage({ searchParams }: DataQualityPageProps) {
   if (!isInternalToolsEnabled()) {
     notFound();
   }
 
-  const report = await getMarch2026LoadReadinessReport(db);
+  const periods = await listTradeRecordPeriods(db);
+  const period = await resolveQualityPeriod({ periods, searchParams });
+  const report = await getLoadReadinessReport(db, period);
 
   return (
     <main className="mx-auto flex w-full min-w-0 max-w-[1440px] flex-col gap-4 overflow-x-hidden px-4 py-5 lg:px-6">
@@ -38,50 +46,19 @@ export default async function LoadReadinessPage() {
             Preparación para cargar otro mes Aduana
           </h1>
           <p className="max-w-5xl text-sm leading-6 text-muted-foreground">
-            Vista solo lectura para decidir si la evidencia March 2026 permite
+            Vista solo lectura para decidir si la evidencia {report.period.label} permite
             intentar una carga dev del siguiente mes. El resultado no garantiza
             calidad final, uso productivo ni identidad legal de empresas.
           </p>
         </div>
-        <div className="flex flex-wrap gap-3 text-sm">
-          <Link
-            href="/data-quality"
-            className="font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-          >
-            Calidad
-          </Link>
-          <Link
-            href="/data-quality/remediation"
-            className="font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-          >
-            Remediación
-          </Link>
-          <Link
-            href="/data-quality/field-mapping"
-            className="font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-          >
-            Mapeo
-          </Link>
-          <Link
-            href="/data-quality/code-tables"
-            className="font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-          >
-            Códigos
-          </Link>
-          <Link
-            href="/sources"
-            className="font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-          >
-            Fuentes
-          </Link>
-          <Link
-            href="/trade-records"
-            className="font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-          >
-            Registros
-          </Link>
-        </div>
+        <QualityNavLinks period={report.period} />
       </header>
+
+      <QualityPeriodScopeCard
+        period={report.period}
+        periods={periods}
+        resetHref="/data-quality/load-readiness"
+      />
 
       <LoadReadinessDecisionCard decision={report.decision} />
 
@@ -89,10 +66,10 @@ export default async function LoadReadinessPage() {
         <CardHeader>
           <CardTitle>Lectura segura</CardTitle>
           <CardDescription className="leading-6">
-            Este gate usa señales internas March 2026 aunque la base dev ya contenga
-            otros meses. No modifica datos, no carga archivos, no promueve producción y
-            no convierte correlativos Aduana en RUTs, razones sociales ni identidades
-            legales verificadas.
+            Este gate usa señales internas del período seleccionado
+            ({report.period.label}). No modifica datos, no carga archivos, no promueve
+            producción y no convierte correlativos Aduana en RUTs, razones sociales ni
+            identidades legales verificadas.
           </CardDescription>
         </CardHeader>
       </Card>

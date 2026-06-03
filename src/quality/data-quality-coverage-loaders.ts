@@ -11,10 +11,13 @@ import {
   fieldCoverageRows,
   type DataQualityFieldCoverage,
 } from "@/quality/field-coverage";
-import { march2026TradeRecordsWhere } from "@/quality/march-2026";
+import {
+  march2026ReportPeriod,
+  qualityTradeRecordsWhere,
+  type QualityReportPeriod,
+} from "@/quality/march-2026";
 
 const toNumber = countValueToNumber;
-const marchTradeWhere = march2026TradeRecordsWhere;
 
 function countPresent(expression: SQL<unknown>) {
   return sql<number>`count(*) filter (where ${expression} is not null and ${expression}::text <> '')`;
@@ -34,6 +37,7 @@ function countAnyPresent(expressions: SQL<unknown>[]) {
 
 async function loadImportFieldCoverage(
   db: DbClient,
+  period: QualityReportPeriod,
 ): Promise<DataQualityFieldCoverage[]> {
   const [row] = await db
     .select({
@@ -54,7 +58,7 @@ async function loadImportFieldCoverage(
       transportMode: countPresent(sql`${tradeRecords.transportModeCode}`),
     })
     .from(tradeRecords)
-    .where(marchTradeWhere("import"));
+    .where(qualityTradeRecordsWhere(period, "import"));
 
   const total = toNumber(row?.total);
 
@@ -157,6 +161,7 @@ async function loadImportFieldCoverage(
 
 async function loadExportFieldCoverage(
   db: DbClient,
+  period: QualityReportPeriod,
 ): Promise<DataQualityFieldCoverage[]> {
   const [row] = await db
     .select({
@@ -180,7 +185,7 @@ async function loadExportFieldCoverage(
       transportMode: countPresent(sql`${tradeRecords.transportModeCode}`),
     })
     .from(tradeRecords)
-    .where(marchTradeWhere("export"));
+    .where(qualityTradeRecordsWhere(period, "export"));
 
   const total = toNumber(row?.total);
 
@@ -283,10 +288,11 @@ async function loadExportFieldCoverage(
 
 export async function loadFieldCoverage(
   db: DbClient,
+  period: QualityReportPeriod = march2026ReportPeriod,
 ): Promise<DataQualityFieldCoverage[]> {
   const [imports, exports] = await Promise.all([
-    loadImportFieldCoverage(db),
-    loadExportFieldCoverage(db),
+    loadImportFieldCoverage(db, period),
+    loadExportFieldCoverage(db, period),
   ]);
 
   return [...imports, ...exports];

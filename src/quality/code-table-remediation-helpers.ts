@@ -5,7 +5,11 @@ import {
   type CodeTableRemediationFilterKind,
   type CodeTableRemediationPriority,
 } from "@/quality/code-table-remediation-definitions";
-import { march2026ReportPeriod } from "@/quality/march-2026";
+import {
+  march2026ReportPeriod,
+  qualityPeriodSearchParams,
+  type QualityReportPeriod,
+} from "@/quality/march-2026";
 import { buildTradeRecordSearchHref } from "@/trade/trade-record-links";
 import type { TradeFlow } from "@/trade/trade-records";
 import type {
@@ -13,7 +17,6 @@ import type {
   TopUndecodedCode,
 } from "@/quality/code-table-remediation";
 
-const reportPeriod = march2026ReportPeriod;
 const toNumber = countValueToNumber;
 
 export function codeTableRemediationPriorityRank(
@@ -84,7 +87,7 @@ export function codeTableRemediationNextAction({
 
     return unsupportedReason
       ? `Sin brecha de etiqueta detectada; mantener como contexto. ${unsupportedReason}`
-      : "Sin brecha de etiqueta detectada en marzo 2026.";
+      : "Sin brecha de etiqueta detectada en el período evaluado.";
   }
 
   const specialSuffix =
@@ -106,17 +109,18 @@ export function codeTableRemediationNextAction({
 export function codeTableRemediationHref({
   code,
   definition,
+  period = march2026ReportPeriod,
 }: {
   code?: string;
   definition: {
     filterKind?: CodeTableRemediationFilterKind;
     tradeFlow: TradeFlow;
   };
+  period?: QualityReportPeriod;
 }) {
   const params: Record<string, string> = {
     tradeFlow: definition.tradeFlow,
-    periodYear: String(reportPeriod.year),
-    periodMonth: String(reportPeriod.month),
+    ...qualityPeriodSearchParams(period),
     limit: "25",
   };
 
@@ -133,6 +137,7 @@ export function codeTableTopUndecodedCodes({
   definition,
   ignoredSourceCodes = new Set<string>(),
   limit = 5,
+  period = march2026ReportPeriod,
 }: {
   codeRows: CodeTableCodeCountInput[];
   codeSet: Set<string>;
@@ -142,6 +147,7 @@ export function codeTableTopUndecodedCodes({
   };
   ignoredSourceCodes?: Set<string>;
   limit?: number;
+  period?: QualityReportPeriod;
 }): TopUndecodedCode[] {
   const undecoded = new Map<string, TopUndecodedCode>();
 
@@ -170,6 +176,7 @@ export function codeTableTopUndecodedCodes({
       tradeRecordsHref: codeTableRemediationHref({
         code: displayCode,
         definition,
+        period,
       }),
     });
   }

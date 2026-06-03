@@ -92,7 +92,7 @@ export function MappingRowsTable({
         <CardDescription>
           Campos normalizados frente a columnas fuente Aduana. Cobertura cruda mide si la
           columna fuente trae valor en una muestra acotada; cobertura normalizada mide si
-          el campo de trade_records quedó poblado en marzo 2026 completo.
+          el campo de trade_records quedó poblado en el período evaluado.
         </CardDescription>
       </CardHeader>
       <CardContent className="p-0">

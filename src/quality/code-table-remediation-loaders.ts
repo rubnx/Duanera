@@ -21,11 +21,12 @@ import type { CodeTableRemediationDefinition } from "@/quality/code-table-remedi
 import { remediationDefinitions } from "@/quality/code-table-remediation-definitions";
 import { codeTableCodeExpression } from "@/quality/code-table-remediation-fields";
 import {
-  march2026TradeRecordsWhere,
+  march2026ReportPeriod,
   presentTrimmedTextCondition,
+  qualityTradeRecordsWhere,
+  type QualityReportPeriod,
 } from "@/quality/march-2026";
 
-const marchTradeWhere = march2026TradeRecordsWhere;
 const presentCondition = presentTrimmedTextCondition;
 
 export type SourceCountRow = {
@@ -120,6 +121,7 @@ export async function loadDictionaryProvenance(db: DbClient) {
 export async function codeCountsForDefinition(
   db: DbClient,
   definition: CodeTableRemediationDefinition,
+  period: QualityReportPeriod = march2026ReportPeriod,
 ) {
   const expression = codeTableCodeExpression(definition.normalizedField);
 
@@ -129,13 +131,14 @@ export async function codeCountsForDefinition(
       records: count(),
     })
     .from(tradeRecords)
-    .where(and(marchTradeWhere(definition.tradeFlow), presentCondition(expression)))
+    .where(and(qualityTradeRecordsWhere(period, definition.tradeFlow), presentCondition(expression)))
     .groupBy(expression);
 }
 
 export async function sourceContextForDefinition(
   db: DbClient,
   definition: CodeTableRemediationDefinition,
+  period: QualityReportPeriod = march2026ReportPeriod,
 ) {
   const expression = codeTableCodeExpression(definition.normalizedField);
   const [row] = await db
@@ -148,7 +151,7 @@ export async function sourceContextForDefinition(
     })
     .from(tradeRecords)
     .innerJoin(sourceFiles, eq(tradeRecords.sourceFileId, sourceFiles.id))
-    .where(and(marchTradeWhere(definition.tradeFlow), presentCondition(expression)))
+    .where(and(qualityTradeRecordsWhere(period, definition.tradeFlow), presentCondition(expression)))
     .groupBy(
       tradeRecords.sourceFileId,
       tradeRecords.importBatchId,

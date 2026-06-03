@@ -16,21 +16,20 @@ import {
 } from "@/quality/data-quality-issue-sampling";
 import {
   march2026ReportPeriod,
-  march2026TradeRecordsWhere,
+  qualityPeriodSearchParams,
+  qualityTradeRecordsWhere,
+  type QualityReportPeriod,
 } from "@/quality/march-2026";
 import { dusExportSpecialLogisticsCodes } from "@/quality/source-special-codes";
 import type { TradeRecordFilters } from "@/trade/trade-records";
 
-const reportPeriod = march2026ReportPeriod;
-const marchTradeWhere = march2026TradeRecordsWhere;
-
 export async function loadDataQualityIssueGroups(
   db: DbClient,
+  period: QualityReportPeriod = march2026ReportPeriod,
 ): Promise<DataQualityIssueGroup[]> {
   const codeSets = await loadCodeValueSets(db);
-  const marchFilters = {
-    periodFrom: reportPeriod.label,
-    periodTo: reportPeriod.label,
+  const periodFilters = {
+    ...qualityPeriodSearchParams(period),
     limit: 25,
   } satisfies TradeRecordFilters;
 
@@ -58,11 +57,11 @@ export async function loadDataQualityIssueGroups(
       evidence: "Peso bruto item vacío en importación; revisar fuente y peso bruto total antes de comparar.",
       statusWhenPresent: "warning",
       tradeRecordsHref: dataQualityIssueSearchHref({
-        ...marchFilters,
+        ...periodFilters,
         tradeFlow: "import",
       }),
       where: and(
-        marchTradeWhere("import"),
+        qualityTradeRecordsWhere(period, "import"),
         sql`${tradeRecords.grossWeightItem} is null`,
       ) ?? sql`false`,
     }),
@@ -73,13 +72,14 @@ export async function loadDataQualityIssueGroups(
       description:
         "Registros con código de aduana presente pero sin match en la tabla de códigos cargada.",
       sampleEvidence: "Código de aduana presente sin etiqueta decodificada en tablas Aduana.",
+      period,
       flows: [
         {
           tradeFlow: "import",
           expression: sql<string>`${tradeRecords.customsOfficeCode}`,
           whereExpression: sql`${tradeRecords.customsOfficeCode}`,
           searchFilter: (code) => ({
-            ...marchFilters,
+            ...periodFilters,
             tradeFlow: "import",
             customsOfficeCode: code,
           }),
@@ -89,7 +89,7 @@ export async function loadDataQualityIssueGroups(
           expression: sql<string>`${tradeRecords.customsOfficeCode}`,
           whereExpression: sql`${tradeRecords.customsOfficeCode}`,
           searchFilter: (code) => ({
-            ...marchFilters,
+            ...periodFilters,
             tradeFlow: "export",
             customsOfficeCode: code,
           }),
@@ -103,13 +103,14 @@ export async function loadDataQualityIssueGroups(
       description:
         "Importaciones revisan puerto de desembarque; exportaciones revisan puerto de embarque.",
       sampleEvidence: "Código de puerto relevante presente sin etiqueta decodificada en tablas Aduana.",
+      period,
       flows: [
         {
           tradeFlow: "import",
           expression: sql<string>`${tradeRecords.disembarkPortCode}`,
           whereExpression: sql`${tradeRecords.disembarkPortCode}`,
           searchFilter: (code) => ({
-            ...marchFilters,
+            ...periodFilters,
             tradeFlow: "import",
             portCode: code,
           }),
@@ -120,7 +121,7 @@ export async function loadDataQualityIssueGroups(
           ignoredSourceCodes: dusExportSpecialLogisticsCodes,
           whereExpression: sql`${tradeRecords.embarkPortCode}`,
           searchFilter: (code) => ({
-            ...marchFilters,
+            ...periodFilters,
             tradeFlow: "export",
             portCode: code,
           }),
@@ -134,13 +135,14 @@ export async function loadDataQualityIssueGroups(
       description:
         "Registros con vía de transporte presente pero sin match en la tabla de códigos cargada.",
       sampleEvidence: "Código de vía de transporte presente sin etiqueta decodificada.",
+      period,
       flows: [
         {
           tradeFlow: "import",
           expression: sql<string>`${tradeRecords.transportModeCode}`,
           whereExpression: sql`${tradeRecords.transportModeCode}`,
           searchFilter: (code) => ({
-            ...marchFilters,
+            ...periodFilters,
             tradeFlow: "import",
             transportModeCode: code,
           }),
@@ -151,7 +153,7 @@ export async function loadDataQualityIssueGroups(
           ignoredSourceCodes: dusExportSpecialLogisticsCodes,
           whereExpression: sql`${tradeRecords.transportModeCode}`,
           searchFilter: (code) => ({
-            ...marchFilters,
+            ...periodFilters,
             tradeFlow: "export",
             transportModeCode: code,
           }),
@@ -166,8 +168,8 @@ export async function loadDataQualityIssueGroups(
         "Importaciones usan CIF item y exportaciones FOB item. No trata CIF vacío como defecto de exportación.",
       evidence: "Valor comercial principal del item vacío o cero para el flujo del registro.",
       statusWhenPresent: "warning",
-      tradeRecordsHref: dataQualityIssueSearchHref(marchFilters),
-      where: and(marchTradeWhere(), itemValueMissingOrZero) ?? sql`false`,
+      tradeRecordsHref: dataQualityIssueSearchHref(periodFilters),
+      where: and(qualityTradeRecordsWhere(period), itemValueMissingOrZero) ?? sql`false`,
     }),
     issueGroupFromWhere({
       db,
@@ -177,9 +179,9 @@ export async function loadDataQualityIssueGroups(
         "Casos donde el FOB de declaración no está disponible o es cero. Puede afectar análisis agregados por declaración.",
       evidence: "FOB declaración vacío o cero; revisar si el valor vive en otro campo fuente.",
       statusWhenPresent: "review",
-      tradeRecordsHref: dataQualityIssueSearchHref(marchFilters),
+      tradeRecordsHref: dataQualityIssueSearchHref(periodFilters),
       where: and(
-        marchTradeWhere(),
+        qualityTradeRecordsWhere(period),
         sql`${tradeRecords.declarationFobValue} is null or ${tradeRecords.declarationFobValue} <= 0`,
       ) ?? sql`false`,
     }),
@@ -191,9 +193,9 @@ export async function loadDataQualityIssueGroups(
         "Casos donde cantidad/unidad/precio no son comparables con seguridad aunque exista valor comercial.",
       evidence: "Cantidad, unidad o precio unitario incompleto/inconsistente para comparación comercial.",
       statusWhenPresent: "review",
-      tradeRecordsHref: dataQualityIssueSearchHref(marchFilters),
+      tradeRecordsHref: dataQualityIssueSearchHref(periodFilters),
       where: and(
-        marchTradeWhere(),
+        qualityTradeRecordsWhere(period),
         sql`
           (
             (${tradeRecords.quantity} is not null and ${tradeRecords.quantityUnitCode} is null)

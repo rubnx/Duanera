@@ -15,9 +15,10 @@ import {
   tradeRecords,
 } from "@/db/schema";
 import {
-  march2026RawTradeRowsWhere,
   march2026ReportPeriod,
-  march2026TradeRecordsWhere,
+  qualityRawTradeRowsWhere,
+  qualityTradeRecordsWhere,
+  type QualityReportPeriod,
 } from "@/quality/march-2026";
 import { type DataQualitySourceBatchRemediation } from "@/quality/source-batch-remediation";
 import { type DataQualityIssueGroup } from "@/quality/data-quality-issues";
@@ -38,9 +39,10 @@ import {
   loadFieldCoverage,
 } from "@/quality/data-quality-coverage-loaders";
 import { loadLabelCoverage } from "@/quality/data-quality-label-coverage-loader";
-import { getMarch2026SourceBatchRemediation } from "@/quality/data-quality-source-batch-remediation";
-
-const reportPeriod = march2026ReportPeriod;
+import {
+  getMarch2026SourceBatchRemediation,
+  getSourceBatchRemediation,
+} from "@/quality/data-quality-source-batch-remediation";
 
 export {
   coveragePercent,
@@ -53,6 +55,7 @@ export { type DataQualityFieldCoverage } from "@/quality/field-coverage";
 export { type DataQualityLabelCoverage } from "@/quality/label-coverage";
 export {
   getMarch2026SourceBatchRemediation,
+  getSourceBatchRemediation,
 } from "@/quality/data-quality-source-batch-remediation";
 export {
   addUndecodedSourceBatchCounts,
@@ -89,7 +92,7 @@ export {
 } from "@/quality/data-quality-findings";
 
 export type DataQualityReport = {
-  period: typeof reportPeriod;
+  period: QualityReportPeriod;
   totals: {
     rawRows: number;
     parsedRows: number;
@@ -110,10 +113,10 @@ export type DataQualityReport = {
 
 const toNumber = countValueToNumber;
 
-const marchRawWhere = march2026RawTradeRowsWhere;
-const marchTradeWhere = march2026TradeRecordsWhere;
-
-async function loadFlowSummaries(db: DbClient): Promise<DataQualityFlowSummary[]> {
+async function loadFlowSummaries(
+  db: DbClient,
+  period: QualityReportPeriod,
+): Promise<DataQualityFlowSummary[]> {
   const [rawRows, tradeRows] = await Promise.all([
     db
       .select({
@@ -124,7 +127,7 @@ async function loadFlowSummaries(db: DbClient): Promise<DataQualityFlowSummary[]
         warningRows: sql<number>`count(*) filter (where ${rawTradeRows.parseWarnings} is not null)`,
       })
       .from(rawTradeRows)
-      .where(marchRawWhere())
+      .where(qualityRawTradeRowsWhere(period))
       .groupBy(rawTradeRows.tradeFlow),
     db
       .select({
@@ -132,14 +135,17 @@ async function loadFlowSummaries(db: DbClient): Promise<DataQualityFlowSummary[]
         tradeRecords: count(),
       })
       .from(tradeRecords)
-      .where(marchTradeWhere())
+      .where(qualityTradeRecordsWhere(period))
       .groupBy(tradeRecords.tradeFlow),
   ]);
 
   return flowSummariesFromRows({ rawRows, tradeRows });
 }
 
-async function loadSourceCoverage(db: DbClient): Promise<DataQualitySourceCoverage[]> {
+async function loadSourceCoverage(
+  db: DbClient,
+  period: QualityReportPeriod,
+): Promise<DataQualitySourceCoverage[]> {
   const [rawRows, tradeRows] = await Promise.all([
     db
       .select({
@@ -156,7 +162,7 @@ async function loadSourceCoverage(db: DbClient): Promise<DataQualitySourceCovera
       .from(rawTradeRows)
       .innerJoin(sourceFiles, eq(rawTradeRows.sourceFileId, sourceFiles.id))
       .innerJoin(importBatches, eq(rawTradeRows.importBatchId, importBatches.id))
-      .where(marchRawWhere())
+      .where(qualityRawTradeRowsWhere(period))
       .groupBy(
         rawTradeRows.sourceFileId,
         rawTradeRows.importBatchId,
@@ -174,7 +180,7 @@ async function loadSourceCoverage(db: DbClient): Promise<DataQualitySourceCovera
         tradeRecords: count(),
       })
       .from(tradeRecords)
-      .where(marchTradeWhere())
+      .where(qualityTradeRecordsWhere(period))
       .groupBy(
         tradeRecords.sourceFileId,
         tradeRecords.importBatchId,
@@ -185,7 +191,10 @@ async function loadSourceCoverage(db: DbClient): Promise<DataQualitySourceCovera
   return sourceCoverageRows({ rawRows, tradeRows });
 }
 
-async function loadPayloadCoverage(db: DbClient): Promise<DataQualityPayloadCoverage[]> {
+async function loadPayloadCoverage(
+  db: DbClient,
+  period: QualityReportPeriod,
+): Promise<DataQualityPayloadCoverage[]> {
   const rows = await db
     .select({
       tradeFlow: rawTradeRows.tradeFlow,
@@ -195,7 +204,7 @@ async function loadPayloadCoverage(db: DbClient): Promise<DataQualityPayloadCove
       rows: count(),
     })
     .from(rawTradeRows)
-    .where(marchRawWhere())
+    .where(qualityRawTradeRowsWhere(period))
     .groupBy(
       rawTradeRows.tradeFlow,
       rawTradeRows.payloadRetentionMode,
@@ -218,20 +227,21 @@ async function loadPayloadCoverage(db: DbClient): Promise<DataQualityPayloadCove
   }));
 }
 
-export async function getMarch2026DataQualityReport(
+export async function getDataQualityReport(
   db: DbClient,
+  period: QualityReportPeriod = march2026ReportPeriod,
 ): Promise<DataQualityReport> {
   const [flows, sourceCoverage, fieldCoverage, labelCoverage, payloadCoverage] =
     await Promise.all([
-      loadFlowSummaries(db),
-      loadSourceCoverage(db),
-      loadFieldCoverage(db),
-      loadLabelCoverage(db),
-      loadPayloadCoverage(db),
+      loadFlowSummaries(db, period),
+      loadSourceCoverage(db, period),
+      loadFieldCoverage(db, period),
+      loadLabelCoverage(db, period),
+      loadPayloadCoverage(db, period),
     ]);
   const [issueGroups, sourceBatchRemediation] = await Promise.all([
-    loadDataQualityIssueGroups(db),
-    getMarch2026SourceBatchRemediation(db),
+    loadDataQualityIssueGroups(db, period),
+    getSourceBatchRemediation(db, { period }),
   ]);
 
   const totals = flows.reduce(
@@ -254,7 +264,7 @@ export async function getMarch2026DataQualityReport(
   );
 
   return {
-    period: reportPeriod,
+    period,
     totals,
     flows,
     sourceCoverage,
@@ -270,4 +280,10 @@ export async function getMarch2026DataQualityReport(
       payloadCoverage,
     }),
   };
+}
+
+export async function getMarch2026DataQualityReport(
+  db: DbClient,
+): Promise<DataQualityReport> {
+  return getDataQualityReport(db, march2026ReportPeriod);
 }

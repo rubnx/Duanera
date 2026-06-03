@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { Badge } from "@/components/ui/badge";
@@ -13,7 +12,7 @@ import {
 import { db } from "@/db/client";
 import { isInternalToolsEnabled } from "@/research/internal-research-access";
 import {
-  getMarch2026DataQualityReport,
+  getDataQualityReport,
   type DataQualityFinding,
   type DataQualityStatus,
 } from "@/quality/data-quality";
@@ -27,6 +26,13 @@ import {
   SourceBatchRemediationTable,
 } from "./coverage-tables";
 import { IssueGroupsSection } from "./issue-groups-section";
+import {
+  QualityNavLinks,
+  QualityPeriodScopeCard,
+  resolveQualityPeriod,
+  type DataQualityPageProps,
+} from "./quality-period-scope";
+import { listTradeRecordPeriods } from "@/trade/trade-record-periods";
 
 export const dynamic = "force-dynamic";
 
@@ -79,12 +85,14 @@ function findingLead(finding: DataQualityFinding) {
   return "Revisar contexto";
 }
 
-export default async function DataQualityPage() {
+export default async function DataQualityPage({ searchParams }: DataQualityPageProps) {
   if (!isInternalToolsEnabled()) {
     notFound();
   }
 
-  const report = await getMarch2026DataQualityReport(db);
+  const periods = await listTradeRecordPeriods(db);
+  const period = await resolveQualityPeriod({ periods, searchParams });
+  const report = await getDataQualityReport(db, period);
   const importFields = report.fieldCoverage.filter((field) => field.tradeFlow === "import");
   const exportFields = report.fieldCoverage.filter((field) => field.tradeFlow === "export");
 
@@ -96,7 +104,7 @@ export default async function DataQualityPage() {
             Calidad interna
           </Badge>
           <h1 className="text-2xl font-semibold tracking-tight">
-            Calidad y cobertura Marzo 2026
+            Calidad y cobertura {report.period.label}
           </h1>
           <p className="max-w-5xl text-sm leading-6 text-muted-foreground">
             Panel interno solo lectura para decidir qué tan confiables son los registros
@@ -104,59 +112,18 @@ export default async function DataQualityPage() {
             decodificadas y riesgos de uso comercial sin crear identidad de empresas.
           </p>
         </div>
-        <div className="flex flex-wrap gap-3 text-sm">
-          <Link
-            href="/data-quality/load-readiness"
-            className="font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-          >
-            Preparación carga
-          </Link>
-          <Link
-            href="/data-quality/remediation"
-            className="font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-          >
-            Remediación
-          </Link>
-          <Link
-            href="/data-quality/code-tables"
-            className="font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-          >
-            Tablas de códigos
-          </Link>
-          <Link
-            href="/data-quality/field-mapping"
-            className="font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-          >
-            Mapeo de campos
-          </Link>
-          <Link
-            href="/trade-records"
-            className="font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-          >
-            Registros
-          </Link>
-          <Link
-            href="/sources"
-            className="font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-          >
-            Fuentes
-          </Link>
-          <Link
-            href="/"
-            className="font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-          >
-            Inicio
-          </Link>
-        </div>
+        <QualityNavLinks period={report.period} />
       </header>
+
+      <QualityPeriodScopeCard period={report.period} periods={periods} />
 
       <Card className="border-amber-500/30 bg-amber-50/40">
         <CardHeader>
           <CardTitle>Lectura segura</CardTitle>
           <CardDescription className="leading-6">
             Esta página es interna y no certifica calidad legal. Los valores se leen desde
-            la base dev actual, pero este panel sigue acotado a Marzo 2026 aunque la base
-            dev ya incluya otros meses. Los correlativos importador/exportador son
+            la base dev actual para el período seleccionado ({report.period.label}). Los
+            correlativos importador/exportador son
             identificadores anónimos de Aduana, no RUTs, razones sociales ni identidades
             verificadas. Las métricas de importación y exportación se evalúan con campos
             distintos para no tratar CIF vacío como defecto de exportación.
@@ -216,7 +183,10 @@ export default async function DataQualityPage() {
 
       <LabelCoverageTable rows={report.labelCoverage} />
       <PayloadCoverageTable rows={report.payloadCoverage} />
-      <SourceBatchRemediationTable rows={report.sourceBatchRemediation} />
+      <SourceBatchRemediationTable
+        periodLabel={report.period.label}
+        rows={report.sourceBatchRemediation}
+      />
       <IssueGroupsSection groups={report.issueGroups} />
 
       <Card>

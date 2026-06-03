@@ -118,7 +118,7 @@ export function loadReadinessStatusLabel(status: LoadReadinessStatus) {
 
 export function loadReadinessDecisionSummary(decision: LoadReadinessDecision) {
   const summaries: Record<LoadReadinessDecision, string> = {
-    go: "No hay blockers detectados en la evidencia March 2026 para una carga dev controlada.",
+    go: "No hay blockers detectados en la evidencia evaluada para una carga dev controlada.",
     "no-go":
       "Hay al menos un blocker. Corrige o documenta esas brechas antes de intentar otro mes.",
     "review-first":

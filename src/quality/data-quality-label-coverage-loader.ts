@@ -10,10 +10,15 @@ import {
   labelCoverageFromRows,
   type DataQualityLabelCoverage,
 } from "@/quality/label-coverage";
+import {
+  march2026ReportPeriod,
+  type QualityReportPeriod,
+} from "@/quality/march-2026";
 import { dusExportSpecialLogisticsCodes } from "@/quality/source-special-codes";
 
 export async function loadLabelCoverage(
   db: DbClient,
+  period: QualityReportPeriod = march2026ReportPeriod,
 ): Promise<DataQualityLabelCoverage[]> {
   const codeSets = await loadCodeValueSets(db);
   const [
@@ -26,14 +31,14 @@ export async function loadLabelCoverage(
     importTransport,
     exportTransport,
   ] = await Promise.all([
-    codeCountsForDimension(db, "import", sql<string>`${tradeRecords.originCountryCode}`),
-    codeCountsForDimension(db, "export", sql<string>`${tradeRecords.destinationCountryCode}`),
-    codeCountsForDimension(db, "import", sql<string>`${tradeRecords.customsOfficeCode}`),
-    codeCountsForDimension(db, "export", sql<string>`${tradeRecords.customsOfficeCode}`),
-    codeCountsForDimension(db, "import", sql<string>`${tradeRecords.disembarkPortCode}`),
-    codeCountsForDimension(db, "export", sql<string>`${tradeRecords.embarkPortCode}`),
-    codeCountsForDimension(db, "import", sql<string>`${tradeRecords.transportModeCode}`),
-    codeCountsForDimension(db, "export", sql<string>`${tradeRecords.transportModeCode}`),
+    codeCountsForDimension(db, "import", sql<string>`${tradeRecords.originCountryCode}`, period),
+    codeCountsForDimension(db, "export", sql<string>`${tradeRecords.destinationCountryCode}`, period),
+    codeCountsForDimension(db, "import", sql<string>`${tradeRecords.customsOfficeCode}`, period),
+    codeCountsForDimension(db, "export", sql<string>`${tradeRecords.customsOfficeCode}`, period),
+    codeCountsForDimension(db, "import", sql<string>`${tradeRecords.disembarkPortCode}`, period),
+    codeCountsForDimension(db, "export", sql<string>`${tradeRecords.embarkPortCode}`, period),
+    codeCountsForDimension(db, "import", sql<string>`${tradeRecords.transportModeCode}`, period),
+    codeCountsForDimension(db, "export", sql<string>`${tradeRecords.transportModeCode}`, period),
   ]);
 
   return [

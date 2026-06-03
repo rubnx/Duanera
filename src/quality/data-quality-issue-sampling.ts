@@ -31,12 +31,12 @@ import {
 } from "@/quality/data-quality-issues";
 import {
   march2026ReportPeriod,
-  march2026TradeRecordsWhere,
+  qualityPeriodSearchParams,
+  qualityTradeRecordsWhere,
+  type QualityReportPeriod,
 } from "@/quality/march-2026";
 import type { TradeFlow, TradeRecordFilters } from "@/trade/trade-records";
 
-const reportPeriod = march2026ReportPeriod;
-const marchTradeWhere = march2026TradeRecordsWhere;
 const toNumber = countValueToNumber;
 const issueSampleLimit = 8;
 
@@ -147,6 +147,7 @@ export type UndecodedIssueConfig = {
   sampleEvidence: string;
   statusWhenPresent?: DataQualityStatus;
   title: string;
+  period?: QualityReportPeriod;
   flows: Array<{
     tradeFlow: TradeFlow;
     expression: SQL<string>;
@@ -160,9 +161,15 @@ export async function undecodedIssueGroup(
   db: DbClient,
   config: UndecodedIssueConfig,
 ): Promise<DataQualityIssueGroup> {
+  const period = config.period ?? march2026ReportPeriod;
   const flowResults = await Promise.all(
     config.flows.map(async (flow) => {
-      const rows = await codeCountsForDimension(db, flow.tradeFlow, flow.expression);
+      const rows = await codeCountsForDimension(
+        db,
+        flow.tradeFlow,
+        flow.expression,
+        period,
+      );
       const undecodedRows = rows.filter((row) => {
         return isActionableUndecodedCode({
           code: row.code,
@@ -199,7 +206,7 @@ export async function undecodedIssueGroup(
       evidence: config.sampleEvidence,
       limit: remainingLimit,
       where: and(
-        marchTradeWhere(result.tradeFlow),
+        qualityTradeRecordsWhere(period, result.tradeFlow),
         inArray(result.whereExpression, rawCodes.slice(0, 200)),
       ) ?? sql`false`,
     });
@@ -216,8 +223,7 @@ export async function undecodedIssueGroup(
   const tradeRecordsHref = firstCode?.code
     ? dataQualityIssueSearchHref(firstCode.searchFilter(firstCode.code))
     : dataQualityIssueSearchHref({
-        periodFrom: reportPeriod.label,
-        periodTo: reportPeriod.label,
+        ...qualityPeriodSearchParams(period),
         limit: 25,
       });
 
