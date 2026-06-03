@@ -1,4 +1,5 @@
 import { normalizeUuid } from "../lib/ids";
+import { parseTradeRecordTableView } from "./trade-record-table-views";
 import type { TradeFlow, TradeRecordFilters } from "./trade-records";
 
 export type TradeRecordSearchHrefParams =
@@ -42,6 +43,7 @@ const knownSearchKeys = [
   "maxGrossWeightTotal",
   "sort",
   "limit",
+  "view",
 ] as const;
 
 function firstValue(value: string | string[] | undefined) {
@@ -73,6 +75,11 @@ function setIfPresent(query: URLSearchParams, key: string, value: string | undef
 function safeSearchParam(key: string, value: string | undefined) {
   if (key === "sourceFileId" || key === "importBatchId") {
     return value ? normalizeUuid(value) ?? undefined : undefined;
+  }
+
+  if (key === "view") {
+    const view = parseTradeRecordTableView(value);
+    return value === view ? view : undefined;
   }
 
   return value;

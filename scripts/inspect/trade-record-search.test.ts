@@ -21,6 +21,10 @@ import {
   formatTradeRecordPeriodValue,
 } from "../../src/trade/trade-record-periods";
 import {
+  parseTradeRecordTableView,
+  tradeRecordTableViews,
+} from "../../src/trade/trade-record-table-views";
+import {
   buildTradeRecordRelatedGroupDefinitions,
   encodeTradeRecordCursor,
   type TradeRecordSummary,
@@ -185,6 +189,18 @@ test("rejects unsupported sort values", () => {
   assert.throws(
     () => parseTradeRecordSearchParams({ sort: "company_name" }),
     TradeRecordSearchError,
+  );
+});
+
+test("parses trade record table views with a commercial fallback", () => {
+  assert.equal(parseTradeRecordTableView(undefined), "commercial");
+  assert.equal(parseTradeRecordTableView("logistics"), "logistics");
+  assert.equal(parseTradeRecordTableView("product"), "product");
+  assert.equal(parseTradeRecordTableView("provenance"), "provenance");
+  assert.equal(parseTradeRecordTableView("raw"), "commercial");
+  assert.deepEqual(
+    tradeRecordTableViews.map((view) => view.id),
+    ["commercial", "logistics", "product", "provenance"],
   );
 });
 
@@ -400,6 +416,7 @@ test("builds trade record drilldown links without pagination cursors", () => {
       importBatchId: "batch-1",
       originCountry: "336",
       limit: "25",
+      view: "logistics",
       after: "cursor",
       offset: "50",
     },
@@ -408,7 +425,7 @@ test("builds trade record drilldown links without pagination cursors", () => {
 
   assert.equal(
     href,
-    "/trade-records?tradeFlow=import&periodFrom=2026-03&periodTo=2026-03&hsCodePrefix=4011&originCountry=220&limit=25",
+    "/trade-records?tradeFlow=import&periodFrom=2026-03&periodTo=2026-03&hsCodePrefix=4011&originCountry=220&limit=25&view=logistics",
   );
 
   assert.equal(
@@ -417,6 +434,30 @@ test("builds trade record drilldown links without pagination cursors", () => {
       importBatchId: "00000000-0000-4000-8000-0000000000BB",
     }),
     "/trade-records?sourceFileId=00000000-0000-4000-8000-0000000000aa&importBatchId=00000000-0000-4000-8000-0000000000bb",
+  );
+});
+
+test("builds trade record view links with safe view params only", () => {
+  assert.equal(
+    buildTradeRecordSearchHref({
+      tradeFlow: "export",
+      periodFrom: "2026-04",
+      periodTo: "2026-04",
+      view: "provenance",
+      after: "stale-cursor",
+      offset: "25",
+    }),
+    "/trade-records?tradeFlow=export&periodFrom=2026-04&periodTo=2026-04&view=provenance",
+  );
+
+  assert.equal(
+    buildTradeRecordSearchHref({
+      tradeFlow: "export",
+      periodFrom: "2026-04",
+      periodTo: "2026-04",
+      view: "raw",
+    }),
+    "/trade-records?tradeFlow=export&periodFrom=2026-04&periodTo=2026-04",
   );
 });
 

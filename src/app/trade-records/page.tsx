@@ -21,6 +21,7 @@ import {
   formatTradeRecordPeriodScope,
   listTradeRecordPeriods,
 } from "@/trade/trade-record-periods";
+import { parseTradeRecordTableView } from "@/trade/trade-record-table-views";
 import {
   searchTradeRecords,
   TradeRecordSearchError,
@@ -90,6 +91,7 @@ export default async function TradeRecordsPage({
     periodFrom: latestPeriod,
     periodTo: latestPeriod,
   };
+  const tableView = parseTradeRecordTableView(firstValue(params.view));
   const availablePeriodScope = formatTradeRecordPeriodScope(availablePeriods);
   const searchInput = {
     tradeFlow: firstValue(params.tradeFlow) ?? defaultInput.tradeFlow,
@@ -137,7 +139,10 @@ export default async function TradeRecordsPage({
 
   const previousOffset = Math.max(result.pagination.offset - result.pagination.limit, 0);
   const nextOffset = result.pagination.offset + result.pagination.limit;
-  const effectiveSearchParams = filtersToTradeRecordSearchParams(result.filters);
+  const effectiveSearchParams = {
+    ...filtersToTradeRecordSearchParams(result.filters),
+    view: tableView,
+  };
   const hasCursor = Boolean(searchInput.after);
   const hasPrevious = result.pagination.offset > 0 && !hasCursor;
   const hasNext =
@@ -229,6 +234,7 @@ export default async function TradeRecordsPage({
         hasCursor={hasCursor}
         params={effectiveSearchParams}
         result={result}
+        view={tableView}
       />
 
       <nav className="flex items-center justify-between">

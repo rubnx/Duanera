@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import { TableRow } from "@/components/ui/table";
 import {
   CountryCell,
@@ -14,6 +16,7 @@ import {
   buildTradeRecordSearchHref,
   type TradeRecordDrilldownTarget,
 } from "@/trade/trade-record-links";
+import type { TradeRecordTableViewId } from "@/trade/trade-record-table-views";
 import type { TradeRecordSearchResponse } from "@/trade/trade-record-search";
 
 type TradeRecordRow = TradeRecordSearchResponse["data"][number];
@@ -32,9 +35,11 @@ function drilldownHref(
 export function TradeRecordResultsRow({
   params,
   record,
+  view,
 }: {
   params: Record<string, string | string[] | undefined>;
   record: TradeRecordRow;
+  view: TradeRecordTableViewId;
 }) {
   const sourceHref = `/sources/${record.sourceFileId}`;
   const batchHref = `${sourceHref}#batch-${record.importBatchId}`;
@@ -96,29 +101,83 @@ export function TradeRecordResultsRow({
       })
     : null;
 
-  return (
-    <TableRow key={record.id}>
-      <RecordIdentityCell period={period} record={record} />
-      <ProductCell hsFilterHref={hsFilterHref} record={record} />
+  const cells = {
+    identity: <RecordIdentityCell key="identity" period={period} record={record} />,
+    product: <ProductCell key="product" hsFilterHref={hsFilterHref} record={record} />,
+    participant: (
       <ParticipantCell
+        key="participant"
         participantFilterHref={participantFilterHref}
         record={record}
       />
-      <ValuesCell record={record} />
-      <QuantityWeightCell record={record} />
-      <CountryCell countryFilterHref={countryFilterHref} record={record} />
+    ),
+    values: <ValuesCell key="values" record={record} />,
+    quantityWeight: <QuantityWeightCell key="quantityWeight" record={record} />,
+    country: (
+      <CountryCell
+        key="country"
+        countryFilterHref={countryFilterHref}
+        record={record}
+      />
+    ),
+    logistics: (
       <LogisticsCell
+        key="logistics"
         customsFilterHref={customsFilterHref}
         portFilterHref={portFilterHref}
         record={record}
       />
+    ),
+    source: (
       <SourceProvenanceCell
+        key="source"
         batchHref={batchHref}
         batchRecordsHref={batchRecordsHref}
         record={record}
         sourceHref={sourceHref}
         sourceRecordsHref={sourceRecordsHref}
       />
-    </TableRow>
-  );
+    ),
+  };
+
+  const viewCells = {
+    commercial: [
+      cells.identity,
+      cells.product,
+      cells.participant,
+      cells.values,
+      cells.quantityWeight,
+      cells.country,
+      cells.logistics,
+      cells.source,
+    ],
+    logistics: [
+      cells.identity,
+      cells.logistics,
+      cells.country,
+      cells.product,
+      cells.quantityWeight,
+      cells.participant,
+      cells.source,
+    ],
+    product: [
+      cells.product,
+      cells.values,
+      cells.quantityWeight,
+      cells.country,
+      cells.logistics,
+      cells.participant,
+      cells.source,
+    ],
+    provenance: [
+      cells.source,
+      cells.identity,
+      cells.product,
+      cells.participant,
+      cells.logistics,
+      cells.values,
+    ],
+  } satisfies Record<TradeRecordTableViewId, ReactNode[]>;
+
+  return <TableRow key={record.id}>{viewCells[view]}</TableRow>;
 }
