@@ -3,18 +3,18 @@
 Date prepared: 2026-06-01
 Latest evidence update: 2026-06-02
 
-Scope: March and April 2026 dev data. This note records evidence and the reviewed dev-only port remediation for the `/data-quality/load-readiness` code-table blocker. It does not approve a schema change, new trade-data load, migration, pruning pass, R2 upload, production promotion, or code-table mutation without a separate reviewed remediation pass.
+Scope: March and April 2026 dev data. This note records evidence and the reviewed dev-only code-table remediations for the `/data-quality/load-readiness` code-table blocker. It does not approve a schema change, new trade-data load, migration, pruning pass, R2 upload, production promotion, or unrelated code-table mutation.
 
 ## Summary
 
-The current load-readiness no-go signal is correctly narrowed to dictionary gaps, not parser failure or data loss.
+The former load-readiness no-go signal was correctly narrowed to dictionary gaps, not parser failure or data loss. After the reviewed dev-only remediations, the code-table blocker is resolved in Neon dev and load-readiness is now `review-first`.
 
-- Aduana code `56` appears in 1,327 March+April 2026 trade records: 958 import records and 369 export records. The current workbook-backed `chile_aduana:aduanas` dictionary does not decode it. The live Aduana Anexo 51 page now provides exact official evidence: `ARAUCANÍA 56`.
+- Aduana code `56` appears in 1,327 March+April 2026 trade records: 958 import records and 369 export records. The current workbook-backed `chile_aduana:aduanas` dictionary did not decode it, but the live Aduana Anexo 51 page provides exact official evidence: `ARAUCANÍA 56`, and dev now has the reviewed code-table row.
 - Nonzero port gaps were small but commercially visible: 61 import disembark-port records and 24 export embark-port records. A 2026-06-01 evidence pass found official Anexo 51-11 update evidence for the nonzero port gaps, and a reviewed dev-only remediation inserted the 11 verified `chile_aduana:puertos` rows.
-- April 2026 adds port code `825` as a high-priority relevant-port gap: 1 import record and 1 export record. BCN Resolución Exenta 2222 evidence confirms `825` as Aeródromo La Araucanía.
+- April 2026 added port code `825` as a high-priority relevant-port gap: 1 import record and 1 export record. BCN Resolución Exenta 2222 evidence confirms `825` as Aeródromo La Araucanía, and dev now has the reviewed code-table row.
 - DUS export port code `0` and transport code `0` remain source-special/null style values and should not be treated as dictionary gaps.
 - DIN import `grossWeightItem` remains an expected source limitation: March 2026 DIN has `TOT_PESO` total gross weight, but no confirmed item-level gross-weight field.
-- Import `MONEDA` has 11 medium-priority March+April undecoded values (`141`, `145`, `147`, `149`, `157`). The live Aduana Anexo 51-20 page gives exact official labels, but these rows have not been inserted into `code_tables`.
+- Import `MONEDA` had 11 medium-priority March+April undecoded values (`141`, `145`, `147`, `149`, `157`). The live Aduana Anexo 51-20 page gives exact official labels, and dev now has the reviewed currency rows.
 
 ## Evidence Classes
 
@@ -32,12 +32,12 @@ Use these classes before any future mutation:
 
 | Field | Codes | Affected records | Evidence status | Recommendation |
 | --- | --- | ---: | --- | --- |
-| Aduana import/export | `56` | 1,327 total | Official label found | Prepare a separate reviewed code-table remediation for `chile_aduana:aduanas` code `56` -> `Araucanía`. The source records should continue to display code `56` until that mutation is explicitly reviewed and applied. |
+| Aduana import/export | `56` | 1,327 total | Remediated in dev from official label evidence | `scripts/remediation/aduana-evidence-code-remediation.ts` inserted the reviewed `chile_aduana:aduanas` row with official Anexo 51-1 provenance metadata. |
 | Import disembark port | `817`, `818`, `819`, `820`, `822`, `823`, `824`, `826` | 61 total | Remediated in dev from official label evidence | DIN records do not carry port glosas for these fields. `scripts/remediation/aduana-port-code-remediation.ts` inserted reviewed `chile_aduana:puertos` rows with official Anexo 51-11 update provenance metadata. |
 | Export embark port | `225`, `817`, `821`, `827` | 24 | Remediated in dev from official label evidence | DUS raw records include `PASO GUANACO SONSO`, `PUERTO CABO FROWARD`, `ESPERANZA`, and `T.GNELES NORTE`; official Anexo 51-11 update notices confirm the exact mappings, and dev now decodes these port rows. |
-| Import/export relevant port | `825` | 2 total | Official label found | Prepare a separate reviewed code-table remediation for `chile_aduana:puertos` code `825` -> `Aeródromo La Araucanía`. April export raw glosa also shows `AE.LA ARAUCANIA`, but the proposed label should come from Anexo 51-11 evidence. |
+| Import/export relevant port | `825` | 2 total | Remediated in dev from official label evidence | `scripts/remediation/aduana-evidence-code-remediation.ts` inserted the reviewed `chile_aduana:puertos` row with official Anexo 51-11 provenance metadata. April export raw glosa also shows `AE.LA ARAUCANIA`, but the reviewed label comes from Anexo 51-11 evidence. |
 | Export embark/disembark and transport special code | `0` | 3,132 export embark-port records; 4,602 transport records in the broad March count | Source-special/current-source code | Keep classified as source-special/null. It is often seen with service-style exports and absent glosas. |
-| Import currency | `141`, `145`, `147`, `149`, `157` | 11 | Official label found | Prepare a separate reviewed code-table remediation for `chile_aduana:moneda`. Do not borrow labels from country, port, or operation-code tables; use Anexo 51-20 currency evidence only. |
+| Import currency | `141`, `145`, `147`, `149`, `157` | 11 | Remediated in dev from official label evidence | `scripts/remediation/aduana-evidence-code-remediation.ts` inserted the reviewed `chile_aduana:moneda` rows. Labels come from Anexo 51-20 currency evidence only, not country, port, or operation-code tables. |
 
 ## Official Port Evidence Found
 
@@ -103,11 +103,35 @@ Verification after apply:
 - Code-table summary records with undecoded codes changed from 5,944 to 5,859.
 - `/data-quality/load-readiness` remains `no-go` because Aduana code `56` is still a high-priority unresolved dictionary gap.
 
-Do not include newly reviewed gaps in the old 2026-06-01 port remediation:
+Do not include newly reviewed gaps in the old 2026-06-01 port remediation. They are handled by the separate 2026-06-02 evidence-code remediation:
 
 - `chile_aduana:aduanas` code `56`: expected impact up to 1,327 decoded March+April records if a new reviewed remediation is applied.
 - `chile_aduana:puertos` code `825`: expected impact 2 decoded April records if a new reviewed remediation is applied.
 - `chile_aduana:moneda` codes `141`, `145`, `147`, `149`, `157`: expected impact 11 decoded March+April import records if a new reviewed remediation is applied.
+
+## Dev Evidence-Code Remediation Applied
+
+The reviewed Aduana/currency evidence-code remediation has been applied to Neon dev.
+
+- Script: `scripts/remediation/aduana-evidence-code-remediation.ts`.
+- Package command: `npm run db:remediate:aduana-evidence-codes`.
+- Guardrails: script requires `DUANERA_DB_TARGET=dev`; apply mode additionally requires `--apply` and `ADUANA_EVIDENCE_CODE_REMEDIATION_CONFIRM=apply`.
+- Dry-run before apply: 7 inserts, 0 updates, 0 noops.
+- Rows inserted: 7 total:
+  - `chile_aduana:aduanas` code `56` -> `Araucanía`.
+  - `chile_aduana:puertos` code `825` -> `Aeródromo La Araucanía`.
+  - `chile_aduana:moneda` codes `141`, `145`, `147`, `149`, and `157`.
+- Review status: `reviewed_official_update`.
+- Metadata marker: `metadata.remediation_id = chile_aduana_evidence_codes_anexo_51_2026_06_02`.
+- Idempotency check: a follow-up dry-run returned 0 inserts, 0 updates, and 7 noops.
+
+Verification after apply:
+
+- March 2026 `/data-quality/code-tables`: 0 high-priority gaps, 0 medium-priority gaps, 2 low-priority source-special gaps, and 5,207 records with low-priority undecoded source values.
+- April 2026 `/data-quality/code-tables`: 0 high-priority gaps, 0 medium-priority gaps, 2 low-priority source-special gaps, and 4,726 records with low-priority undecoded source values.
+- March+April `/data-quality/code-tables`: 0 high-priority gaps, 0 medium-priority gaps, 2 low-priority source-special gaps, and 9,933 records with low-priority undecoded source values.
+- `/data-quality/load-readiness` now returns `review-first` for March 2026, April 2026, and March+April, with 2 ready areas, 5 review areas, and 0 blocked areas.
+- Remaining low-priority undecoded values are export disembark port `0` and export cargo type `S`; both are preserved as source-special/source-limitation signals, not evidence-backed code-table blockers.
 
 Rollback/reseed strategy:
 
@@ -117,7 +141,7 @@ Rollback/reseed strategy:
 
 ## Readiness Impact
 
-The evidence-backed port rows reduce the March port portion of the code-table blocker, but `/data-quality/load-readiness` still remains `no-go`. After April was loaded, the remaining high-priority gaps are Aduana `56` and port `825`. Exact official evidence now exists for both, so the next step is a reviewed dev-only code-table remediation pass, not another evidence search. Readiness should remain conservative until those rows are applied and verified. It may still remain `review-first` because payload retention, performance guardrails, field-mapping caveats, and medium-priority dictionary gaps are intentionally conservative before loading another dev month.
+The evidence-backed code-table blocker is now remediated in Neon dev. `/data-quality/load-readiness` moved from `no-go` to `review-first` for March 2026, April 2026, and the combined March+April range. It remains conservative because payload retention, performance guardrails, field-mapping caveats, and source-special export values are still review items before loading another dev month.
 
 ## Evidence Notes
 
@@ -157,9 +181,4 @@ Relevant official URLs:
 
 ## Next Step
 
-Continue with a reviewed remediation pass:
-
-- Prepare a dev-only, dry-run-first code-table remediation for Aduana `56`, port `825`, and currencies `141`, `145`, `147`, `149`, and `157`.
-- Do not infer any extra labels from transactional context, raw glosas, or cross-table code collisions.
-- Keep export source-special code `0` excluded from actionable code-table gaps.
-- Review whether `/data-quality/load-readiness` moves from `no-go` after the reviewed code-table remediation is applied and verified.
+Review and commit the evidence-code remediation helper and docs. After that, focus on the remaining `review-first` items before May: performance guardrails, payload/storage policy, and source-special export caveat wording. Do not infer any extra labels from transactional context, raw glosas, or cross-table code collisions, and keep export source-special code `0` excluded from actionable code-table gaps.

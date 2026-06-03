@@ -116,17 +116,17 @@ export function metadataChecks(
 
 export function riskCodeFields(flow: PreflightFlow): Record<string, Record<string, string>> {
   const unresolvedAduanaCodes = {
-    "56": "Aduana 56 tiene evidencia oficial en Anexo 51 como Araucania, pero sigue pendiente de remediacion revisada en code_tables.",
+    "56": "Aduana 56 tiene evidencia oficial en Anexo 51 como Araucanía; verificar que code_tables contenga la fila revisada antes de cargar otro mes.",
   };
   const unresolvedCurrencyCodes = {
-    "141": "Moneda 141 tiene evidencia oficial en Anexo 51-20, pero sigue pendiente de remediacion revisada en code_tables.",
-    "145": "Moneda 145 tiene evidencia oficial en Anexo 51-20, pero sigue pendiente de remediacion revisada en code_tables.",
-    "147": "Moneda 147 tiene evidencia oficial en Anexo 51-20, pero sigue pendiente de remediacion revisada en code_tables.",
-    "149": "Moneda 149 tiene evidencia oficial en Anexo 51-20, pero sigue pendiente de remediacion revisada en code_tables.",
-    "157": "Moneda 157 tiene evidencia oficial en Anexo 51-20, pero sigue pendiente de remediacion revisada en code_tables.",
+    "141": "Moneda 141 tiene evidencia oficial en Anexo 51-20; verificar que code_tables contenga la fila revisada antes de cargar otro mes.",
+    "145": "Moneda 145 tiene evidencia oficial en Anexo 51-20; verificar que code_tables contenga la fila revisada antes de cargar otro mes.",
+    "147": "Moneda 147 tiene evidencia oficial en Anexo 51-20; verificar que code_tables contenga la fila revisada antes de cargar otro mes.",
+    "149": "Moneda 149 tiene evidencia oficial en Anexo 51-20; verificar que code_tables contenga la fila revisada antes de cargar otro mes.",
+    "157": "Moneda 157 tiene evidencia oficial en Anexo 51-20; verificar que code_tables contenga la fila revisada antes de cargar otro mes.",
   };
   const unresolvedPortCodes = {
-    "825": "Puerto 825 tiene evidencia oficial en Anexo 51-11 como Aerodromo La Araucania, pero sigue pendiente de remediacion revisada en code_tables.",
+    "825": "Puerto 825 tiene evidencia oficial en Anexo 51-11 como Aeródromo La Araucanía; verificar que code_tables contenga la fila revisada antes de cargar otro mes.",
   };
 
   if (flow === "import") {

@@ -123,8 +123,8 @@ export async function sampleCandidateRows(
       "known_code_table_risks",
       "Riesgos de diccionario",
       observedRiskCodes.length > 0
-        ? `La muestra contiene códigos pendientes: ${observedRiskCodes.map((risk) => `${risk.field}=${risk.code}`).join(", ")}.`
-        : "La muestra no expuso los códigos de diccionario pendientes conocidos.",
+        ? `La muestra contiene códigos de diccionario que requieren verificación: ${observedRiskCodes.map((risk) => `${risk.field}=${risk.code}`).join(", ")}.`
+        : "La muestra no expuso códigos de diccionario conocidos que requieran verificación.",
     ),
   );
   checks.push(

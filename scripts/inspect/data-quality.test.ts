@@ -49,6 +49,13 @@ import {
   portRemediationMetadata,
   reviewedPortCodeValues,
 } from "../remediation/aduana-port-code-remediation";
+import {
+  assertReviewedEvidenceCodeRemediationScope,
+  evidenceCodeRemediationMetadata,
+  normalizeEvidenceLabel,
+  planEvidenceCodeValueRemediation,
+  reviewedEvidenceCodeValues,
+} from "../remediation/aduana-evidence-code-remediation";
 import type { DataQualityReport } from "../../src/quality/data-quality";
 import type { FieldMappingReport } from "../../src/quality/field-mapping";
 import type { CodeTableRemediationReport } from "../../src/quality/code-table-remediation";
@@ -528,6 +535,134 @@ test("rejects accidental Aduana, currency, or source-special remediation scope d
         },
       ]),
     /forbidden code values/,
+  );
+});
+
+test("keeps evidence-backed Aduana and currency remediation scoped to reviewed rows only", () => {
+  assert.doesNotThrow(() => assertReviewedEvidenceCodeRemediationScope());
+
+  const scopedCodes = reviewedEvidenceCodeValues
+    .map((row) => `${row.codeTableKey}:${row.codeValue}`)
+    .sort();
+
+  assert.deepEqual(scopedCodes, [
+    "chile_aduana:aduanas:56",
+    "chile_aduana:moneda:141",
+    "chile_aduana:moneda:145",
+    "chile_aduana:moneda:147",
+    "chile_aduana:moneda:149",
+    "chile_aduana:moneda:157",
+    "chile_aduana:puertos:825",
+  ]);
+  assert.equal(scopedCodes.includes("chile_aduana:puertos:0"), false);
+  assert.equal(scopedCodes.includes("chile_aduana:tipos_de_carga:S"), false);
+  assert.equal(scopedCodes.includes("chile_aduana:puertos:56"), false);
+});
+
+test("plans evidence-backed Aduana and currency remediation idempotently", () => {
+  const aduanaRow = reviewedEvidenceCodeValues.find(
+    (row) => row.codeTableKey === "chile_aduana:aduanas" && row.codeValue === "56",
+  );
+  const portRow = reviewedEvidenceCodeValues.find(
+    (row) => row.codeTableKey === "chile_aduana:puertos" && row.codeValue === "825",
+  );
+  const zlotyRow = reviewedEvidenceCodeValues.find(
+    (row) => row.codeTableKey === "chile_aduana:moneda" && row.codeValue === "141",
+  );
+  const bahtRow = reviewedEvidenceCodeValues.find(
+    (row) => row.codeTableKey === "chile_aduana:moneda" && row.codeValue === "145",
+  );
+
+  assert.ok(aduanaRow);
+  assert.ok(portRow);
+  assert.ok(zlotyRow);
+  assert.ok(bahtRow);
+
+  const plan = planEvidenceCodeValueRemediation([
+    {
+      codeTableKey: aduanaRow.codeTableKey,
+      codeValue: aduanaRow.codeValue,
+      labelEs: aduanaRow.labelEs,
+      normalizedLabelEs: normalizeEvidenceLabel(aduanaRow.labelEs),
+      reviewStatus: "reviewed_official_update",
+      metadata: evidenceCodeRemediationMetadata(aduanaRow),
+    },
+    {
+      codeTableKey: portRow.codeTableKey,
+      codeValue: portRow.codeValue,
+      labelEs: "AE.LA ARAUCANIA",
+      normalizedLabelEs: "ae.la araucania",
+      reviewStatus: "seeded",
+      metadata: {},
+    },
+    {
+      codeTableKey: zlotyRow.codeTableKey,
+      codeValue: zlotyRow.codeValue,
+      labelEs: zlotyRow.labelEs,
+      normalizedLabelEs: normalizeEvidenceLabel(zlotyRow.labelEs),
+      reviewStatus: "reviewed_official_update",
+      metadata: { remediation_id: "chile_aduana_evidence_codes_anexo_51_2026_06_02" },
+    },
+    {
+      codeTableKey: bahtRow.codeTableKey,
+      codeValue: bahtRow.codeValue,
+      labelEs: bahtRow.labelEs,
+      normalizedLabelEs: normalizeEvidenceLabel(bahtRow.labelEs),
+      reviewStatus: "reviewed_official_update",
+      metadata: [],
+    },
+  ]);
+
+  const actionsByScopedCode = new Map(
+    plan.map((row) => [`${row.codeTableKey}:${row.codeValue}`, row.action]),
+  );
+
+  assert.equal(actionsByScopedCode.get("chile_aduana:aduanas:56"), "noop");
+  assert.equal(actionsByScopedCode.get("chile_aduana:puertos:825"), "update");
+  assert.equal(actionsByScopedCode.get("chile_aduana:moneda:141"), "update");
+  assert.equal(actionsByScopedCode.get("chile_aduana:moneda:145"), "update");
+  assert.equal(actionsByScopedCode.get("chile_aduana:moneda:147"), "insert");
+});
+
+test("rejects accidental evidence-code scope expansion or cross-table mutation", () => {
+  assert.throws(
+    () =>
+      assertReviewedEvidenceCodeRemediationScope([
+        ...reviewedEvidenceCodeValues,
+        {
+          codeTableKey: "chile_aduana:puertos",
+          codeValue: "0",
+          labelEs: "Código fuente especial",
+          evidenceSource: "unsupported",
+          evidenceUrl: "https://example.invalid",
+          evidenceTable: "unsupported",
+          evidenceDate: "2026-06-02",
+          sourceKind: "official_anexo_51_11_update",
+          marchApril2026Impact: "unsupported",
+        },
+      ]),
+    /forbidden scoped values/,
+  );
+
+  assert.throws(
+    () =>
+      assertReviewedEvidenceCodeRemediationScope([
+        ...reviewedEvidenceCodeValues.filter(
+          (row) => !(row.codeTableKey === "chile_aduana:moneda" && row.codeValue === "157"),
+        ),
+        {
+          codeTableKey: "chile_aduana:puertos",
+          codeValue: "157",
+          labelEs: "Código de moneda en tabla incorrecta",
+          evidenceSource: "unsupported",
+          evidenceUrl: "https://example.invalid",
+          evidenceTable: "unsupported",
+          evidenceDate: "2026-06-02",
+          sourceKind: "official_anexo_51_11_update",
+          marchApril2026Impact: "unsupported",
+        },
+      ]),
+    /forbidden scoped values/,
   );
 });
 
