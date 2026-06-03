@@ -115,24 +115,32 @@ export function metadataChecks(
 }
 
 export function riskCodeFields(flow: PreflightFlow): Record<string, Record<string, string>> {
+  const unresolvedAduanaCodes = {
+    "56": "Aduana 56 tiene evidencia oficial en Anexo 51 como Araucania, pero sigue pendiente de remediacion revisada en code_tables.",
+  };
+  const unresolvedCurrencyCodes = {
+    "141": "Moneda 141 tiene evidencia oficial en Anexo 51-20, pero sigue pendiente de remediacion revisada en code_tables.",
+    "145": "Moneda 145 tiene evidencia oficial en Anexo 51-20, pero sigue pendiente de remediacion revisada en code_tables.",
+    "147": "Moneda 147 tiene evidencia oficial en Anexo 51-20, pero sigue pendiente de remediacion revisada en code_tables.",
+    "149": "Moneda 149 tiene evidencia oficial en Anexo 51-20, pero sigue pendiente de remediacion revisada en code_tables.",
+    "157": "Moneda 157 tiene evidencia oficial en Anexo 51-20, pero sigue pendiente de remediacion revisada en code_tables.",
+  };
+  const unresolvedPortCodes = {
+    "825": "Puerto 825 tiene evidencia oficial en Anexo 51-11 como Aerodromo La Araucania, pero sigue pendiente de remediacion revisada en code_tables.",
+  };
+
   if (flow === "import") {
     return {
-      ADU: { "56": "Aduana 56 sigue sin evidencia oficial de etiqueta en el diccionario actual." },
-      MONEDA: {
-        "141": "Moneda 141 sigue pendiente de evidencia oficial.",
-        "145": "Moneda 145 sigue pendiente de evidencia oficial.",
-        "147": "Moneda 147 sigue pendiente de evidencia oficial.",
-      },
+      ADU: unresolvedAduanaCodes,
+      MONEDA: unresolvedCurrencyCodes,
+      PTO_DESEM: unresolvedPortCodes,
     };
   }
 
   return {
-    ADUANA: { "56": "Aduana 56 sigue sin evidencia oficial de etiqueta en el diccionario actual." },
-    MONEDA: {
-      "141": "Moneda 141 sigue pendiente de evidencia oficial.",
-      "145": "Moneda 145 sigue pendiente de evidencia oficial.",
-      "147": "Moneda 147 sigue pendiente de evidencia oficial.",
-    },
+    ADUANA: unresolvedAduanaCodes,
+    MONEDA: unresolvedCurrencyCodes,
+    PUERTOEMB: unresolvedPortCodes,
   };
 }
 

@@ -127,7 +127,7 @@ test("preflights a compatible import working file without database writes", asyn
         NUMENCRIPTADO: "DECL-1",
         TOT_PESO: "10,00",
       }),
-      importFixtureLine({ ADU: "56", MONEDA: "141" }),
+      importFixtureLine({ ADU: "56", MONEDA: "141", PTO_DESEM: "825" }),
     ].join("\n"),
   );
 
@@ -155,6 +155,24 @@ test("preflights a compatible import working file without database writes", asyn
   assert.ok(
     report.candidates[0]?.sample.observedRiskCodes.some(
       (risk) => risk.field === "ADU" && risk.code === "56",
+    ),
+  );
+  assert.ok(
+    report.candidates[0]?.sample.observedRiskCodes.some(
+      (risk) =>
+        risk.field === "ADU" &&
+        risk.code === "56" &&
+        risk.risk.includes("evidencia oficial"),
+    ),
+  );
+  assert.ok(
+    report.candidates[0]?.sample.observedRiskCodes.some(
+      (risk) => risk.field === "PTO_DESEM" && risk.code === "825",
+    ),
+  );
+  assert.ok(
+    report.candidates[0]?.sample.observedRiskCodes.some(
+      (risk) => risk.field === "MONEDA" && risk.code === "141",
     ),
   );
 });

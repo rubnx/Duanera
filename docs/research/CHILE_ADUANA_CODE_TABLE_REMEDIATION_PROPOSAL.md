@@ -1,18 +1,20 @@
 # Chile Aduana Code-Table Remediation Proposal
 
 Date prepared: 2026-06-01
+Latest evidence update: 2026-06-02
 
-Scope: March 2026 dev data only. This note records evidence and the reviewed dev-only port remediation for the remaining `/data-quality/load-readiness` code-table blocker. It does not approve a schema change, new trade-data load, migration, pruning pass, R2 upload, production promotion, or unresolved Aduana/currency code-table mutation.
+Scope: March and April 2026 dev data. This note records evidence and the reviewed dev-only port remediation for the `/data-quality/load-readiness` code-table blocker. It does not approve a schema change, new trade-data load, migration, pruning pass, R2 upload, production promotion, or code-table mutation without a separate reviewed remediation pass.
 
 ## Summary
 
-The current load-readiness no-go signal is correctly narrowed to evidence-backed dictionary gaps, not parser failure or data loss.
+The current load-readiness no-go signal is correctly narrowed to dictionary gaps, not parser failure or data loss.
 
-- Aduana code `56` appears in 644 March 2026 trade records: 501 import records and 143 export records. The current workbook-backed `chile_aduana:aduanas` dictionary does not decode it.
+- Aduana code `56` appears in 1,327 March+April 2026 trade records: 958 import records and 369 export records. The current workbook-backed `chile_aduana:aduanas` dictionary does not decode it. The live Aduana Anexo 51 page now provides exact official evidence: `ARAUCANÍA 56`.
 - Nonzero port gaps were small but commercially visible: 61 import disembark-port records and 24 export embark-port records. A 2026-06-01 evidence pass found official Anexo 51-11 update evidence for the nonzero port gaps, and a reviewed dev-only remediation inserted the 11 verified `chile_aduana:puertos` rows.
+- April 2026 adds port code `825` as a high-priority relevant-port gap: 1 import record and 1 export record. BCN Resolución Exenta 2222 evidence confirms `825` as Aeródromo La Araucanía.
 - DUS export port code `0` and transport code `0` remain source-special/null style values and should not be treated as dictionary gaps.
 - DIN import `grossWeightItem` remains an expected source limitation: March 2026 DIN has `TOT_PESO` total gross weight, but no confirmed item-level gross-weight field.
-- Import `MONEDA` has 8 medium-priority undecoded values (`141`, `145`, `147`) that need separate evidence before currency decoding changes.
+- Import `MONEDA` has 11 medium-priority March+April undecoded values (`141`, `145`, `147`, `149`, `157`). The live Aduana Anexo 51-20 page gives exact official labels, but these rows have not been inserted into `code_tables`.
 
 ## Evidence Classes
 
@@ -26,15 +28,16 @@ Use these classes before any future mutation:
 | Source-special/current-source code | The code represents a null/special source value in context, not a normal lookup gap. | Keep excluded from actionable gap counts. |
 | Needs manual official evidence | Transactional context suggests a label, but no exact trusted mapping was found. | Do not mutate. Gather official dictionary/source proof. |
 
-## Current March 2026 Gaps
+## Current March+April 2026 Gaps
 
 | Field | Codes | Affected records | Evidence status | Recommendation |
 | --- | --- | ---: | --- | --- |
-| Aduana import/export | `56` | 644 total | Needs manual official evidence | Do not decode yet. Find exact current Aduana code-table evidence for aduana `56`. Transactional records often pair export code `56` with raw embark glosa `PINO HACHADO(LIUCURA`, but an older official Aduana resolution maps Liucura/Pino Hachado to code `64`, not `56`, so this is not safe to mutate. |
+| Aduana import/export | `56` | 1,327 total | Official label found | Prepare a separate reviewed code-table remediation for `chile_aduana:aduanas` code `56` -> `Araucanía`. The source records should continue to display code `56` until that mutation is explicitly reviewed and applied. |
 | Import disembark port | `817`, `818`, `819`, `820`, `822`, `823`, `824`, `826` | 61 total | Remediated in dev from official label evidence | DIN records do not carry port glosas for these fields. `scripts/remediation/aduana-port-code-remediation.ts` inserted reviewed `chile_aduana:puertos` rows with official Anexo 51-11 update provenance metadata. |
 | Export embark port | `225`, `817`, `821`, `827` | 24 | Remediated in dev from official label evidence | DUS raw records include `PASO GUANACO SONSO`, `PUERTO CABO FROWARD`, `ESPERANZA`, and `T.GNELES NORTE`; official Anexo 51-11 update notices confirm the exact mappings, and dev now decodes these port rows. |
+| Import/export relevant port | `825` | 2 total | Official label found | Prepare a separate reviewed code-table remediation for `chile_aduana:puertos` code `825` -> `Aeródromo La Araucanía`. April export raw glosa also shows `AE.LA ARAUCANIA`, but the proposed label should come from Anexo 51-11 evidence. |
 | Export embark/disembark and transport special code | `0` | 3,132 export embark-port records; 4,602 transport records in the broad March count | Source-special/current-source code | Keep classified as source-special/null. It is often seen with service-style exports and absent glosas. |
-| Import currency | `141`, `145`, `147` | 8 | Needs manual official evidence | The values are present in raw `MONEDA`, but the current `Moneda` workbook sheet did not confirm them as currency labels. Do not borrow labels from country or operation-code tables. |
+| Import currency | `141`, `145`, `147`, `149`, `157` | 11 | Official label found | Prepare a separate reviewed code-table remediation for `chile_aduana:moneda`. Do not borrow labels from country, port, or operation-code tables; use Anexo 51-20 currency evidence only. |
 
 ## Official Port Evidence Found
 
@@ -58,6 +61,28 @@ Total evidence-backed port impact: 85 March 2026 relevant-port records. Export c
 
 Important cross-table caveat: local seeded `chile_aduana:puertos` already contains port codes `141`, `145`, and `147` for Miami, Palm Beach, and Columbres. That does not decode import `MONEDA` values `141`, `145`, or `147`; those codes remain unresolved in `chile_aduana:moneda`.
 
+## Official Aduana/Currency Evidence Found
+
+The 2026-06-02 evidence pass found exact official evidence for the remaining March+April high-priority code-table blockers and the visible medium-priority currency gaps. This is enough to prepare a separate reviewed remediation, but this pass does not mutate `code_tables`.
+
+| Code table | Code | Proposed label | March+April impact | Evidence source | Confidence |
+| --- | --- | --- | ---: | --- | --- |
+| `chile_aduana:aduanas` | `56` | Araucanía | 958 import records; 369 export records | Live Aduana Anexo 51-1 lists `ARAUCANÍA 56` and references Resolución N° 5.330 of 2025. | High: exact official code-to-label row. |
+| `chile_aduana:puertos` | `825` | Aeródromo La Araucanía | 1 import disembark-port record; 1 export embark-port record | BCN/Ley Chile Resolución Exenta 2222 says Anexo 51-11 adds Aeródromo La Araucanía code 825. April DUS raw glosa also shows `AE.LA ARAUCANIA`. | High: exact official code-to-label extract plus transactional raw glosa support. |
+| `chile_aduana:moneda` | `141` | Zloty | 4 import records | Live Aduana Anexo 51-20 lists code 141 as Zloty, abbreviation Zloty PL, country Polonia. | High: exact official code-to-label row. |
+| `chile_aduana:moneda` | `145` | Baht tailandés | 2 import records | Live Aduana Anexo 51-20 lists code 145 as Baht Tailandés, abbreviation Baht TH, country Tailandia. | High: exact official code-to-label row. |
+| `chile_aduana:moneda` | `147` | Ringgit | 2 import records | Live Aduana Anexo 51-20 lists code 147 as Ringgit, abbreviation Ringgit MY, country Malasia. | High: exact official code-to-label row. |
+| `chile_aduana:moneda` | `149` | Rupia Indonesia | 2 import records | Live Aduana Anexo 51-20 lists code 149 as Rupia Indonesia, abbreviation Rupia ID, country Indonesia. | High: exact official code-to-label row. |
+| `chile_aduana:moneda` | `157` | Leu rumano | 1 import record | Live Aduana Anexo 51-20 lists code 157 as Leu Rumano, abbreviation Leu RO, country Rumania. | High: exact official code-to-label row. |
+
+Recommended mutation scope for a future reviewed pass:
+
+- Insert/update only these seven rows: Aduana `56`, port `825`, and currency `141`, `145`, `147`, `149`, `157`.
+- Set `review_status = reviewed_official_update`.
+- Store provenance metadata with the evidence URL, evidence date, source table (`Anexo 51-1`, `Anexo 51-11`, or `Anexo 51-20`), and the local baseline workbook hash `9a06201c5b1450851ff11188457876f0ed29ac60817af2832e3d16fc972c9376`.
+- Keep the mutation dev-only, idempotent, dry-run by default, and guarded by explicit confirmation.
+- Do not include source-special DUS code `0`, cargo-type `S`, or any cross-table lookalike code in the same remediation.
+
 ## Dev Remediation Applied
 
 The reviewed port-only remediation has been applied to Neon dev.
@@ -78,10 +103,11 @@ Verification after apply:
 - Code-table summary records with undecoded codes changed from 5,944 to 5,859.
 - `/data-quality/load-readiness` remains `no-go` because Aduana code `56` is still a high-priority unresolved dictionary gap.
 
-Do not include unresolved gaps in the same remediation:
+Do not include newly reviewed gaps in the old 2026-06-01 port remediation:
 
-- `chile_aduana:aduanas` code `56`: expected impact up to 644 decoded records if exact official evidence is found later.
-- `chile_aduana:moneda` codes `141`, `145`, `147`: expected impact 8 decoded import records if exact official currency evidence is found later.
+- `chile_aduana:aduanas` code `56`: expected impact up to 1,327 decoded March+April records if a new reviewed remediation is applied.
+- `chile_aduana:puertos` code `825`: expected impact 2 decoded April records if a new reviewed remediation is applied.
+- `chile_aduana:moneda` codes `141`, `145`, `147`, `149`, `157`: expected impact 11 decoded March+April import records if a new reviewed remediation is applied.
 
 Rollback/reseed strategy:
 
@@ -91,7 +117,7 @@ Rollback/reseed strategy:
 
 ## Readiness Impact
 
-The evidence-backed port rows reduce the port portion of the code-table blocker, but `/data-quality/load-readiness` still remains `no-go`. Aduana code `56` is still the largest unresolved high-priority gap, so readiness should remain conservative until exact official aduana-code evidence is acquired or the blocker is explicitly reclassified. It may still remain `review-first` because payload retention, performance guardrails, field-mapping caveats, and medium-priority dictionary gaps are intentionally conservative before loading another dev month.
+The evidence-backed port rows reduce the March port portion of the code-table blocker, but `/data-quality/load-readiness` still remains `no-go`. After April was loaded, the remaining high-priority gaps are Aduana `56` and port `825`. Exact official evidence now exists for both, so the next step is a reviewed dev-only code-table remediation pass, not another evidence search. Readiness should remain conservative until those rows are applied and verified. It may still remain `review-first` because payload retention, performance guardrails, field-mapping caveats, and medium-priority dictionary gaps are intentionally conservative before loading another dev month.
 
 ## Evidence Notes
 
@@ -108,7 +134,9 @@ External official Aduana material checked:
 - Aduana Resolución Exenta 6915 (2014) includes a historical Aduana/pass table, but it maps Liucura/Pino Hachado to code `64`, so it does not validate March 2026 code `56`.
 - Aduana statistical compendia mention port/place names such as Puerto Cabo Froward, Paso Guanaco Sonso, Terminal Gráneles del Norte, and Pino Hachado/Liucura, but those documents are not exact current code-to-label dictionaries for the March 2026 row-level codes.
 - BCN/Ley Chile and Diario Oficial extracts for Aduana Anexo 51-11 updates provide exact port-code evidence for the March 2026 nonzero port gaps. These are suitable for a reviewed remediation proposal, not an automatic mutation.
-- Decreto 354 Exento (2025) and a vLex index entry for Resolución 5330 (2025) show official Aduana de La Araucanía activity and Anexo 1/51 updates, but they do not provide a visible exact `56` -> label mapping in the inspected public text.
+- Decreto 354 Exento (2025) and a vLex index entry for Resolución 5330 (2025) show official Aduana de La Araucanía activity and Anexo 1/51 updates. A later 2026-06-02 check of live Aduana Anexo 51 found the exact `56` -> `ARAUCANÍA` row.
+- BCN/Ley Chile Resolución Exenta 2222 provides exact Anexo 51-11 evidence for port `825` -> `Aeródromo La Araucanía`.
+- Live Aduana Anexo 51-20 provides exact currency evidence for `141`, `145`, `147`, `149`, and `157`.
 
 Relevant official URLs:
 
@@ -125,12 +153,13 @@ Relevant official URLs:
 - https://www.bcn.cl/leychile/navegar?idNorma=1183791&idVersion=2022-11-04
 - https://www.bcn.cl/leychile/navegar?idNorma=1219265
 - https://vlex.cl/source/30890/c/resolucion
+- https://www.aduana.cl/compendio-de-normas-anexo-51-b/aduana/2009-11-19/163937.html
 
 ## Next Step
 
-Continue with unresolved non-port evidence:
+Continue with a reviewed remediation pass:
 
-- Acquire exact official evidence for Aduana `56`; do not infer it from transactional context or Pino Hachado/Liucura glosas.
-- Acquire exact official currency evidence for import `MONEDA` codes `141`, `145`, and `147`.
+- Prepare a dev-only, dry-run-first code-table remediation for Aduana `56`, port `825`, and currencies `141`, `145`, `147`, `149`, and `157`.
+- Do not infer any extra labels from transactional context, raw glosas, or cross-table code collisions.
 - Keep export source-special code `0` excluded from actionable code-table gaps.
-- Review whether `/data-quality/load-readiness` should remain `no-go` or be reclassified after the remaining official evidence pass.
+- Review whether `/data-quality/load-readiness` moves from `no-go` after the reviewed code-table remediation is applied and verified.
