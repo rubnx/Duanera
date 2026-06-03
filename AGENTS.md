@@ -13,7 +13,8 @@ All work must follow:
 - `docs/DATA_MODEL.md`
 - `docs/DATA_INGESTION.md`
 - `docs/FILTERING_AND_SEARCH.md`
-- `docs/UI.md`
+- `docs/DESIGN.md`
+- `docs/PUBLIC_PAGE_STYLE_GUIDE.md`
 - `docs/DECISIONS.md`
 
 If a requested change conflicts with these docs, stop and explain the conflict.
@@ -80,6 +81,12 @@ In this phase:
 - Do not hardcode the assumption that customs fact data will live in Postgres forever.
 - Keep the customs/trade query layer portable so ClickHouse can be added later.
 
+## Design documentation
+
+- Use `docs/DESIGN.md` as the primary source of truth for signed-in product UI work, including application layout, visual design, product navigation, tables, filters, detail panels, provenance UI, terminology, component behavior, and accessibility expectations.
+- Use `docs/PUBLIC_PAGE_STYLE_GUIDE.md` only for public marketing, legal, informational, pricing, support, methodology, and SEO pages.
+- Keep signed-in product styling separate from public page styling unless a future decision explicitly changes that boundary.
+
 ---
 
 ## One-shot execution mode
@@ -101,6 +108,9 @@ Do not pause for plan approval unless the work is destructive, security-sensitiv
 ## Validation scope
 
 Match validation to the risk and size of the change.
+
+After every change, verify all changes with agent-browser and fix any UI/UX issues.
+Do not stop until all changes have been verified.
 
 For small visual polish, spacing, alignment, copy-only, or icon-size changes, prefer a fast
 validation pass: the smallest relevant lint guard, one focused component test only if markup

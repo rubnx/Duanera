@@ -11,7 +11,8 @@ Read these first:
 - `docs/SPECS.md`
 - `docs/DATA_MODEL.md`
 - `docs/DATA_INGESTION.md`
-- `docs/UI.md`
+- `docs/DESIGN.md`
+- `docs/PUBLIC_PAGE_STYLE_GUIDE.md`
 - `docs/DECISIONS.md`
 
 ## Confirmed technical direction

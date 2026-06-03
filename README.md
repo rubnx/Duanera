@@ -50,7 +50,7 @@ Core docs:
 - `docs/DATA_MODEL.md`
 - `docs/DATA_INGESTION.md`
 - `docs/FILTERING_AND_SEARCH.md`
-- `docs/UI.md`
+- `docs/DESIGN.md`
 - `docs/DECISIONS.md`
 
 Supporting docs:
