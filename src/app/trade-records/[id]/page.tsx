@@ -170,7 +170,12 @@ export default async function TradeRecordDetailPage({ params }: PageProps) {
           <Card>
             <CardHeader>
               <CardTitle>Geografía y logística</CardTitle>
-              <CardDescription>Códigos decodificados cuando existe tabla oficial.</CardDescription>
+              <CardDescription>
+                Campos logísticos normalizados y decodificados cuando existe tabla
+                oficial. Compañía transportista, manifiesto, bultos, pago y almacén
+                quedan como contexto de fuente hasta una reconstrucción o modelo
+                aprobado.
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <dl className="grid gap-4 md:grid-cols-2">

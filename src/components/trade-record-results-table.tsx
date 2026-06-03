@@ -34,8 +34,10 @@ export function TradeRecordResultsTable({
           {hasCursor
             ? " desde el cursor actual."
             : ` desde posición ${result.pagination.offset}.`}
-          {" "}La columna de fuente muestra trazabilidad segura sin rutas locales,
-          claves privadas ni URLs de bucket.
+          {" "}Esta tabla muestra campos Aduana normalizados; contexto operativo
+          adicional de fuente requiere una vista de detalle o reconstrucción controlada.
+          La columna de fuente conserva trazabilidad segura sin rutas locales, claves
+          privadas ni URLs de bucket.
         </CardDescription>
       </CardHeader>
       <CardContent className="overflow-x-auto p-0">
