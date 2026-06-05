@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import "flag-icons/css/flag-icons.min.css";
 import "./globals.css";
 import { Geist } from "next/font/google";
 import { cn } from "@/lib/utils";

@@ -3,19 +3,24 @@ import type { ReactNode } from "react";
 import { TableRow } from "@/components/ui/table";
 import {
   CountryCell,
+  ChargesCell,
+  ExtendedValuesCell,
   LogisticsCell,
   ParticipantCell,
   ProductCell,
   QuantityWeightCell,
   RecordIdentityCell,
   SourceProvenanceCell,
+  UnitQuantityCell,
   ValuesCell,
+  WeightCell,
 } from "@/components/trade-record-results-row-cells";
 import { sourceTradeRecordsHref } from "@/sources/source-provenance";
 import {
   buildTradeRecordSearchHref,
   type TradeRecordDrilldownTarget,
 } from "@/trade/trade-record-links";
+import { formatTradeRecordPeriodValue } from "@/trade/trade-record-periods";
 import type { TradeRecordTableViewId } from "@/trade/trade-record-table-views";
 import type { TradeRecordSearchResponse } from "@/trade/trade-record-search";
 
@@ -52,7 +57,7 @@ export function TradeRecordResultsRow({
     importBatchId: record.importBatchId,
     tradeFlow: recordTradeFlow(record.tradeFlow),
   });
-  const period = `${record.periodYear}-${String(record.periodMonth).padStart(2, "0")}`;
+  const period = formatTradeRecordPeriodValue(record.periodYear, record.periodMonth);
   const hsFilterHref = record.hsCodeNormalized
     ? drilldownHref(params, {
         type: "hsCodePrefix",
@@ -96,7 +101,7 @@ export function TradeRecordResultsRow({
     record.tradeFlow === "export" ? record.embarkPortCode : record.disembarkPortCode;
   const portFilterHref = portCode
     ? drilldownHref(params, {
-        type: "port",
+        type: record.tradeFlow === "export" ? "embarkPort" : "disembarkPort",
         code: portCode,
       })
     : null;
@@ -112,6 +117,10 @@ export function TradeRecordResultsRow({
       />
     ),
     values: <ValuesCell key="values" record={record} />,
+    extendedValues: <ExtendedValuesCell key="extendedValues" record={record} />,
+    charges: <ChargesCell key="charges" record={record} />,
+    unitQuantity: <UnitQuantityCell key="unitQuantity" record={record} />,
+    weight: <WeightCell key="weight" record={record} />,
     quantityWeight: <QuantityWeightCell key="quantityWeight" record={record} />,
     country: (
       <CountryCell
@@ -149,6 +158,16 @@ export function TradeRecordResultsRow({
       cells.quantityWeight,
       cells.country,
       cells.logistics,
+      cells.source,
+    ],
+    values: [
+      cells.identity,
+      cells.product,
+      cells.extendedValues,
+      cells.values,
+      cells.charges,
+      cells.unitQuantity,
+      cells.weight,
       cells.source,
     ],
     logistics: [

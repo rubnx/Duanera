@@ -21,6 +21,7 @@ import {
   type DataQualityIssueSample,
 } from "@/quality/data-quality";
 import { formatIntegerEsCl } from "@/lib/format";
+import { productDisplayFromRaw } from "@/trade/trade-record-display";
 import type { TradeFlow } from "@/trade/trade-records";
 
 const formatNumber = formatIntegerEsCl;
@@ -80,7 +81,7 @@ function IssueSampleTable({ samples }: { samples: DataQualityIssueSample[] }) {
                   {formatMaybe(sample.hsCodeNormalized)} · item {formatMaybe(sample.itemNumber)}
                 </div>
                 <div className="mt-1 line-clamp-2 text-xs text-muted-foreground">
-                  {formatMaybe(sample.productDescriptionRaw)}
+                  {productDisplayFromRaw(sample.productDescriptionRaw).title}
                 </div>
               </TableCell>
               <TableCell className="align-top text-xs">

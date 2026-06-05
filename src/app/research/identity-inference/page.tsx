@@ -18,6 +18,8 @@ import {
 } from "@/research/identity-evidence";
 import { isInternalResearchEnabled } from "@/research/internal-research-access";
 import { formatIntegerEsCl } from "@/lib/format";
+import { formatTradeFlowLabel } from "@/trade/trade-flow-ui";
+import { productDisplayFromRaw } from "@/trade/trade-record-display";
 
 export const dynamic = "force-dynamic";
 
@@ -61,10 +63,6 @@ function signalTone(value: IdentityEvidenceStrength) {
   }
 
   return "border-border bg-muted/30 text-muted-foreground";
-}
-
-function flowLabel(value: "import" | "export") {
-  return value === "import" ? "Importaciones" : "Exportaciones";
 }
 
 function roleLabel(group: IdentityEvidenceGroup) {
@@ -131,7 +129,7 @@ function GroupCard({ group }: { group: IdentityEvidenceGroup }) {
                     href={`/trade-records/${record.id}`}
                     className="break-words text-sm font-medium underline-offset-4 hover:underline"
                   >
-                    {record.productDescriptionRaw ?? "Producto sin descripcion"}
+                    {productDisplayFromRaw(record.productDescriptionRaw).title}
                   </Link>
                   <div className="mt-1 flex flex-wrap gap-2 text-xs text-muted-foreground">
                     <span className="font-mono">HS {record.hsCodeNormalized ?? "—"}</span>
@@ -268,7 +266,7 @@ export default async function IdentityInferenceResearchPage({
       </section>
 
       <section className="grid gap-3 md:grid-cols-3">
-        <Metric label="Flujo revisado" value={flowLabel(tradeFlow)} />
+        <Metric label="Flujo revisado" value={formatTradeFlowLabel(tradeFlow, "plural")} />
         <Metric label="Grupos visibles" value={formatNumber(groups.length)} />
         <Metric
           label="Periodo"

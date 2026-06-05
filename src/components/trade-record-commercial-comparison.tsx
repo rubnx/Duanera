@@ -136,7 +136,7 @@ export function TradeRecordCommercialComparison({
               filterOptions={filterOptions}
               hrefFor={(row) =>
                 buildTradeRecordSearchHref(params, {
-                  type: "port",
+                  type: filters.tradeFlow === "export" ? "embarkPort" : "disembarkPort",
                   code: row.code,
                 })
               }

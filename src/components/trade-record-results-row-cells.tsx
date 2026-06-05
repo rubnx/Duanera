@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { CountryFlag } from "@/components/common/country-flag";
 import { Badge } from "@/components/ui/badge";
 import { TableCell } from "@/components/ui/table";
 import { sourceFilenameLabel } from "@/sources/source-provenance";
@@ -89,6 +90,7 @@ function itemValueForFlow(record: TradeRecordRow) {
 function countryForFlow(record: TradeRecordRow) {
   if (record.tradeFlow === "import") {
     return {
+      code: record.originCountryCode,
       label: "Origen",
       value: formatTradeCodeLabel(
         record.originCountryCode,
@@ -98,6 +100,7 @@ function countryForFlow(record: TradeRecordRow) {
   }
 
   return {
+    code: record.destinationCountryCode,
     label: "Destino",
     value: formatTradeCodeLabel(
       record.destinationCountryCode,
@@ -197,9 +200,9 @@ export function ProductCell({
             Ref. fuente: {product.sourceReference}
           </div>
         ) : null}
-        {product.details.length > 0 ? (
+        {product.description ? (
           <div className="line-clamp-2 text-xs text-muted-foreground">
-            {product.details.join(" · ")}
+            {product.description}
           </div>
         ) : null}
       </div>
@@ -252,6 +255,79 @@ export function ValuesCell({ record }: { record: TradeRecordRow }) {
   );
 }
 
+export function ExtendedValuesCell({ record }: { record: TradeRecordRow }) {
+  const itemValue = itemValueForFlow(record);
+
+  return (
+    <TableCell className="align-top">
+      <div className="flex flex-col gap-1">
+        <div className="text-xs text-muted-foreground">{itemValue.label}</div>
+        <div className="font-mono text-xs">{itemValue.value}</div>
+        <div className="text-xs text-muted-foreground">FOB declaración</div>
+        <div className="font-mono text-xs">
+          {formatTradeMoney(
+            record.declarationFobValue,
+            record.decodedLabels.currency,
+          )}
+        </div>
+        <div className="text-xs text-muted-foreground">CIF total</div>
+        <div className="font-mono text-xs">
+          {formatTradeMoney(record.cifValue, record.decodedLabels.currency)}
+        </div>
+      </div>
+    </TableCell>
+  );
+}
+
+export function ChargesCell({ record }: { record: TradeRecordRow }) {
+  return (
+    <TableCell className="align-top">
+      <div className="flex flex-col gap-1">
+        <div className="text-xs text-muted-foreground">Flete</div>
+        <div className="font-mono text-xs">
+          {formatTradeMoney(record.freightValue, record.decodedLabels.currency)}
+        </div>
+        <div className="text-xs text-muted-foreground">Seguro</div>
+        <div className="font-mono text-xs">
+          {formatTradeMoney(record.insuranceValue, record.decodedLabels.currency)}
+        </div>
+      </div>
+    </TableCell>
+  );
+}
+
+export function UnitQuantityCell({ record }: { record: TradeRecordRow }) {
+  return (
+    <TableCell className="align-top">
+      <div className="flex flex-col gap-1">
+        <div className="text-xs text-muted-foreground">Precio unitario</div>
+        <div className="font-mono text-xs">{record.unitPriceValue ?? "—"}</div>
+        <div className="text-xs text-muted-foreground">Cantidad</div>
+        <div className="font-mono text-xs">
+          {formatTradeQuantity(
+            record.quantity,
+            record.quantityUnitCode,
+            record.decodedLabels.quantityUnit,
+          )}
+        </div>
+      </div>
+    </TableCell>
+  );
+}
+
+export function WeightCell({ record }: { record: TradeRecordRow }) {
+  return (
+    <TableCell className="align-top">
+      <div className="flex flex-col gap-1">
+        <div className="text-xs text-muted-foreground">Peso bruto item</div>
+        <div className="font-mono text-xs">{record.grossWeightItem ?? "—"}</div>
+        <div className="text-xs text-muted-foreground">Peso bruto total</div>
+        <div className="font-mono text-xs">{record.grossWeightTotal ?? "—"}</div>
+      </div>
+    </TableCell>
+  );
+}
+
 export function QuantityWeightCell({ record }: { record: TradeRecordRow }) {
   return (
     <TableCell className="align-top">
@@ -285,7 +361,10 @@ export function CountryCell({
     <TableCell className="max-w-[210px] align-top whitespace-normal text-xs">
       <div className="flex flex-col gap-1">
         <div className="text-muted-foreground">{country.label}</div>
-        <div>{country.value}</div>
+        <div className="inline-flex min-w-0 items-center gap-2">
+          <CountryFlag countryCode={country.code} countryName={country.value} />
+          <span>{country.value}</span>
+        </div>
         <FilterAction href={countryFilterHref}>Filtrar país</FilterAction>
       </div>
     </TableCell>

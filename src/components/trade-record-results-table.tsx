@@ -36,6 +36,16 @@ const tableViewHeaders = {
     "Logística",
     "Fuente",
   ],
+  values: [
+    "Operación",
+    "Producto",
+    "Valor item",
+    "FOB / CIF",
+    "Flete / seguro",
+    "Precio / cantidad",
+    "Peso",
+    "Fuente",
+  ],
   logistics: [
     "Operación",
     "Logística",
@@ -66,6 +76,7 @@ const tableViewHeaders = {
 
 const tableViewMinWidths = {
   commercial: "min-w-[1320px]",
+  values: "min-w-[1280px]",
   logistics: "min-w-[1240px]",
   product: "min-w-[1220px]",
   provenance: "min-w-[1120px]",

@@ -3,6 +3,7 @@ import {
   type TradeRecordFilterOption,
   type TradeRecordFilterOptions,
 } from "@/trade/trade-record-filter-options";
+import { formatTradeRecordPeriodRangeLabel } from "@/trade/trade-record-period-labels";
 import type { TradeRecordSearchResponse } from "@/trade/trade-record-search";
 
 function optionLabel(options: TradeRecordFilterOption[], value: string | undefined) {
@@ -66,10 +67,7 @@ function activeFilterItems(
     },
     {
       label: "Período",
-      value:
-        filters.periodFrom && filters.periodTo
-          ? `${filters.periodFrom} a ${filters.periodTo}`
-          : undefined,
+      value: formatTradeRecordPeriodRangeLabel(filters.periodFrom, filters.periodTo),
     },
     { label: "HS", value: filters.hsCodePrefix },
     { label: "Producto", value: filters.productQuery },
@@ -102,8 +100,12 @@ function activeFilterItems(
       value: optionLabel(filterOptions.transportModes, filters.transportModeCode),
     },
     {
-      label: "Puerto relevante",
-      value: optionLabel(filterOptions.ports, filters.portCode),
+      label: "Puerto embarque",
+      value: optionLabel(filterOptions.ports, filters.embarkPortCode),
+    },
+    {
+      label: "Puerto desembarque",
+      value: optionLabel(filterOptions.ports, filters.disembarkPortCode),
     },
     {
       label: itemValueFilterLabel(filters),

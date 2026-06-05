@@ -11,11 +11,12 @@ import {
   sourceTradeFlowLabel,
   type SourceFlowCoverage,
 } from "@/sources/source-provenance";
+import { formatTradeRecordPeriodValue } from "@/trade/trade-record-periods";
 
 const formatNumber = formatNullableIntegerEsCl;
 
 function periodLabelForCoverage(coverage: SourceFlowCoverage) {
-  return `${coverage.periodYear}-${String(coverage.periodMonth).padStart(2, "0")}`;
+  return formatTradeRecordPeriodValue(coverage.periodYear, coverage.periodMonth);
 }
 
 export function FlowCoverageTable({ rows }: { rows: SourceFlowCoverage[] }) {

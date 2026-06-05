@@ -101,9 +101,9 @@ export function TradeRecordSearchFilters({
         <CardTitle>Filtros</CardTitle>
         <CardDescription className="break-words">
           Busca por flujo, período, partida HS, producto, etiquetas decodificadas y
-          correlativos anónimos de Aduana. Puerto relevante usa desembarque en
-          importaciones y embarque en exportaciones. Los rangos comerciales usan valor
-          CIF item en importaciones y valor FOB item en exportaciones.
+          correlativos anónimos de Aduana. Puerto embarque y puerto desembarque
+          se filtran de forma independiente. Los rangos comerciales usan valor CIF
+          item en importaciones y valor FOB item en exportaciones.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -218,10 +218,18 @@ export function TradeRecordSearchFilters({
             placeholder="Todas las vías"
           />
           <LookupSelect
-            id="port"
-            name="port"
-            label="Puerto relevante"
-            value={result.filters.portCode}
+            id="embarkPort"
+            name="embarkPort"
+            label="Puerto embarque"
+            value={result.filters.embarkPortCode}
+            options={filterOptions.ports}
+            placeholder="Todos los puertos"
+          />
+          <LookupSelect
+            id="disembarkPort"
+            name="disembarkPort"
+            label="Puerto desembarque"
+            value={result.filters.disembarkPortCode}
             options={filterOptions.ports}
             placeholder="Todos los puertos"
           />

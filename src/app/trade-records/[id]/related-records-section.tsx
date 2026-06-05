@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { CountryFlag } from "@/components/common/country-flag";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -10,13 +11,14 @@ import {
 } from "@/components/ui/card";
 import { productDisplayFromRaw } from "@/trade/trade-record-display";
 import {
-  formatTradeCodeLabel,
+  formatTradeDisplayCodeLabel,
   formatTradeMoney,
 } from "@/trade/trade-record-format";
 import {
   buildTradeRecordSearchHref,
   filtersToTradeRecordSearchParams,
 } from "@/trade/trade-record-links";
+import { formatTradeRecordPeriodValue } from "@/trade/trade-record-periods";
 import type { TradeRecordRelatedGroup } from "@/trade/trade-records";
 import type {
   TradeRecordSummary,
@@ -30,8 +32,13 @@ export type RelatedGroupWithLabels = Omit<TradeRecordRelatedGroup, "records"> & 
 
 const detailFallback = "No informado";
 
-function formatCodeLabel(code: string | null, label?: string) {
-  return formatTradeCodeLabel(code, label, detailFallback);
+function formatCountryLabel(code: string | null, label?: string) {
+  return formatTradeDisplayCodeLabel({
+    code,
+    fallback: detailFallback,
+    kind: "country",
+    label,
+  });
 }
 
 function formatMoney(value: string | null, currency?: string) {
@@ -57,13 +64,19 @@ function relatedRecordValue(record: RelatedRecord) {
 
 function relatedRecordCountry(record: RelatedRecord) {
   if (record.tradeFlow === "export") {
-    return formatCodeLabel(
-      record.destinationCountryCode,
-      record.decodedLabels.destinationCountry,
-    );
+    return {
+      code: record.destinationCountryCode,
+      name: formatCountryLabel(
+        record.destinationCountryCode,
+        record.decodedLabels.destinationCountry,
+      ),
+    };
   }
 
-  return formatCodeLabel(record.originCountryCode, record.decodedLabels.originCountry);
+  return {
+    code: record.originCountryCode,
+    name: formatCountryLabel(record.originCountryCode, record.decodedLabels.originCountry),
+  };
 }
 
 export function RelatedRecordsSection({ groups }: { groups: RelatedGroupWithLabels[] }) {
@@ -105,10 +118,11 @@ export function RelatedRecordsSection({ groups }: { groups: RelatedGroupWithLabe
                 <div className="divide-y divide-border">
                   {group.records.map((related) => {
                     const product = productDisplayFromRaw(related.productDescriptionRaw);
-                    const period = `${related.periodYear}-${String(related.periodMonth).padStart(
-                      2,
-                      "0",
-                    )}`;
+                    const country = relatedRecordCountry(related);
+                    const period = formatTradeRecordPeriodValue(
+                      related.periodYear,
+                      related.periodMonth,
+                    );
 
                     return (
                       <Link
@@ -127,7 +141,13 @@ export function RelatedRecordsSection({ groups }: { groups: RelatedGroupWithLabe
                             {product.title}
                           </div>
                           <div className="mt-1 text-xs text-muted-foreground">
-                            {relatedRecordCountry(related)}
+                            <span className="inline-flex min-w-0 items-center gap-2">
+                              <CountryFlag
+                                countryCode={country.code}
+                                countryName={country.name}
+                              />
+                              <span>{country.name}</span>
+                            </span>
                           </div>
                         </div>
                         <div className="min-w-[120px] font-mono text-xs text-muted-foreground md:text-right">

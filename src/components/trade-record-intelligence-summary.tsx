@@ -218,7 +218,7 @@ export function TradeRecordIntelligenceSummary({
             valueSuffix={valueSuffix}
             hrefFor={(item) =>
               buildTradeRecordSearchHref(params, {
-                type: "port",
+                type: filters.tradeFlow === "export" ? "embarkPort" : "disembarkPort",
                 code: item.code,
               })
             }

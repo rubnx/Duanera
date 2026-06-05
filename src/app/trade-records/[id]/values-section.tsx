@@ -10,8 +10,10 @@ import { isNonZeroDecimal } from "@/trade/trade-record-display";
 import type { TradeRecordWithLabels } from "@/trade/trade-record-labels";
 import type { TradeRecordDetail } from "@/trade/trade-records";
 import {
+  CountryDetailValue,
   DetailField,
   formatDetailCodeLabel,
+  formatDetailCountryLabel,
   formatDetailMoney,
   formatDetailQuantity,
 } from "./detail-fields";
@@ -130,9 +132,14 @@ export function TradeRecordValuesSection({ record }: { record: DetailRecord }) {
               <DetailField label="Peso bruto total" value={record.grossWeightTotal} mono />
               <DetailField
                 label="País destino"
-                value={formatDetailCodeLabel(
-                  record.destinationCountryCode,
-                  record.decodedLabels.destinationCountry,
+                value={(
+                  <CountryDetailValue
+                    countryCode={record.destinationCountryCode}
+                    countryName={formatDetailCountryLabel(
+                      record.destinationCountryCode,
+                      record.decodedLabels.destinationCountry,
+                    )}
+                  />
                 )}
               />
               <DetailField

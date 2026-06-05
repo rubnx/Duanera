@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/table";
 import { db } from "@/db/client";
 import { formatIntegerEsCl } from "@/lib/format";
+import { loadSourceCoverage, type SourceCoverageMonth } from "@/sources/source-coverage";
 import {
   listSourceProvenance,
   sourceDisplayFilename,
@@ -60,8 +61,23 @@ function Metric({ label, value }: { label: string; value: string }) {
   );
 }
 
+function coverageStatusLabel(status: SourceCoverageMonth["status"]) {
+  if (status === "complete") return "Completo";
+  if (status === "partial") return "Parcial";
+  return "Faltante";
+}
+
+function coverageStatusVariant(status: SourceCoverageMonth["status"]) {
+  if (status === "complete") return "secondary" as const;
+  if (status === "partial") return "outline" as const;
+  return "outline" as const;
+}
+
 export default async function SourcesPage() {
-  const sources = await listSourceProvenance(db);
+  const [sources, coverage] = await Promise.all([
+    listSourceProvenance(db),
+    loadSourceCoverage(db),
+  ]);
   const totals = countSummary(sources);
 
   return (
@@ -105,6 +121,86 @@ export default async function SourcesPage() {
           value={formatNumber(totals.tradeRecords)}
         />
       </section>
+
+      <Card>
+        <CardHeader className="border-b">
+          <CardTitle>Cobertura de datos</CardTitle>
+          <CardDescription>
+            Meses cargados para el Explorador desde {coverage.startPeriod} hasta{" "}
+            {coverage.endPeriod}. Los meses faltantes solo indican que todavía no
+            están cargados en esta base.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4 p-4">
+          <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            <Metric label="Meses completos" value={formatNumber(coverage.completeMonths)} />
+            <Metric label="Meses parciales" value={formatNumber(coverage.partialMonths)} />
+            <Metric label="Meses faltantes" value={formatNumber(coverage.missingMonths)} />
+            <Metric label="Meses con datos" value={formatNumber(coverage.loadedMonths)} />
+          </section>
+          <div className="overflow-x-auto">
+            <Table className="min-w-[920px]">
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Mes</TableHead>
+                  <TableHead>Estado</TableHead>
+                  <TableHead className="text-right">Importaciones</TableHead>
+                  <TableHead className="text-right">Exportaciones</TableHead>
+                  <TableHead className="text-right">Issues parseo</TableHead>
+                  <TableHead>Acciones</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {coverage.months.map((month) => (
+                  <TableRow key={month.period}>
+                    <TableCell className="font-mono text-sm">{month.period}</TableCell>
+                    <TableCell>
+                      <Badge variant={coverageStatusVariant(month.status)}>
+                        {coverageStatusLabel(month.status)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right font-mono text-xs">
+                      {formatNumber(month.importRecords)}
+                    </TableCell>
+                    <TableCell className="text-right font-mono text-xs">
+                      {formatNumber(month.exportRecords)}
+                    </TableCell>
+                    <TableCell className="text-right font-mono text-xs">
+                      {formatNumber(month.parseIssues)}
+                    </TableCell>
+                    <TableCell>
+                      {month.status === "missing" ? (
+                        <span className="text-xs text-muted-foreground">
+                          Pendiente de carga
+                        </span>
+                      ) : (
+                        <div className="flex flex-wrap gap-2 text-xs">
+                          {month.importRecords > 0 ? (
+                            <Link
+                              href={`/explorer?tradeFlow=import&periodFrom=${month.period}&periodTo=${month.period}&limit=25`}
+                              className="font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+                            >
+                              Ver importaciones
+                            </Link>
+                          ) : null}
+                          {month.exportRecords > 0 ? (
+                            <Link
+                              href={`/explorer?tradeFlow=export&periodFrom=${month.period}&periodTo=${month.period}&limit=25`}
+                              className="font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+                            >
+                              Ver exportaciones
+                            </Link>
+                          ) : null}
+                        </div>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader className="border-b">

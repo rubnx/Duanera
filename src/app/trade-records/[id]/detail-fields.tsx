@@ -1,5 +1,9 @@
+import type { ReactNode } from "react";
+
+import { CountryFlag } from "@/components/common/country-flag";
 import {
   formatTradeCodeLabel,
+  formatTradeDisplayCodeLabel,
   formatTradeMoney,
   formatTradeQuantity,
 } from "@/trade/trade-record-format";
@@ -8,6 +12,15 @@ const detailFallback = "No informado";
 
 export function formatDetailCodeLabel(code: string | null, label?: string) {
   return formatTradeCodeLabel(code, label, detailFallback);
+}
+
+export function formatDetailCountryLabel(code: string | null, label?: string) {
+  return formatTradeDisplayCodeLabel({
+    code,
+    fallback: detailFallback,
+    kind: "country",
+    label,
+  });
 }
 
 export function formatDetailMoney(value: string | null, currency?: string) {
@@ -36,7 +49,7 @@ export function DetailField({
   mono = false,
 }: {
   label: string;
-  value: string | number | null | undefined;
+  value: ReactNode;
   mono?: boolean;
 }) {
   return (
@@ -46,5 +59,20 @@ export function DetailField({
         {value ?? detailFallback}
       </dd>
     </div>
+  );
+}
+
+export function CountryDetailValue({
+  countryCode,
+  countryName,
+}: {
+  countryCode?: string | null;
+  countryName: string;
+}) {
+  return (
+    <span className="inline-flex min-w-0 items-center gap-2">
+      <CountryFlag countryCode={countryCode} countryName={countryName} />
+      <span>{countryName}</span>
+    </span>
   );
 }

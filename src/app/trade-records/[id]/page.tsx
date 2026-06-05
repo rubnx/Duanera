@@ -21,14 +21,17 @@ import {
   enrichTradeRecordsWithLabels,
   type TradeRecordWithLabels,
 } from "@/trade/trade-record-labels";
+import { formatTradeRecordPeriodValue } from "@/trade/trade-record-periods";
 import {
   getTradeRecordById,
   listRelatedTradeRecords,
   type TradeRecordDetail,
 } from "@/trade/trade-records";
 import {
+  CountryDetailValue,
   DetailField,
   formatDetailCodeLabel,
+  formatDetailCountryLabel,
   formatDetailJson,
 } from "./detail-fields";
 import { ProvenancePanel } from "./provenance-panel";
@@ -88,7 +91,7 @@ export default async function TradeRecordDetailPage({ params }: PageProps) {
   }));
 
   const participant = participantLabel(record);
-  const period = `${record.periodYear}-${String(record.periodMonth).padStart(2, "0")}`;
+  const period = formatTradeRecordPeriodValue(record.periodYear, record.periodMonth);
   const product = productDisplayFromRaw(record.productDescriptionRaw);
   const productAttributes = productAttributeEntries(record.productAttributes);
 
@@ -113,7 +116,7 @@ export default async function TradeRecordDetailPage({ params }: PageProps) {
           <h1 className="max-w-5xl text-2xl font-semibold tracking-tight">
             {product.title}
           </h1>
-          {product.details.length > 0 || product.sourceReference ? (
+          {product.description || product.sourceReference ? (
             <div className="flex max-w-4xl flex-col gap-1 text-sm text-muted-foreground">
               {product.sourceReference ? (
                 <div>
@@ -121,7 +124,7 @@ export default async function TradeRecordDetailPage({ params }: PageProps) {
                   <span className="font-mono text-xs">{product.sourceReference}</span>
                 </div>
               ) : null}
-              {product.details.length > 0 ? <div>{product.details.join(" · ")}</div> : null}
+              {product.description ? <div>{product.description}</div> : null}
             </div>
           ) : null}
           <p className="max-w-4xl text-sm text-muted-foreground">
@@ -145,7 +148,7 @@ export default async function TradeRecordDetailPage({ params }: PageProps) {
                 <DetailField label="Item" value={record.itemNumber} />
                 <DetailField label="Fecha aceptación" value={record.acceptanceDate} />
                 <DetailField label={participant.label} value={participant.value} mono />
-                <DetailField label="Descripción fuente" value={record.productDescriptionRaw} />
+                <DetailField label="Descripción fuente" value={product.description ?? product.title} />
                 <DetailField
                   label="Referencia producto fuente"
                   value={product.sourceReference ?? "No informado"}
@@ -181,30 +184,50 @@ export default async function TradeRecordDetailPage({ params }: PageProps) {
               <dl className="grid gap-4 md:grid-cols-2">
                 <DetailField
                   label="País origen"
-                  value={formatDetailCodeLabel(
-                    record.originCountryCode,
-                    record.decodedLabels.originCountry,
+                  value={(
+                    <CountryDetailValue
+                      countryCode={record.originCountryCode}
+                      countryName={formatDetailCountryLabel(
+                        record.originCountryCode,
+                        record.decodedLabels.originCountry,
+                      )}
+                    />
                   )}
                 />
                 <DetailField
                   label="País adquisición"
-                  value={formatDetailCodeLabel(
-                    record.acquisitionCountryCode,
-                    record.decodedLabels.acquisitionCountry,
+                  value={(
+                    <CountryDetailValue
+                      countryCode={record.acquisitionCountryCode}
+                      countryName={formatDetailCountryLabel(
+                        record.acquisitionCountryCode,
+                        record.decodedLabels.acquisitionCountry,
+                      )}
+                    />
                   )}
                 />
                 <DetailField
                   label="País consignación"
-                  value={formatDetailCodeLabel(
-                    record.consignmentCountryCode,
-                    record.decodedLabels.consignmentCountry,
+                  value={(
+                    <CountryDetailValue
+                      countryCode={record.consignmentCountryCode}
+                      countryName={formatDetailCountryLabel(
+                        record.consignmentCountryCode,
+                        record.decodedLabels.consignmentCountry,
+                      )}
+                    />
                   )}
                 />
                 <DetailField
                   label="País destino"
-                  value={formatDetailCodeLabel(
-                    record.destinationCountryCode,
-                    record.decodedLabels.destinationCountry,
+                  value={(
+                    <CountryDetailValue
+                      countryCode={record.destinationCountryCode}
+                      countryName={formatDetailCountryLabel(
+                        record.destinationCountryCode,
+                        record.decodedLabels.destinationCountry,
+                      )}
+                    />
                   )}
                 />
                 <DetailField
