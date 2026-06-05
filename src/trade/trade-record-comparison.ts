@@ -11,7 +11,10 @@ import {
   tradeRecordRelevantPortExpression,
   tradeRecordRelevantPortLabelExpression,
 } from "@/trade/trade-record-expressions";
-import { buildTradeRecordWhere } from "@/trade/trade-record-where";
+import {
+  buildTradeRecordWhere,
+  type TradeRecordWhereOptions,
+} from "@/trade/trade-record-where";
 import type { TradeRecordFilters } from "@/trade/trade-records";
 
 export type TradeRecordComparisonRow = {
@@ -77,9 +80,10 @@ export async function compareTradeRecordGroups(
   db: DbClient,
   filters: TradeRecordFilters = {},
   limit = 6,
+  options: TradeRecordWhereOptions = {},
 ): Promise<TradeRecordComparison> {
   const rowLimit = Math.min(Math.max(Math.trunc(limit), 1), 10);
-  const where = buildTradeRecordWhere(filters) ?? sql`true`;
+  const where = buildTradeRecordWhere(filters, options) ?? sql`true`;
   const itemValue = tradeRecordItemValueExpression(filters);
   const countryCode = tradeRecordCountryExpression(filters);
   const portCode = tradeRecordRelevantPortExpression(filters);

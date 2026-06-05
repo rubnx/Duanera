@@ -1,5 +1,6 @@
 export const tradeRecordTableViewIds = [
   "commercial",
+  "values",
   "logistics",
   "product",
   "provenance",
@@ -19,10 +20,17 @@ export type TradeRecordTableView = {
 export const tradeRecordTableViews: TradeRecordTableView[] = [
   {
     id: "commercial",
-    label: "Comercial",
-    shortLabel: "Comercial",
+    label: "Resumen comercial",
+    shortLabel: "Resumen",
     description:
-      "Lectura general de producto, valor, cantidad, país, logística y fuente.",
+      "Lectura general de producto, valor CIF/FOB, cantidad, país y logística.",
+  },
+  {
+    id: "values",
+    label: "Valores",
+    shortLabel: "Valores",
+    description:
+      "Prioriza CIF/FOB, flete, seguro, precio unitario, cantidad y pesos.",
   },
   {
     id: "logistics",
@@ -33,15 +41,15 @@ export const tradeRecordTableViews: TradeRecordTableView[] = [
   },
   {
     id: "product",
-    label: "Producto / HS",
+    label: "Producto / arancel",
     shortLabel: "Producto",
     description:
-      "Prioriza partida HS, descripción fuente, referencia producto, unidades y valores.",
+      "Prioriza partida arancelaria, descripción fuente, referencia producto, unidades y valores.",
   },
   {
     id: "provenance",
-    label: "Fuente",
-    shortLabel: "Fuente",
+    label: "Trazabilidad",
+    shortLabel: "Trazabilidad",
     description:
       "Prioriza archivo fuente, lote, parser, payload, reconstruibilidad y fila cruda.",
   },

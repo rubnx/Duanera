@@ -7,7 +7,7 @@ import {
 } from "@/trade/trade-record-format";
 import {
   spreadsheetSafeText,
-  tradeRecordExportColumnsForView,
+  tradeRecordExportColumnDefinitionsForPlan,
   tradeRecordExportIdentityWarning,
   tradeRecordExportProvenanceWarning,
   type TradeRecordExportPlan,
@@ -98,10 +98,10 @@ function addSummaryTotals(
   const valueSuffix = summaryValueSuffix(summary);
   const itemValueLabel =
     filters.tradeFlow === "export"
-      ? "Valor FOB item"
+      ? "US$ FOB"
       : filters.tradeFlow === "import"
-        ? "Valor CIF item"
-        : "Valor item CIF/FOB";
+        ? "US$ CIF"
+        : "Valor CIF/FOB";
   const rows = [
     ["Métrica", "Valor", "Nota"],
     ["Registros", formatTradeDecimal(summary.totals.records, 0), ""],
@@ -111,7 +111,7 @@ function addSummaryTotals(
       summary.totals.currencyIsMixed ? "Monedas mixtas" : "",
     ],
     [
-      "FOB declaración",
+      "US$ FOB total",
       formatTradeSummaryValue(summary.totals.declarationFobValue, valueSuffix),
       summary.totals.currencyIsMixed ? "Monedas mixtas" : "",
     ],
@@ -120,7 +120,7 @@ function addSummaryTotals(
       quantityValue(summary),
       summary.totals.quantityUnitIsMixed ? "No comparable por unidad mixta" : "",
     ],
-    ["Peso bruto item", formatTradeSummaryValue(summary.totals.grossWeightItem), ""],
+    ["Peso bruto", formatTradeSummaryValue(summary.totals.grossWeightItem), ""],
     ["Peso bruto total", formatTradeSummaryValue(summary.totals.grossWeightTotal), ""],
   ];
 
@@ -144,7 +144,7 @@ function addRankingSection(
   sheet.addRow([]);
   const titleRow = sheet.addRow([title]);
   titleRow.font = { bold: true };
-  const header = sheet.addRow(["Código", "Etiqueta", "Registros", "Valor item"]);
+  const header = sheet.addRow(["Código", "Etiqueta", "Registros", "Valor"]);
   styleHeaderRow(header);
 
   if (ranks.length === 0) {
@@ -170,7 +170,7 @@ function addRecordsSheet(
   const sheet = workbook.addWorksheet("Registros", {
     views: [{ state: "frozen", ySplit: 1 }],
   });
-  const columns = tradeRecordExportColumnsForView(plan.view);
+  const columns = tradeRecordExportColumnDefinitionsForPlan(plan);
   const values = rows.map((record) =>
     columns.map((column) => spreadsheetSafeText(column.value(record))),
   );
@@ -234,6 +234,7 @@ function addTraceabilitySheet(workbook: ExcelJS.Workbook, plan: TradeRecordExpor
         : String(plan.estimatedRows),
     ],
     ["Tope de filas", String(plan.rowCap)],
+    ["Columnas exportadas", plan.columns.map((column) => column.label).join(" | ")],
     ["Exportación permitida", plan.allowed ? "Sí" : "No"],
     ["Filtros aplicados", plan.appliedFilters.join(" | ")],
     ["Advertencia identidad", tradeRecordExportIdentityWarning],

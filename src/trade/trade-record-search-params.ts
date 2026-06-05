@@ -1,8 +1,10 @@
 import { normalizeUuid } from "@/lib/ids";
+import { normalizePublicSearchText } from "@/text/public-text";
 import {
   decodeTradeRecordCursor,
   type TradeFlow,
   type TradeRecordFilters,
+  type TradeRecordLogisticsRole,
   type TradeRecordSort,
 } from "@/trade/trade-records";
 
@@ -32,9 +34,33 @@ function valueFor(input: TradeRecordSearchInput, key: string): string | undefine
   return value;
 }
 
+function valuesFor(input: TradeRecordSearchInput, key: string): string[] {
+  if (input instanceof URLSearchParams) {
+    return input.getAll(key);
+  }
+
+  const value = input[key];
+  if (Array.isArray(value)) {
+    return value;
+  }
+
+  return value ? [value] : [];
+}
+
 function text(input: TradeRecordSearchInput, key: string): string | undefined {
   const value = valueFor(input, key)?.trim();
   return value ? value : undefined;
+}
+
+function productSearchQuery(input: TradeRecordSearchInput): string | undefined {
+  const value = text(input, "q");
+  if (!value) {
+    return undefined;
+  }
+
+  const normalized = normalizePublicSearchText(value);
+
+  return normalized || undefined;
 }
 
 function codeLookup(input: TradeRecordSearchInput, key: string): string | undefined {
@@ -43,8 +69,34 @@ function codeLookup(input: TradeRecordSearchInput, key: string): string | undefi
     return undefined;
   }
 
+  return codeFromLookupValue(value);
+}
+
+function codeFromLookupValue(value: string): string {
   const displayValueMatch = /^([A-Za-z0-9_-]+)\s*[·-]\s+/.exec(value);
   return displayValueMatch?.[1] ?? value;
+}
+
+function codeListLookup(input: TradeRecordSearchInput, key: string): string[] | undefined {
+  const codes: string[] = [];
+  const seen = new Set<string>();
+
+  for (const value of valuesFor(input, key)) {
+    for (const fragment of value.split(",")) {
+      const trimmed = fragment.trim();
+      if (!trimmed) {
+        continue;
+      }
+
+      const code = codeFromLookupValue(trimmed);
+      if (!seen.has(code)) {
+        codes.push(code);
+        seen.add(code);
+      }
+    }
+  }
+
+  return codes.length > 0 ? codes : undefined;
 }
 
 function positiveInteger(input: TradeRecordSearchInput, key: string): number | undefined {
@@ -144,6 +196,19 @@ function tradeRecordSort(input: TradeRecordSearchInput): TradeRecordSort | undef
   return value as TradeRecordSort;
 }
 
+function logisticsRole(input: TradeRecordSearchInput): TradeRecordLogisticsRole | undefined {
+  const value = text(input, "logisticsRole");
+  if (!value) {
+    return undefined;
+  }
+
+  if (value !== "issuer" && value !== "carrier") {
+    throw new TradeRecordSearchError("logisticsRole must be issuer or carrier.");
+  }
+
+  return value;
+}
+
 function period(input: TradeRecordSearchInput, key: "periodFrom" | "periodTo") {
   const value = text(input, key);
   if (!value) {
@@ -180,6 +245,8 @@ export function parseTradeRecordSearchParams(
   const afterCursor = cursor(input);
   const hasOffsetParam = text(input, "offset") !== undefined;
   const offset = nonNegativeInteger(input, "offset");
+  const originCountryCodes = codeListLookup(input, "originCountry");
+  const destinationCountryCodes = codeListLookup(input, "destinationCountry");
 
   if (afterCursor && hasOffsetParam) {
     throw new TradeRecordSearchError("Use either after or offset, not both.");
@@ -192,14 +259,20 @@ export function parseTradeRecordSearchParams(
     periodFrom: period(input, "periodFrom"),
     periodTo: period(input, "periodTo"),
     hsCodePrefix: text(input, "hsCodePrefix"),
-    productQuery: text(input, "q"),
+    productQuery: productSearchQuery(input),
     importerCorrelativeId: text(input, "importer"),
     exporterCorrelativeId: text(input, "exporter"),
-    originCountryCode: codeLookup(input, "originCountry"),
-    destinationCountryCode: codeLookup(input, "destinationCountry"),
+    originCountryCode: originCountryCodes?.[0],
+    originCountryCodes,
+    destinationCountryCode: destinationCountryCodes?.[0],
+    destinationCountryCodes,
     customsOfficeCode: codeLookup(input, "customsOffice"),
     transportModeCode: codeLookup(input, "transportMode"),
-    portCode: codeLookup(input, "port"),
+    embarkPortCode: codeLookup(input, "embarkPort"),
+    disembarkPortCode: codeLookup(input, "disembarkPort"),
+    cargoTypeCode: codeLookup(input, "cargoType"),
+    logisticsPartyId: uuid(input, "logisticsParty"),
+    logisticsRole: logisticsRole(input),
     minItemValue: decimal(input, "minItemValue"),
     maxItemValue: decimal(input, "maxItemValue"),
     minDeclarationFob: decimal(input, "minDeclarationFob"),
@@ -255,6 +328,8 @@ export function parseTradeRecordSearchParams(
       filters.productQuery ||
       filters.importerCorrelativeId ||
       filters.exporterCorrelativeId ||
+      filters.logisticsPartyId ||
+      filters.logisticsRole ||
       filters.sourceFileId ||
       filters.importBatchId ||
       hasRangeFilter ||

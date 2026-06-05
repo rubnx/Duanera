@@ -4,12 +4,13 @@ import type {
   TradeRecordRelatedGroupDefinition,
   TradeRecordSummary,
 } from "./trade-records";
+import { formatTradeRecordPeriodValue } from "./trade-record-periods";
 
 function exactPeriodFilters(record: TradeRecordSummary): Pick<
   TradeRecordFilters,
   "periodFrom" | "periodTo"
 > {
-  const period = `${record.periodYear}-${String(record.periodMonth).padStart(2, "0")}`;
+  const period = formatTradeRecordPeriodValue(record.periodYear, record.periodMonth);
   return {
     periodFrom: period,
     periodTo: period,
@@ -33,13 +34,16 @@ function countryFilterForRecord(record: TradeRecordSummary): Pick<
 
 function relevantPortFilterForRecord(record: TradeRecordSummary): Pick<
   TradeRecordFilters,
-  "portCode"
+  "embarkPortCode" | "disembarkPortCode"
 > {
+  if (record.tradeFlow === "export") {
+    return {
+      embarkPortCode: record.embarkPortCode ?? undefined,
+    };
+  }
+
   return {
-    portCode:
-      record.tradeFlow === "export"
-        ? record.embarkPortCode ?? undefined
-        : record.disembarkPortCode ?? undefined,
+    disembarkPortCode: record.disembarkPortCode ?? undefined,
   };
 }
 
@@ -145,7 +149,7 @@ export function buildTradeRecordRelatedGroupDefinitions(
           },
         ]
       : []),
-    ...(relevantPort.portCode
+    ...(relevantPort.embarkPortCode || relevantPort.disembarkPortCode
       ? [
           {
             key: "same_relevant_port" as const,

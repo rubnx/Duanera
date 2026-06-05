@@ -14,16 +14,93 @@ import {
 import type { TradeFlow, TradeRecordFilters } from "@/trade/trade-records";
 import { hasTradeRecordRangeFilters } from "@/trade/trade-record-where";
 
-function hasRawOrderedIncompatibleFilters(filters: TradeRecordFilters): boolean {
+export function hasRawOrderedIncompatibleFilters(filters: TradeRecordFilters): boolean {
   return Boolean(
     filters.productQuery ||
       filters.importerCorrelativeId ||
       filters.exporterCorrelativeId ||
+      filters.logisticsPartyId ||
+      filters.logisticsRole ||
       filters.sourceFileId ||
       filters.importBatchId ||
       hasTradeRecordRangeFilters(filters) ||
       (filters.sort && filters.sort !== "source"),
   );
+}
+
+export type RawOrderedListSegment = {
+  tradeFlow: TradeFlow;
+  year: number;
+  month: number;
+  value: string;
+};
+
+function formatSegmentPeriod(year: number, month: number) {
+  return `${year}-${String(month).padStart(2, "0")}`;
+}
+
+function segmentPeriodRange(filters: TradeRecordFilters) {
+  if (filters.periodYear && filters.periodMonth) {
+    return {
+      from: { year: filters.periodYear, month: filters.periodMonth },
+      to: { year: filters.periodYear, month: filters.periodMonth },
+    };
+  }
+
+  if (!filters.periodFrom || !filters.periodTo) {
+    return undefined;
+  }
+
+  const from = parseTradeRecordPeriod(filters.periodFrom);
+  const to = parseTradeRecordPeriod(filters.periodTo);
+
+  if (from.value > to.value) {
+    return undefined;
+  }
+
+  return {
+    from: { year: from.year, month: from.month },
+    to: { year: to.year, month: to.month },
+  };
+}
+
+export function sourceOrderedRawListSegments(
+  filters: TradeRecordFilters,
+): RawOrderedListSegment[] {
+  if (hasRawOrderedIncompatibleFilters(filters)) {
+    return [];
+  }
+
+  const range = segmentPeriodRange(filters);
+  if (!range) {
+    return [];
+  }
+
+  const flows: TradeFlow[] = filters.tradeFlow ? [filters.tradeFlow] : ["export", "import"];
+  const segments: RawOrderedListSegment[] = [];
+
+  for (let year = range.to.year, month = range.to.month; ; ) {
+    for (const tradeFlow of flows) {
+      segments.push({
+        tradeFlow,
+        year,
+        month,
+        value: formatSegmentPeriod(year, month),
+      });
+    }
+
+    if (year === range.from.year && month === range.from.month) {
+      break;
+    }
+
+    month -= 1;
+    if (month === 0) {
+      year -= 1;
+      month = 12;
+    }
+  }
+
+  return segments;
 }
 
 export function tradeRecordOrderBy(filters: TradeRecordFilters): SQL[] {

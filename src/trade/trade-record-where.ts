@@ -2,7 +2,7 @@ import {
   and,
   eq,
   gte,
-  ilike,
+  inArray,
   like,
   lte,
   or,
@@ -10,7 +10,12 @@ import {
   type SQL,
 } from "drizzle-orm";
 
-import { tradeRecords } from "@/db/schema";
+import {
+  sourceFiles,
+  tradeRecordLogisticsPartyLinks,
+  tradeRecords,
+} from "@/db/schema";
+import { publicSearchTerms } from "@/text/public-text";
 import {
   parseTradeRecordPeriod,
   tradeRecordItemValueExpression,
@@ -26,8 +31,61 @@ function lteDecimal(expression: SQL<string>, value: string): SQL {
   return sql`${expression} <= ${value}`;
 }
 
-export function buildTradeRecordWhere(filters: TradeRecordFilters): SQL | undefined {
+export function escapeLikePattern(value: string) {
+  return value.replace(/[\\%_]/g, (character) => `\\${character}`);
+}
+
+export const internalSourceCategories = [
+  "test",
+  "internal",
+  "qa",
+  "smoke",
+  "fixture",
+] as const;
+
+export type ProductFacingTradeRecordWhereOptions = {
+  referenceDate?: Date;
+};
+
+export type TradeRecordWhereOptions = ProductFacingTradeRecordWhereOptions & {
+  productFacing?: boolean;
+};
+
+export const productFacingCoverageStart = { year: 2021, month: 1 } as const;
+
+function periodLimitFromDate(referenceDate: Date) {
+  return {
+    year: referenceDate.getUTCFullYear(),
+    month: referenceDate.getUTCMonth() + 1,
+  };
+}
+
+export function productFacingTradeRecordWhere(
+  options: ProductFacingTradeRecordWhereOptions = {},
+): SQL {
+  const periodLimit = periodLimitFromDate(options.referenceDate ?? new Date());
+
+  return and(
+    sql`exists (
+      select 1
+      from ${sourceFiles}
+      where ${sourceFiles.id} = ${tradeRecords.sourceFileId}
+        and coalesce(lower(${sourceFiles.sourceCategory}), '') not in ('test', 'internal', 'qa', 'smoke', 'fixture')
+    )`,
+    sql`${tradeRecordPeriodTupleExpression()} >= (${productFacingCoverageStart.year}, ${productFacingCoverageStart.month})`,
+    sql`${tradeRecordPeriodTupleExpression()} <= (${periodLimit.year}, ${periodLimit.month})`,
+  )!;
+}
+
+export function buildTradeRecordWhere(
+  filters: TradeRecordFilters,
+  options: TradeRecordWhereOptions = {},
+): SQL | undefined {
   const conditions: SQL[] = [];
+
+  if (options.productFacing) {
+    conditions.push(productFacingTradeRecordWhere(options));
+  }
 
   if (filters.tradeFlow) {
     conditions.push(eq(tradeRecords.tradeFlow, filters.tradeFlow));
@@ -71,8 +129,11 @@ export function buildTradeRecordWhere(filters: TradeRecordFilters): SQL | undefi
     conditions.push(like(tradeRecords.hsCodeNormalized, `${filters.hsCodePrefix}%`));
   }
 
-  if (filters.productQuery) {
-    conditions.push(ilike(tradeRecords.productSearchText, `%${filters.productQuery}%`));
+  const productSearchTerms = publicSearchTerms(filters.productQuery);
+  for (const term of productSearchTerms) {
+    conditions.push(
+      sql`${tradeRecords.productSearchText} ilike ${`%${escapeLikePattern(term)}%`} escape '\\'`,
+    );
   }
 
   if (filters.importerCorrelativeId) {
@@ -88,12 +149,26 @@ export function buildTradeRecordWhere(filters: TradeRecordFilters): SQL | undefi
     );
   }
 
-  if (filters.originCountryCode) {
-    conditions.push(eq(tradeRecords.originCountryCode, filters.originCountryCode));
+  const originCountryCodes = filters.originCountryCodes?.length
+    ? filters.originCountryCodes
+    : filters.originCountryCode
+      ? [filters.originCountryCode]
+      : [];
+  if (originCountryCodes.length === 1) {
+    conditions.push(eq(tradeRecords.originCountryCode, originCountryCodes[0]!));
+  } else if (originCountryCodes.length > 1) {
+    conditions.push(inArray(tradeRecords.originCountryCode, originCountryCodes));
   }
 
-  if (filters.destinationCountryCode) {
-    conditions.push(eq(tradeRecords.destinationCountryCode, filters.destinationCountryCode));
+  const destinationCountryCodes = filters.destinationCountryCodes?.length
+    ? filters.destinationCountryCodes
+    : filters.destinationCountryCode
+      ? [filters.destinationCountryCode]
+      : [];
+  if (destinationCountryCodes.length === 1) {
+    conditions.push(eq(tradeRecords.destinationCountryCode, destinationCountryCodes[0]!));
+  } else if (destinationCountryCodes.length > 1) {
+    conditions.push(inArray(tradeRecords.destinationCountryCode, destinationCountryCodes));
   }
 
   if (filters.customsOfficeCode) {
@@ -104,19 +179,33 @@ export function buildTradeRecordWhere(filters: TradeRecordFilters): SQL | undefi
     conditions.push(eq(tradeRecords.transportModeCode, filters.transportModeCode));
   }
 
-  if (filters.portCode) {
-    if (filters.tradeFlow === "import") {
-      conditions.push(eq(tradeRecords.disembarkPortCode, filters.portCode));
-    } else if (filters.tradeFlow === "export") {
-      conditions.push(eq(tradeRecords.embarkPortCode, filters.portCode));
-    } else {
-      conditions.push(
-        or(
-          eq(tradeRecords.embarkPortCode, filters.portCode),
-          eq(tradeRecords.disembarkPortCode, filters.portCode),
-        )!,
-      );
-    }
+  if (filters.embarkPortCode) {
+    conditions.push(eq(tradeRecords.embarkPortCode, filters.embarkPortCode));
+  }
+
+  if (filters.disembarkPortCode) {
+    conditions.push(eq(tradeRecords.disembarkPortCode, filters.disembarkPortCode));
+  }
+
+  if (filters.cargoTypeCode) {
+    conditions.push(eq(tradeRecords.cargoTypeCode, filters.cargoTypeCode));
+  }
+
+  if (filters.logisticsPartyId || filters.logisticsRole) {
+    const partyCondition = filters.logisticsPartyId
+      ? sql`and ${tradeRecordLogisticsPartyLinks.partyId} = ${filters.logisticsPartyId}::uuid`
+      : sql``;
+    const roleCondition = filters.logisticsRole
+      ? sql`and ${tradeRecordLogisticsPartyLinks.role} = ${filters.logisticsRole}`
+      : sql``;
+
+    conditions.push(sql`exists (
+      select 1
+      from ${tradeRecordLogisticsPartyLinks}
+      where ${tradeRecordLogisticsPartyLinks.tradeRecordId} = ${tradeRecords.id}
+        ${partyCondition}
+        ${roleCondition}
+    )`);
   }
 
   const itemValue = tradeRecordItemValueExpression(filters);

@@ -18,6 +18,7 @@ import {
 import { buildTradeRecordRelatedGroupDefinitions } from "./trade-record-related-groups";
 import {
   exactMonthForRawOrderedList,
+  sourceOrderedRawListSegments,
   tradeRecordOrderBy,
 } from "./trade-record-ordering";
 import {
@@ -26,7 +27,10 @@ import {
   baseTradeRecordSummaryQuery,
   rawTradeRecordCursorWhere,
 } from "./trade-record-summary-query";
-import { buildTradeRecordWhere } from "./trade-record-where";
+import {
+  buildTradeRecordWhere,
+  type TradeRecordWhereOptions,
+} from "./trade-record-where";
 
 export {
   decodeTradeRecordCursor,
@@ -36,6 +40,7 @@ export {
 export {
   compareTradeRecordGroups,
   emptyTradeRecordComparison,
+  emptyTradeRecordSummary,
   summarizeTradeRecords,
   type TradeRecordComparison,
   type TradeRecordComparisonRow,
@@ -52,6 +57,7 @@ export type TradeRecordSort =
   | "declaration_fob_desc"
   | "quantity_desc"
   | "gross_weight_desc";
+export type TradeRecordLogisticsRole = "issuer" | "carrier";
 
 export type TradeRecordFilters = {
   tradeFlow?: TradeFlow;
@@ -64,10 +70,16 @@ export type TradeRecordFilters = {
   importerCorrelativeId?: string;
   exporterCorrelativeId?: string;
   originCountryCode?: string;
+  originCountryCodes?: string[];
   destinationCountryCode?: string;
+  destinationCountryCodes?: string[];
   customsOfficeCode?: string;
   transportModeCode?: string;
-  portCode?: string;
+  embarkPortCode?: string;
+  disembarkPortCode?: string;
+  cargoTypeCode?: string;
+  logisticsPartyId?: string;
+  logisticsRole?: TradeRecordLogisticsRole;
   minItemValue?: string;
   maxItemValue?: string;
   minDeclarationFob?: string;
@@ -100,6 +112,7 @@ export type TradeRecordSummary = {
   hsCodeRaw: string | null;
   hsCodeNormalized: string | null;
   productDescriptionRaw: string | null;
+  productAttributes: unknown;
   quantity: string | null;
   quantityUnitCode: string | null;
   grossWeightTotal: string | null;
@@ -107,6 +120,10 @@ export type TradeRecordSummary = {
   itemCifValue: string | null;
   itemFobValue: string | null;
   declarationFobValue: string | null;
+  freightValue: string | null;
+  insuranceValue: string | null;
+  cifValue: string | null;
+  unitPriceValue: string | null;
   currencyCodeRaw: string | null;
   originCountryCode: string | null;
   acquisitionCountryCode: string | null;
@@ -134,11 +151,6 @@ export type TradeRecordSummary = {
 };
 
 export type TradeRecordDetail = TradeRecordSummary & {
-  productAttributes: unknown;
-  freightValue: string | null;
-  insuranceValue: string | null;
-  cifValue: string | null;
-  unitPriceValue: string | null;
   rawText: string | null;
   rawValues: unknown | null;
   payloadStorageKind: string;
@@ -174,11 +186,14 @@ export type TradeRecordRelatedGroupDefinition = Omit<TradeRecordRelatedGroup, "r
 export async function listTradeRecords(
   db: DbClient,
   filters: TradeRecordFilters = {},
+  options: TradeRecordWhereOptions = {},
 ): Promise<TradeRecordListResult> {
   const limit = clampTradeRecordLimit(filters.limit);
   const offset = clampTradeRecordOffset(filters.offset);
-  const where = buildTradeRecordWhere(filters);
+  const where = buildTradeRecordWhere(filters, options);
   const exactRawMonth = exactMonthForRawOrderedList(filters);
+  const segmentedRawMonths =
+    !exactRawMonth && offset === 0 ? sourceOrderedRawListSegments(filters) : [];
   const usesCursor = Boolean(filters.afterCursor);
   const paginationMode = exactRawMonth && offset === 0 ? "cursor" : "offset";
 
@@ -223,7 +238,15 @@ export async function listTradeRecords(
         .orderBy(asc(rawTradeRows.rowNumber), asc(rawTradeRows.id))
         .limit(queryLimit)
         .offset(usesCursor ? 0 : offset)
-    : await baseTradeRecordSummaryQuery(db)
+    : segmentedRawMonths.length > 0
+      ? await listSegmentedRawOrderedTradeRecords(
+          db,
+          filters,
+          options,
+          segmentedRawMonths,
+          queryLimit,
+        )
+      : await baseTradeRecordSummaryQuery(db)
         .where(where)
         .orderBy(...tradeRecordOrderBy(filters))
         .limit(queryLimit)
@@ -250,16 +273,61 @@ export async function listTradeRecords(
   };
 }
 
+async function listSegmentedRawOrderedTradeRecords(
+  db: DbClient,
+  filters: TradeRecordFilters,
+  options: TradeRecordWhereOptions,
+  segments: ReturnType<typeof sourceOrderedRawListSegments>,
+  queryLimit: number,
+): Promise<TradeRecordSummary[]> {
+  const rows: TradeRecordSummary[] = [];
+
+  for (const segment of segments) {
+    const segmentFilters: TradeRecordFilters = {
+      ...filters,
+      tradeFlow: segment.tradeFlow,
+      periodFrom: segment.value,
+      periodTo: segment.value,
+      periodYear: undefined,
+      periodMonth: undefined,
+    };
+    const segmentWhere = buildTradeRecordWhere(segmentFilters, options);
+    const remaining = queryLimit - rows.length;
+
+    if (remaining <= 0) {
+      break;
+    }
+
+    const segmentRows = await baseRawOrderedTradeRecordSummaryQuery(db)
+      .where(
+        and(
+          eq(rawTradeRows.tradeFlow, segment.tradeFlow),
+          eq(rawTradeRows.periodYear, segment.year),
+          eq(rawTradeRows.periodMonth, segment.month),
+          segmentWhere,
+        ),
+      )
+      .orderBy(asc(rawTradeRows.rowNumber), asc(rawTradeRows.id))
+      .limit(remaining);
+
+    rows.push(...segmentRows);
+  }
+
+  return rows;
+}
+
 export async function getTradeRecordById(
   db: DbClient,
   id: string,
+  options: TradeRecordWhereOptions = {},
 ): Promise<TradeRecordDetail | null> {
   if (!isUuid(id)) {
     return null;
   }
 
+  const productFacingWhere = buildTradeRecordWhere({}, options);
   const rows = await baseTradeRecordDetailQuery(db)
-    .where(eq(tradeRecords.id, id))
+    .where(and(eq(tradeRecords.id, id), productFacingWhere))
     .limit(1);
 
   return rows[0] ?? null;

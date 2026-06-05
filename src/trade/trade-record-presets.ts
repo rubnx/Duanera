@@ -19,7 +19,8 @@ export type TradeRecordPresetParams = {
   importBatchId?: string;
   importer?: string;
   transportMode?: string;
-  port?: string;
+  embarkPort?: string;
+  disembarkPort?: string;
   minItemValue?: string;
   maxItemValue?: string;
   minDeclarationFob?: string;
@@ -135,10 +136,10 @@ export const tradeRecordPresets: TradeRecordPreset[] = [
     id: "los-libertadores-imports",
     category: "logistics",
     title: "Importaciones Los Libertadores",
-    description: "Puerto relevante 965 para revisar carga y aduanas asociadas.",
+    description: "Puerto de desembarque 965 para revisar carga y aduanas asociadas.",
     params: {
       tradeFlow: "import",
-      port: "965",
+      disembarkPort: "965",
       sort: "gross_weight_desc",
       limit: "25",
     },
@@ -169,7 +170,8 @@ const presetParamKeys = [
   "importer",
   "exporter",
   "transportMode",
-  "port",
+  "embarkPort",
+  "disembarkPort",
   "minItemValue",
   "maxItemValue",
   "minDeclarationFob",
@@ -251,8 +253,10 @@ function filterValueForPresetKey(
       return filters.exporterCorrelativeId;
     case "transportMode":
       return filters.transportModeCode;
-    case "port":
-      return filters.portCode;
+    case "embarkPort":
+      return filters.embarkPortCode;
+    case "disembarkPort":
+      return filters.disembarkPortCode;
     case "minItemValue":
       return filters.minItemValue;
     case "maxItemValue":

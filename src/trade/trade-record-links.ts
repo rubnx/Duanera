@@ -9,10 +9,14 @@ export type TradeRecordSearchHrefParams =
 export type TradeRecordDrilldownTarget =
   | { type: "country"; code: string; tradeFlow?: TradeFlow }
   | { type: "customsOffice"; code: string }
-  | { type: "port"; code: string }
+  | { type: "embarkPort"; code: string }
+  | { type: "disembarkPort"; code: string }
   | { type: "hsCodePrefix"; code: string }
   | { type: "importer"; code: string }
-  | { type: "exporter"; code: string };
+  | { type: "exporter"; code: string }
+  | { type: "logisticsParty"; id: string; role?: "issuer" | "carrier" };
+
+export type TradeParticipantProfileRole = "importer" | "exporter";
 
 const knownSearchKeys = [
   "tradeFlow",
@@ -30,7 +34,11 @@ const knownSearchKeys = [
   "destinationCountry",
   "customsOffice",
   "transportMode",
-  "port",
+  "embarkPort",
+  "disembarkPort",
+  "cargoType",
+  "logisticsParty",
+  "logisticsRole",
   "minItemValue",
   "maxItemValue",
   "minDeclarationFob",
@@ -46,8 +54,13 @@ const knownSearchKeys = [
   "view",
 ] as const;
 
-function firstValue(value: string | string[] | undefined) {
-  return Array.isArray(value) ? value[0] : value;
+function paramText(value: string | string[] | undefined) {
+  if (Array.isArray(value)) {
+    const joined = value.filter((item) => item.trim()).join(",");
+    return joined || undefined;
+  }
+
+  return value;
 }
 
 function readParam(
@@ -55,10 +68,11 @@ function readParam(
   key: string,
 ): string | undefined {
   if (params instanceof URLSearchParams) {
-    return params.get(key) ?? undefined;
+    const values = params.getAll(key).filter((value) => value.trim());
+    return values.length > 0 ? values.join(",") : undefined;
   }
 
-  return firstValue(params[key]);
+  return paramText(params[key]);
 }
 
 function normalizedFlow(value: string | undefined): TradeFlow | undefined {
@@ -105,8 +119,11 @@ function applyTarget(
     case "customsOffice":
       query.set("customsOffice", target.code);
       break;
-    case "port":
-      query.set("port", target.code);
+    case "embarkPort":
+      query.set("embarkPort", target.code);
+      break;
+    case "disembarkPort":
+      query.set("disembarkPort", target.code);
       break;
     case "hsCodePrefix":
       query.set("hsCodePrefix", target.code);
@@ -118,6 +135,14 @@ function applyTarget(
     case "exporter":
       query.delete("importer");
       query.set("exporter", target.code);
+      break;
+    case "logisticsParty":
+      query.set("logisticsParty", target.id);
+      if (target.role) {
+        query.set("logisticsRole", target.role);
+      } else {
+        query.delete("logisticsRole");
+      }
       break;
   }
 }
@@ -140,6 +165,17 @@ export function buildTradeRecordSearchHref(
   return text ? `/trade-records?${text}` : "/trade-records";
 }
 
+export function buildTradeParticipantProfileHref(
+  role: TradeParticipantProfileRole,
+  code: string,
+) {
+  return `/participants/${role}/${encodeURIComponent(code)}`;
+}
+
+export function buildLogisticsPartyProfileHref(id: string) {
+  return `/logistics-parties/${encodeURIComponent(id)}`;
+}
+
 export function filtersToTradeRecordSearchParams(filters: TradeRecordFilters) {
   const params: Record<string, string> = {};
 
@@ -154,11 +190,23 @@ export function filtersToTradeRecordSearchParams(filters: TradeRecordFilters) {
   if (filters.productQuery) params.q = filters.productQuery;
   if (filters.importerCorrelativeId) params.importer = filters.importerCorrelativeId;
   if (filters.exporterCorrelativeId) params.exporter = filters.exporterCorrelativeId;
-  if (filters.originCountryCode) params.originCountry = filters.originCountryCode;
-  if (filters.destinationCountryCode) params.destinationCountry = filters.destinationCountryCode;
+  if (filters.originCountryCodes?.length) {
+    params.originCountry = filters.originCountryCodes.join(",");
+  } else if (filters.originCountryCode) {
+    params.originCountry = filters.originCountryCode;
+  }
+  if (filters.destinationCountryCodes?.length) {
+    params.destinationCountry = filters.destinationCountryCodes.join(",");
+  } else if (filters.destinationCountryCode) {
+    params.destinationCountry = filters.destinationCountryCode;
+  }
   if (filters.customsOfficeCode) params.customsOffice = filters.customsOfficeCode;
   if (filters.transportModeCode) params.transportMode = filters.transportModeCode;
-  if (filters.portCode) params.port = filters.portCode;
+  if (filters.embarkPortCode) params.embarkPort = filters.embarkPortCode;
+  if (filters.disembarkPortCode) params.disembarkPort = filters.disembarkPortCode;
+  if (filters.cargoTypeCode) params.cargoType = filters.cargoTypeCode;
+  if (filters.logisticsPartyId) params.logisticsParty = filters.logisticsPartyId;
+  if (filters.logisticsRole) params.logisticsRole = filters.logisticsRole;
   if (filters.minItemValue) params.minItemValue = filters.minItemValue;
   if (filters.maxItemValue) params.maxItemValue = filters.maxItemValue;
   if (filters.minDeclarationFob) params.minDeclarationFob = filters.minDeclarationFob;
