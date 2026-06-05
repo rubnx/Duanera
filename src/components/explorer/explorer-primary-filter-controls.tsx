@@ -390,7 +390,7 @@ function LogisticsPartyTypeahead({
         ) : null}
       </div>
       {isOpen ? (
-        <div className="absolute left-0 top-[calc(100%+0.35rem)] z-50 max-h-64 w-full min-w-[18rem] overflow-y-auto rounded-ds-md border border-ds-border bg-ds-surface shadow-lg">
+        <div className="absolute left-0 top-[calc(100%+0.35rem)] z-50 max-h-64 w-full min-w-[18rem] overflow-y-auto rounded-ds-md border border-ds-border bg-ds-surface shadow-ds-md">
           {isLoading ? (
             <div className="px-3 py-2 text-ds-xs text-ds-text-muted">Buscando...</div>
           ) : visibleOptions.length > 0 ? (
@@ -597,7 +597,7 @@ function ExplorerPeriodFilterControl({
         </span>
       </button>
       {isOpen ? (
-        <div className="absolute left-0 top-[calc(100%+0.35rem)] z-50 w-[19rem] overflow-hidden rounded-ds-md border border-ds-border bg-ds-surface shadow-lg">
+        <div className="absolute left-0 top-[calc(100%+0.35rem)] z-50 w-[19rem] overflow-hidden rounded-ds-md border border-ds-border bg-ds-surface shadow-ds-md">
           {yearShortcuts.length > 0 ? (
             <div className="border-b border-ds-border-soft px-2 py-2">
               <div className="mb-1.5 text-[11px] font-semibold text-ds-text-muted">
@@ -990,7 +990,7 @@ function ExplorerAdvancedFiltersPopover({
       </button>
       <div
         className={cn(
-          "absolute left-3 top-[calc(100%+0.25rem)] z-40 w-[min(52rem,calc(100vw-3rem))] rounded-ds-md border border-ds-border bg-ds-surface p-3 shadow-lg",
+          "absolute left-3 top-[calc(100%+0.25rem)] z-40 w-[min(52rem,calc(100vw-3rem))] rounded-ds-md border border-ds-border bg-ds-surface p-3 shadow-ds-md",
           isOpen ? "block" : "hidden"
         )}
       >

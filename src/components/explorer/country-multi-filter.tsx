@@ -156,7 +156,7 @@ function CountryMultiFilter({
       </button>
 
       {isOpen ? (
-        <div className="absolute left-0 top-[calc(100%+0.35rem)] z-50 w-80 max-w-[min(20rem,calc(100vw-2rem))] overflow-hidden rounded-ds-md border border-ds-border bg-ds-surface shadow-lg">
+        <div className="absolute left-0 top-[calc(100%+0.35rem)] z-50 w-80 max-w-[min(20rem,calc(100vw-2rem))] overflow-hidden rounded-ds-md border border-ds-border bg-ds-surface shadow-ds-md">
           <div className="border-b border-ds-border-soft p-2">
             <div className="flex items-center gap-2 rounded-ds-sm border border-ds-border bg-ds-subtle px-2">
               <SearchIcon aria-hidden="true" className="size-3.5 text-ds-text-muted" />

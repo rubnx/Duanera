@@ -1,57 +1,75 @@
 :root {
-  /* Color: application surfaces */
-  --ds-bg-app: #f8fafc;
-  --ds-bg-shell: #ffffff;
-  --ds-bg-surface: #ffffff;
-  --ds-bg-muted: #f4f7fb;
-  --ds-bg-subtle: #fbfdff;
+  /* Color: application surfaces — warm neutral canvas (OKLCH) */
+  --ds-bg-app: oklch(0.984 0.003 95);
+  --ds-bg-shell: oklch(1 0 0);
+  --ds-bg-surface: oklch(1 0 0);
+  --ds-bg-muted: oklch(0.966 0.004 95);
+  --ds-bg-subtle: oklch(0.992 0.002 95);
 
-  /* Color: text */
-  --ds-text-primary: #071735;
-  --ds-text-secondary: #33476b;
-  --ds-text-muted: #6b7a99;
-  --ds-text-subtle: #8b98b3;
-  --ds-text-inverse: #ffffff;
+  /* Color: text — warm near-black ramp, tuned for WCAG AA on white */
+  --ds-text-primary: oklch(0.26 0.008 75);
+  --ds-text-secondary: oklch(0.44 0.01 75);
+  --ds-text-muted: oklch(0.53 0.012 75);
+  --ds-text-subtle: oklch(0.6 0.012 75);
+  --ds-text-inverse: oklch(1 0 0);
 
   /* Color: borders and focus */
-  --ds-border: #dce4f0;
-  --ds-border-soft: #e8eef6;
-  --ds-border-strong: #c8d4e5;
-  --ds-focus-ring: #0b5cff;
+  --ds-border: oklch(0.9 0.006 90);
+  --ds-border-soft: oklch(0.94 0.004 90);
+  --ds-border-strong: oklch(0.84 0.008 90);
+  --ds-focus-ring: oklch(0.55 0.2 260);
 
   /* Color: primary action and selection */
-  --ds-primary: #0b5cff;
-  --ds-primary-hover: #004ee6;
-  --ds-primary-active: #0042c9;
-  --ds-primary-soft: #eef4ff;
-  --ds-primary-softer: #f5f8ff;
+  --ds-primary: oklch(0.55 0.2 260);
+  --ds-primary-hover: oklch(0.49 0.21 260);
+  --ds-primary-active: oklch(0.43 0.2 260);
+  --ds-primary-soft: oklch(0.96 0.025 260);
+  --ds-primary-softer: oklch(0.98 0.014 260);
 
   /* Color: source trust, warnings, errors, and rare advanced filters */
-  --ds-success: #0f8a5f;
-  --ds-success-soft: #e8f6ef;
-  --ds-success-softer: #f2fbf7;
-  --ds-success-border: #bfe6d3;
+  --ds-success: oklch(0.52 0.12 160);
+  --ds-success-soft: oklch(0.95 0.04 160);
+  --ds-success-softer: oklch(0.98 0.02 160);
+  --ds-success-border: oklch(0.86 0.07 160);
 
-  --ds-warning: #b76b00;
-  --ds-warning-soft: #fff7e8;
-  --ds-warning-border: #f4d49b;
+  --ds-warning: oklch(0.58 0.12 65);
+  --ds-warning-soft: oklch(0.96 0.045 70);
+  --ds-warning-border: oklch(0.86 0.09 70);
 
-  --ds-danger: #c93636;
-  --ds-danger-soft: #fff0f0;
-  --ds-danger-border: #f0b8b8;
+  --ds-danger: oklch(0.53 0.19 22);
+  --ds-danger-soft: oklch(0.96 0.03 22);
+  --ds-danger-border: oklch(0.85 0.09 22);
 
-  --ds-purple: #6f2dbd;
-  --ds-purple-soft: #f3edff;
-  --ds-purple-border: #ddccff;
+  --ds-purple: oklch(0.5 0.2 300);
+  --ds-purple-soft: oklch(0.96 0.03 300);
+  --ds-purple-border: oklch(0.86 0.08 300);
+
+  /* Color: categorical data-viz palette (colorblind-aware, distinct hues) */
+  --ds-chart-1: oklch(0.58 0.18 260);
+  --ds-chart-2: oklch(0.66 0.13 185);
+  --ds-chart-3: oklch(0.74 0.15 70);
+  --ds-chart-4: oklch(0.55 0.19 300);
+  --ds-chart-5: oklch(0.62 0.19 25);
+  --ds-chart-6: oklch(0.7 0.12 215);
+
+  /* Color: sequential ramp for intensity/heat (low -> high) */
+  --ds-scale-1: oklch(0.96 0.025 260);
+  --ds-scale-2: oklch(0.89 0.06 260);
+  --ds-scale-3: oklch(0.78 0.11 260);
+  --ds-scale-4: oklch(0.66 0.16 260);
+  --ds-scale-5: oklch(0.55 0.2 260);
 
   /* Typography */
   --ds-font-sans: var(--font-geist-sans), Inter, Manrope, ui-sans-serif,
     system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --ds-font-mono: var(--font-geist-mono), "SF Mono", ui-monospace,
+    "JetBrains Mono", "Cascadia Code", Menlo, Consolas, monospace;
 
   --ds-text-xs: 12px;
   --ds-text-sm: 13px;
   --ds-text-md: 14px;
   --ds-text-lg: 16px;
+  --ds-text-lg-plus: 18px;
   --ds-text-xl: 22px;
   --ds-text-2xl: 28px;
 
@@ -81,10 +99,21 @@
   --ds-radius-lg: 12px;
   --ds-radius-xl: 16px;
 
-  /* Shadows */
-  --ds-shadow-soft: 0 4px 14px rgb(7 23 53 / 6%);
-  --ds-shadow-panel: 0 12px 40px rgb(7 23 53 / 10%);
-  --ds-shadow-focus: 0 0 0 3px rgb(11 92 255 / 16%);
+  /* Shadows / elevation levels (0 = hairline border only) */
+  --ds-shadow-xs: 0 1px 2px rgb(20 18 14 / 5%);
+  --ds-shadow-sm: 0 1px 3px rgb(20 18 14 / 6%), 0 1px 2px rgb(20 18 14 / 4%);
+  --ds-shadow-soft: 0 4px 14px rgb(20 18 14 / 7%);
+  --ds-shadow-md: 0 6px 20px rgb(20 18 14 / 9%), 0 2px 6px rgb(20 18 14 / 5%);
+  --ds-shadow-panel: 0 16px 48px rgb(20 18 14 / 12%);
+  --ds-shadow-focus: 0 0 0 3px oklch(0.55 0.2 260 / 22%);
+
+  /* Motion */
+  --ds-duration-fast: 90ms;
+  --ds-duration-base: 160ms;
+  --ds-duration-slow: 260ms;
+  --ds-ease-standard: cubic-bezier(0.16, 1, 0.3, 1);
+  --ds-ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ds-ease-out: cubic-bezier(0, 0, 0.2, 1);
 
   /* Layout widths and fixed control dimensions */
   --ds-sidebar-width: 264px;
@@ -101,4 +130,61 @@
   --ds-icon-sm: 16px;
   --ds-icon-md: 18px;
   --ds-icon-lg: 20px;
+}
+
+/* Dark theme overrides — inert until a `.dark` class is applied on the root.
+   Keeps the product surface dark-ready without changing default light output. */
+.dark {
+  --ds-bg-app: oklch(0.2 0.006 75);
+  --ds-bg-shell: oklch(0.23 0.006 75);
+  --ds-bg-surface: oklch(0.25 0.006 75);
+  --ds-bg-muted: oklch(0.29 0.006 75);
+  --ds-bg-subtle: oklch(0.22 0.006 75);
+
+  --ds-text-primary: oklch(0.96 0.004 90);
+  --ds-text-secondary: oklch(0.8 0.006 90);
+  --ds-text-muted: oklch(0.68 0.008 90);
+  --ds-text-subtle: oklch(0.58 0.008 90);
+  --ds-text-inverse: oklch(0.2 0.006 75);
+
+  --ds-border: oklch(0.34 0.006 90);
+  --ds-border-soft: oklch(0.3 0.006 90);
+  --ds-border-strong: oklch(0.42 0.008 90);
+  --ds-focus-ring: oklch(0.65 0.18 260);
+
+  --ds-primary: oklch(0.65 0.18 260);
+  --ds-primary-hover: oklch(0.7 0.17 260);
+  --ds-primary-active: oklch(0.6 0.19 260);
+  --ds-primary-soft: oklch(0.3 0.06 260);
+  --ds-primary-softer: oklch(0.26 0.04 260);
+
+  --ds-success: oklch(0.7 0.13 160);
+  --ds-success-soft: oklch(0.3 0.05 160);
+  --ds-success-softer: oklch(0.26 0.03 160);
+  --ds-success-border: oklch(0.4 0.07 160);
+
+  --ds-warning: oklch(0.78 0.12 75);
+  --ds-warning-soft: oklch(0.32 0.05 70);
+  --ds-warning-border: oklch(0.42 0.07 70);
+
+  --ds-danger: oklch(0.68 0.17 22);
+  --ds-danger-soft: oklch(0.3 0.06 22);
+  --ds-danger-border: oklch(0.42 0.09 22);
+
+  --ds-purple: oklch(0.68 0.16 300);
+  --ds-purple-soft: oklch(0.3 0.05 300);
+  --ds-purple-border: oklch(0.42 0.08 300);
+
+  --ds-scale-1: oklch(0.3 0.05 260);
+  --ds-scale-2: oklch(0.4 0.1 260);
+  --ds-scale-3: oklch(0.52 0.15 260);
+  --ds-scale-4: oklch(0.63 0.18 260);
+  --ds-scale-5: oklch(0.72 0.17 260);
+
+  --ds-shadow-xs: 0 1px 2px rgb(0 0 0 / 40%);
+  --ds-shadow-sm: 0 1px 3px rgb(0 0 0 / 45%), 0 1px 2px rgb(0 0 0 / 35%);
+  --ds-shadow-soft: 0 4px 14px rgb(0 0 0 / 45%);
+  --ds-shadow-md: 0 6px 20px rgb(0 0 0 / 50%), 0 2px 6px rgb(0 0 0 / 40%);
+  --ds-shadow-panel: 0 16px 48px rgb(0 0 0 / 55%);
+  --ds-shadow-focus: 0 0 0 3px oklch(0.65 0.18 260 / 35%);
 }

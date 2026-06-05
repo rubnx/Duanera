@@ -113,7 +113,7 @@ function ExplorerExportPanel({
       {isOpen ? (
         <div
           id={panelId}
-          className="absolute right-0 top-[calc(100%+0.45rem)] z-50 w-[25rem] max-w-[calc(100vw-2rem)] overflow-hidden rounded-ds-md border border-ds-border bg-ds-surface shadow-lg"
+          className="absolute right-0 top-[calc(100%+0.45rem)] z-50 w-[25rem] max-w-[calc(100vw-2rem)] overflow-hidden rounded-ds-md border border-ds-border bg-ds-surface shadow-ds-md"
         >
           <div className="border-b border-ds-border-soft px-3 py-2">
             <div className="flex items-start justify-between gap-3">

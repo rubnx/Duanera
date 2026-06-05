@@ -156,7 +156,7 @@ function DataTableRow({
       aria-selected={selected || undefined}
       tabIndex={interactive && !disabled ? (tabIndex ?? 0) : tabIndex}
       className={cn(
-        "h-(--ds-table-row-height) border-ds-border-soft bg-ds-surface hover:bg-ds-primary-softer/50 data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-60 data-[interactive=true]:cursor-pointer data-[selected=true]:bg-ds-primary-softer data-[selected=true]:shadow-[inset_3px_0_0_var(--ds-primary)]",
+        "h-(--ds-table-row-height) border-ds-border-soft bg-ds-surface transition-colors duration-(--ds-duration-fast) ease-(--ds-ease-standard) hover:bg-ds-primary-softer/50 data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-60 data-[interactive=true]:cursor-pointer data-[selected=true]:bg-ds-primary-softer data-[selected=true]:shadow-[inset_3px_0_0_var(--ds-primary)]",
         interactive ? controlFocusRing : undefined,
         className
       )}
