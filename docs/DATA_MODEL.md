@@ -111,11 +111,24 @@ The current Drizzle schema implements the first provenance and sample trade foun
 - `source_files`, `import_batches`, `source_layouts`, `source_layout_fields`, and `raw_trade_rows`.
 - `code_tables` and `code_values` for official Aduana decoding metadata.
 - `source_trade_participants` for anonymous importer/exporter correlatives only.
+- `source_logistics_parties`, `source_logistics_party_aliases`, and
+  `trade_record_logistics_party_links` for Aduana transport/document parties.
 - `trade_records` as a shared import/export fact table with source-file, batch, and raw-row references.
 
 The implemented `trade_records` table intentionally stores confirmed Aduana fields only, including declaration/item identifiers, flow/period, anonymous correlatives, HS/tariff code, product text/attributes, values, quantities, weights, country/port/customs/transport codes, and parser metadata.
 
 It does not store importer/exporter legal names, importer/exporter legal RUTs, company IDs, or ClickHouse-specific dependencies.
+
+Logistics-party tables are intentionally separate from anonymous importer/exporter
+participants. They model source parties that appear in transport/document fields:
+
+- Import `GNOM_CIA_T` / export `NOMBRECIATRANSP` as `carrier`.
+- Import `NOMEMISOR` / export `NOMBREEMISORDOCTRANSP` as `issuer`.
+
+These records may represent carriers, freight forwarders, agents, or document
+issuers. They must not be presented as verified importer/exporter legal identity.
+Profile and filter queries use `trade_record_logistics_party_links` so the
+trade fact table remains source-linked and ClickHouse-ready.
 
 ## Raw Row Storage Direction
 

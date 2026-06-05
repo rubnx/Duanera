@@ -134,3 +134,27 @@
 - **Options considered**: Keep files only on local disk, use Git LFS, use generic S3, use Cloudflare R2.
 - **Why chosen**: R2 satisfies the existing S3-compatible object storage decision, avoids putting large files in Git or Postgres, supports private buckets, custom metadata, upload integrity hashes, storage classes, lifecycle rules, and S3-compatible tooling.
 - **Consequences / follow-ups**: Keep R2 buckets private by default. Do not enable public bucket access, `r2.dev`, or custom domains for source archives. SHA-256 remains Duanera's canonical checksum; do not treat multipart ETags as canonical integrity proof. Upload tooling must default to dry-run or read/list verification and require explicit confirmation before uploading. Production ingestion and database backfills require separate explicit implementation work.
+
+## 16) Product-facing Chile Aduana coverage starts at January 2021
+
+- **Decision**: The product-facing Chile Aduana Explorer coverage target starts at `2021-01` and runs through the latest available product-facing month. Do not load or expose pre-2021 Aduana files as product-facing Explorer data for now.
+- **Context**: Local DataSur research shows Chile D-Comex/Aduanas Detalladas availability from `2021-01` through `2026-04`. Official older Aduana files and local historical samples may exist, but supporting them in the product now would add parser/layout, storage, QA, and user-expectation complexity before it is needed for competitive parity.
+- **Options considered**: Load all official historical files back to the oldest available year, keep only the current 2026 months, or match the observed DataSur-style product window from `2021-01` forward.
+- **Why chosen**: Starting at `2021-01` is broad enough for a serious trade-intelligence MVP and comparable user workflows, while keeping the ingestion, storage, performance, and historical-layout risk bounded.
+- **Consequences / follow-ups**: Backfill product-facing Chile Aduana months from `2021-01` through the latest available month before older historical periods. Keep pre-2021 files as research, parser-validation, or internal evidence only unless a later decision expands product coverage. Product-facing default period discovery should continue to exclude internal/test/smoke source data.
+
+## 17) Safe multi-month exports are allowed when filtered and under the row cap
+
+- **Decision**: Explorer and trade-record XLSX/CSV exports may cover a bounded month range, not only one exact month, when the query has a trade flow, a month or month range, at least one narrowing filter, a known result count, and no more than the 500-row export cap.
+- **Context**: The first export MVP blocked every multi-month range, even when the user had narrowed the search to a tiny result. That made normal workflows like “China and India across six months for one importer and HS code” feel broken.
+- **Options considered**: Keep exact-month-only exports, allow all filtered ranges, or allow only counted filtered ranges under the existing cap.
+- **Why chosen**: Counted filtered ranges give users useful spreadsheet workflows without opening broad synchronous exports or changing production export permissions.
+- **Consequences / follow-ups**: Broad exports, missing-period exports, empty results, invalid column selections, and results above 500 rows remain blocked. Larger async exports, quotas, saved export history, and billing/permission policy remain future work.
+
+## 18) Aduana logistics/document parties get separate profiles
+
+- **Decision**: Model Aduana transport/document parties as `Entidad logística` profiles, separate from anonymous importer/exporter ID profiles and separate from verified company identity. The supported roles are `issuer` for `Emisor documento transporte` and `carrier` for `Compañía de transporte`.
+- **Context**: Chile Aduana import/export main files expose transport/document fields such as `GNOM_CIA_T`, `NOMEMISOR`, `NOMBRECIATRANSP`, and `NOMBREEMISORDOCTRANSP`. These values can identify carriers, freight forwarders, agents, or transport-document issuers such as A. Hartrodt or Kuehne + Nagel, but they are not importer/exporter identity fields.
+- **Options considered**: Ignore the fields, show them only in record detail, merge them into importer/exporter/company profiles, or add a separate logistics-party model.
+- **Why chosen**: Separate logistics-party profiles create useful logistics intelligence while avoiding false commercial-identity claims. The link-table model keeps `trade_records` fact-style and portable for future ClickHouse migration.
+- **Consequences / follow-ups**: User-facing copy must say these parties appear in transport/document fields and are not verified importer/exporter identities. Full product-facing backfill should be run month by month after the dev script is optimized for larger batches. Group-level rollups and logistics-party typeahead search remain future work.

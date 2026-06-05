@@ -1,0 +1,368 @@
+/* =============================================================================
+   Duanera — Design Tokens
+   Comercio Exterior de Chile
+   v3.0
+   =============================================================================
+
+   TWO-LAYER ARCHITECTURE
+   ──────────────────────
+   Layer 1 · Primitives  — raw named values. Never reference these in components.
+   Layer 2 · Semantic    — intent-mapped aliases. Always use these in components.
+
+   USAGE
+   ──────────────────────
+   @import './tokens/tokens.css';
+
+   Then reference ONLY semantic tokens in your component CSS:
+     ✅  color: var(--color-text-primary);
+     ❌  color: var(--primitive-gray-950);
+     ❌  color: #0F0E0C;
+
+   ============================================================================= */
+
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500&display=swap');
+
+
+/* =============================================================================
+   LAYER 1 · PRIMITIVES
+   Raw values. Do not use these in components directly.
+   ============================================================================= */
+
+:root {
+
+  /* ── Primitive: Blue ──────────────────────────────────────────────────── */
+  --primitive-blue-50:   #EBF0FD;
+  --primitive-blue-100:  #D5E1FB;
+  --primitive-blue-200:  #ABBDF7;
+  --primitive-blue-600:  #1A4FE3;
+  --primitive-blue-700:  #1341CC;
+  --primitive-blue-800:  #0C3BB5;
+  --primitive-blue-900:  #082E96;
+
+  /* ── Primitive: Green ─────────────────────────────────────────────────── */
+  --primitive-green-50:  #E5F5EF;
+  --primitive-green-100: #C2E8D8;
+  --primitive-green-600: #0A7B52;
+  --primitive-green-700: #086644;
+  --primitive-green-900: #065C3D;
+
+  /* ── Primitive: Amber ─────────────────────────────────────────────────── */
+  --primitive-amber-50:  #FEF2E0;
+  --primitive-amber-100: #FDE0B0;
+  --primitive-amber-600: #A85500;
+  --primitive-amber-700: #8A4500;
+  --primitive-amber-900: #7A3E00;
+
+  /* ── Primitive: Red ───────────────────────────────────────────────────── */
+  --primitive-red-50:    #FDECEA;
+  --primitive-red-100:   #FAD0CB;
+  --primitive-red-600:   #C0291A;
+  --primitive-red-700:   #A32215;
+  --primitive-red-900:   #8F1D12;
+
+  /* ── Primitive: Gray (warm) ───────────────────────────────────────────── */
+  --primitive-gray-0:    #FFFFFF;
+  --primitive-gray-50:   #F5F4F0;
+  --primitive-gray-100:  #EEEDE9;
+  --primitive-gray-200:  #E4E3DF;
+  --primitive-gray-300:  #D0CFC9;
+  --primitive-gray-400:  #B8B6B0;
+  --primitive-gray-500:  #9B9894;
+  --primitive-gray-600:  #7A7874;
+  --primitive-gray-700:  #5C5A56;
+  --primitive-gray-800:  #3D3C39;
+  --primitive-gray-950:  #0F0E0C;
+
+  /* ── Primitive: Brand ─────────────────────────────────────────────────── */
+  --primitive-chile-red:  #D52B1E;
+  --primitive-chile-blue: #003580;
+  --primitive-chile-white:#FFFFFF;
+
+  /* ── Primitive: Typography ────────────────────────────────────────────── */
+  --primitive-font-sans:  'DM Sans', system-ui, -apple-system, sans-serif;
+  --primitive-font-mono:  'DM Mono', 'Courier New', monospace;
+
+  /* ── Primitive: Scale ─────────────────────────────────────────────────── */
+  --primitive-size-10: 10px;
+  --primitive-size-11: 11px;
+  --primitive-size-12: 12px;
+  --primitive-size-13: 13px;
+  --primitive-size-14: 14px;
+  --primitive-size-17: 17px;
+  --primitive-size-19: 19px;
+  --primitive-size-22: 22px;
+
+  /* ── Primitive: Space ─────────────────────────────────────────────────── */
+  --primitive-space-1:   4px;
+  --primitive-space-2:   8px;
+  --primitive-space-3:  12px;
+  --primitive-space-4:  16px;
+  --primitive-space-5:  20px;
+  --primitive-space-6:  24px;
+  --primitive-space-8:  32px;
+  --primitive-space-10: 40px;
+  --primitive-space-12: 48px;
+  --primitive-space-16: 64px;
+
+  /* ── Primitive: Radius ────────────────────────────────────────────────── */
+  --primitive-radius-1:    4px;
+  --primitive-radius-2:    8px;
+  --primitive-radius-3:   12px;
+  --primitive-radius-full: 999px;
+
+  /* ── Primitive: Shadow ────────────────────────────────────────────────── */
+  --primitive-shadow-sm:
+    0 1px 3px rgba(0, 0, 0, 0.05),
+    0 1px 2px rgba(0, 0, 0, 0.03);
+  --primitive-shadow-md:
+    0 4px 12px rgba(0, 0, 0, 0.07),
+    0 2px 4px  rgba(0, 0, 0, 0.03);
+
+  /* ── Primitive: Border ────────────────────────────────────────────────── */
+  --primitive-border-light:  rgba(0, 0, 0, 0.09);
+  --primitive-border-medium: rgba(0, 0, 0, 0.16);
+
+  /* ── Primitive: Motion ────────────────────────────────────────────────── */
+  --primitive-duration-fast:   80ms;
+  --primitive-duration-base:  150ms;
+  --primitive-duration-slow:  250ms;
+  --primitive-ease-default:   cubic-bezier(0.16, 1, 0.3, 1);
+  --primitive-ease-in:        cubic-bezier(0.4, 0, 1, 1);
+  --primitive-ease-out:       cubic-bezier(0, 0, 0.2, 1);
+
+}
+
+
+/* =============================================================================
+   LAYER 2 · SEMANTIC TOKENS
+   Intent-mapped aliases. Always use these in component CSS.
+   ============================================================================= */
+
+:root {
+
+  /* ── Color: Surfaces ──────────────────────────────────────────────────── */
+  --color-bg-page:          var(--primitive-gray-50);    /* F5F4F0 — page canvas */
+  --color-bg-surface:       var(--primitive-gray-0);     /* FFFFFF — cards, panels, inputs, nav */
+  --color-bg-subtle:        var(--primitive-gray-100);   /* EEEDE9 — secondary fills, icon circles */
+  --color-bg-accent:        var(--primitive-blue-50);    /* EBF0FD — active rows, chip fills */
+  --color-bg-success:       var(--primitive-green-50);   /* E5F5EF — verified badges */
+  --color-bg-warning:       var(--primitive-amber-50);   /* FEF2E0 — review alerts */
+  --color-bg-danger:        var(--primitive-red-50);     /* FDECEA — error states */
+  --color-bg-neutral:       var(--primitive-gray-100);   /* EEEDE9 — neutral badges */
+
+  /* ── Color: Text ──────────────────────────────────────────────────────── */
+  --color-text-primary:     var(--primitive-gray-950);   /* 0F0E0C — headings, body */
+  --color-text-secondary:   var(--primitive-gray-700);   /* 5C5A56 — supporting text, nav items */
+  --color-text-muted:       var(--primitive-gray-500);   /* 9B9894 — placeholders, labels */
+  --color-text-accent:      var(--primitive-blue-600);   /* 1A4FE3 — links, active states */
+  --color-text-accent-on-bg:var(--primitive-blue-800);   /* 0C3BB5 — text on accent-bg */
+  --color-text-success:     var(--primitive-green-900);  /* 065C3D — text on success-bg */
+  --color-text-warning:     var(--primitive-amber-900);  /* 7A3E00 — text on warning-bg */
+  --color-text-danger:      var(--primitive-red-900);    /* 8F1D12 — text on danger-bg */
+  --color-text-on-accent:   var(--primitive-gray-0);     /* FFFFFF — text on accent fill */
+
+  /* ── Color: Interactive ───────────────────────────────────────────────── */
+  --color-action-primary:   var(--primitive-blue-600);   /* 1A4FE3 — primary button fill */
+  --color-action-hover:     var(--primitive-blue-700);   /* 1341CC — primary button hover */
+  --color-action-success:   var(--primitive-green-600);  /* 0A7B52 — success icon/indicator */
+  --color-action-warning:   var(--primitive-amber-600);  /* A85500 — warning icon/indicator */
+  --color-action-danger:    var(--primitive-red-600);    /* C0291A — danger icon/indicator */
+
+  /* ── Color: Border ────────────────────────────────────────────────────── */
+  --color-border-default:   var(--primitive-border-light);   /* dividers, row separators */
+  --color-border-strong:    var(--primitive-border-medium);  /* card edges, input borders */
+  --color-border-accent:    var(--primitive-blue-600);       /* selected row left accent */
+  --color-border-focus:     var(--primitive-blue-600);       /* focus rings */
+  --color-border-success:   rgba(10, 123, 82, 0.18);
+  --color-border-warning:   rgba(168, 85, 0, 0.18);
+  --color-border-danger:    rgba(192, 41, 26, 0.18);
+  --color-border-neutral:   rgba(0, 0, 0, 0.10);
+
+  /* ── Color: Brand ─────────────────────────────────────────────────────── */
+  --color-brand-red:        var(--primitive-chile-red);
+  --color-brand-blue:       var(--primitive-chile-blue);
+
+  /* ── Typography: Families ─────────────────────────────────────────────── */
+  --font-sans:              var(--primitive-font-sans);
+  --font-mono:              var(--primitive-font-mono);
+
+  /* ── Typography: Scale ────────────────────────────────────────────────── */
+  --text-display:           var(--primitive-size-22);    /* page titles, section headers */
+  --text-heading:           var(--primitive-size-17);    /* panel/card headers */
+  --text-subheading:        var(--primitive-size-14);    /* field groups, subsections */
+  --text-body:              var(--primitive-size-13);    /* default body copy */
+  --text-small:             var(--primitive-size-11);    /* supporting text, captions */
+  --text-mono-value:        var(--primitive-size-12);    /* IDs, HS codes, dates */
+  --text-mono-label:        var(--primitive-size-10);    /* uppercase field labels */
+  --text-mono-large:        var(--primitive-size-19);    /* prominent numeric values (CIF) */
+
+  /* ── Typography: Weight ───────────────────────────────────────────────── */
+  --font-weight-regular:    400;
+  --font-weight-medium:     500;
+  /* Never use 600 or 700 in this system */
+
+  /* ── Typography: Leading ──────────────────────────────────────────────── */
+  --line-height-tight:      1.3;   /* compact UI labels, badges */
+  --line-height-default:    1.5;   /* general UI */
+  --line-height-body:       1.55;  /* body copy */
+  --line-height-mono:       1.4;   /* mono labels and values */
+  --line-height-code:       1.7;   /* code blocks */
+
+  /* ── Typography: Tracking ─────────────────────────────────────────────── */
+  --letter-spacing-tight:   -0.02em;  /* display headings */
+  --letter-spacing-snug:    -0.015em; /* panel headings */
+  --letter-spacing-normal:   0;
+  --letter-spacing-mono:     0.01em;  /* mono values */
+  --letter-spacing-label:    0.08em;  /* uppercase mono labels */
+  --letter-spacing-caps:     0.09em;  /* extra-tight caps (nav section labels) */
+
+  /* ── Spacing ──────────────────────────────────────────────────────────── */
+  --space-1:    var(--primitive-space-1);   /* 4px  — icon gaps, tight inline */
+  --space-2:    var(--primitive-space-2);   /* 8px  — badge padding, chip gaps */
+  --space-3:    var(--primitive-space-3);   /* 12px — button padding, row gaps */
+  --space-4:    var(--primitive-space-4);   /* 16px — card padding */
+  --space-5:    var(--primitive-space-5);   /* 20px — panel padding */
+  --space-6:    var(--primitive-space-6);   /* 24px — between component groups */
+  --space-8:    var(--primitive-space-8);   /* 32px — section vertical rhythm */
+  --space-10:   var(--primitive-space-10);  /* 40px — large section gaps */
+  --space-12:   var(--primitive-space-12);  /* 48px — between major page sections */
+  --space-16:   var(--primitive-space-16);  /* 64px — page top padding */
+
+  /* ── Radius ───────────────────────────────────────────────────────────── */
+  --radius-sm:   var(--primitive-radius-1);   /* 4px  — nav items, tight tags */
+  --radius-md:   var(--primitive-radius-2);   /* 8px  — inputs, buttons, small cards */
+  --radius-lg:   var(--primitive-radius-3);   /* 12px — cards, panels, table shells */
+  --radius-pill: var(--primitive-radius-full);/* 999px — badges, chips */
+
+  /* ── Elevation ────────────────────────────────────────────────────────── */
+  /* level-0 = no shadow; use 0.5px border var(--color-border-strong) */
+  --shadow-sm:  var(--primitive-shadow-sm);  /* tables, toolbars */
+  --shadow-md:  var(--primitive-shadow-md);  /* panels, modals, dropdowns */
+
+  /* ── Motion ───────────────────────────────────────────────────────────── */
+  --duration-fast:   var(--primitive-duration-fast);   /* 80ms  — micro-interactions */
+  --duration-base:   var(--primitive-duration-base);   /* 150ms — default transitions */
+  --duration-slow:   var(--primitive-duration-slow);   /* 250ms — panel slides */
+  --ease-default:    var(--primitive-ease-default);
+  --ease-in:         var(--primitive-ease-in);
+  --ease-out:        var(--primitive-ease-out);
+
+  /* ── Component composites ─────────────────────────────────────────────── */
+  /* These are pre-composed values for specific components.
+     Use them to keep component CSS lean and consistent. */
+
+  /* Badge */
+  --badge-height:          22px;
+  --badge-padding-x:       var(--space-2);       /* 9px — slight asymmetry for optical balance */
+  --badge-padding-y:       3px;
+  --badge-font-size:       var(--text-small);
+  --badge-font-weight:     var(--font-weight-medium);
+  --badge-radius:          var(--radius-pill);
+
+  /* Button */
+  --btn-height-sm:         24px;
+  --btn-height-default:    30px;
+  --btn-height-lg:         36px;
+  --btn-padding-x-sm:      var(--space-2);        /* 10px */
+  --btn-padding-x-default: var(--space-3);        /* 13px */
+  --btn-padding-x-lg:      var(--space-4);        /* 16px */
+  --btn-radius:            var(--radius-md);
+  --btn-font-size-sm:      var(--text-small);
+  --btn-font-size-default: var(--text-mono-value);
+  --btn-font-size-lg:      var(--text-body);
+  --btn-transition:        opacity var(--duration-fast) var(--ease-default);
+  --btn-hover-opacity:     0.82;
+
+  /* Input */
+  --input-height:          32px;
+  --input-padding-x:       var(--space-2);        /* 10px */
+  --input-radius:          var(--radius-md);
+  --input-font-size:       var(--text-mono-value);
+  --input-border:          0.5px solid var(--color-border-strong);
+  --input-focus-ring:      2px solid var(--color-border-focus);
+
+  /* Nav */
+  --nav-width:             160px;
+  --nav-item-height:       30px;
+  --nav-item-radius:       var(--radius-sm);
+  --nav-item-font-size:    var(--text-small);
+  --nav-icon-size:         14px;
+  --nav-logo-font-size:    15px;
+
+  /* Table */
+  --table-header-font-size: var(--text-mono-label);
+  --table-cell-padding-y:   8px;
+  --table-cell-padding-x:   var(--space-3);       /* 12px */
+  --table-font-size:        var(--text-mono-value);
+  --table-selected-bg:      rgba(26, 79, 227, 0.04);
+  --table-selected-border:  2px solid var(--color-border-accent);
+  --table-hover-bg:         rgba(26, 79, 227, 0.025);
+  --table-radius:           var(--radius-lg);
+
+  /* Stat card */
+  --stat-value-size:        22px;
+  --stat-value-tracking:    var(--letter-spacing-tight);
+  --stat-sub-size:          var(--text-small);
+
+  /* Panel */
+  --panel-width:            420px;
+  --panel-padding-x:        var(--space-4);       /* 16px */
+  --panel-grid-gap:         14px;
+  --panel-tab-font-size:    var(--text-small);
+  --panel-tab-border:       2px solid var(--color-border-accent);
+  --panel-cif-size:         var(--text-mono-large); /* 19px */
+
+  /* Provenance */
+  --prov-icon-size:         20px;
+  --prov-key-width:         72px;
+  --prov-font-size:         var(--text-small);
+
+  /* Pagination */
+  --pg-size:                24px;
+  --pg-font-size:           var(--text-small);
+  --pg-radius:              var(--radius-sm);
+
+  /* Chip / filter */
+  --chip-height:            26px;
+  --chip-padding-x:         var(--space-2);       /* 10px */
+  --chip-radius:            var(--radius-pill);
+  --chip-font-size:         var(--text-small);
+
+  /* Checkbox */
+  --checkbox-size:          13px;
+  --checkbox-radius:        3px;
+
+  /* Alert strip */
+  --alert-strip-padding:    8px 12px;
+  --alert-strip-radius:     var(--radius-md);
+
+}
+
+
+/* =============================================================================
+   BASE
+   Global resets and body defaults.
+   ============================================================================= */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family:              var(--font-sans);
+  font-size:                var(--text-body);
+  font-weight:              var(--font-weight-regular);
+  line-height:              var(--line-height-default);
+  color:                    var(--color-text-primary);
+  background-color:         var(--color-bg-page);
+  -webkit-font-smoothing:   antialiased;
+  -moz-osx-font-smoothing:  grayscale;
+}
+
+/* Focus-visible ring: applies to all interactive elements automatically */
+:focus-visible {
+  outline: var(--input-focus-ring);
+  outline-offset: 0;
+}

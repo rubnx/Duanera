@@ -58,6 +58,7 @@ Provisional filter groups:
 - port
 - customs office
 - transport mode
+- logistics party
 - declared value range
 - CIF value range
 - FOB value range
@@ -185,10 +186,18 @@ type TradeSearchFilters = {
   destinationCountryCode?: string;
   minValueUsd?: number;
   maxValueUsd?: number;
+  logisticsPartyId?: string;
+  logisticsRole?: "issuer" | "carrier";
 };
 ```
 
 The service decides how to translate this into Postgres or ClickHouse queries.
+
+`logisticsPartyId` filters records where an Aduana transport/document party
+appears in `trade_record_logistics_party_links`. `logisticsRole` optionally
+restricts that filter to `issuer` (`Emisor documento transporte`) or `carrier`
+(`Compañía de transporte`). This filter is distinct from importer/exporter ID
+filters and must not imply legal commercial identity.
 
 ---
 

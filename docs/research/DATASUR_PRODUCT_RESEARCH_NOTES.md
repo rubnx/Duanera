@@ -12,6 +12,12 @@ Scope: local-only review of `docs/research/datasur-research/`. No DataSur scrapi
 
 The screenshots and sample files should be treated as competitive/product research only. Do not copy DataSur UI, wording, design, or proprietary structure directly.
 
+## Observed Chile Coverage
+
+One reviewed DataSur source-catalog screenshot shows Chile D-Comex/Aduanas Detalladas availability from `2021-01` through `2026-04`.
+
+For product parity, the current product-facing Chile Aduana coverage target starts at `2021-01` and runs through the latest available month. Older official Aduana files may exist and remain useful for research or parser validation, but they are not part of the product-facing Explorer coverage target for now.
+
 ## Export Shape Observations
 
 The CSV begins with report metadata before the row table:

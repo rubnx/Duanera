@@ -70,7 +70,8 @@ Trigger this phase only when needed.
 
 ## Phase 5: Expansion
 
-- Add more Chile datasets or historical periods.
+- Complete product-facing Chile Aduana historical coverage from `2021-01` through the latest available month before older historical periods.
+- Add more Chile datasets after the current Aduana coverage window is reliable.
 - Add additional Latin American countries.
 - Add global/macro trade sources if useful.
 - Add richer company intelligence.

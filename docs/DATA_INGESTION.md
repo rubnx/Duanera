@@ -79,10 +79,26 @@ Available scripts:
 - `npm run preflight:aduana-load`
 - `DUANERA_DB_TARGET=dev npm run db:load:raw-sample`
 - `DUANERA_DB_TARGET=dev npm run db:normalize:trade-sample`
+- `DUANERA_DB_TARGET=dev npm run db:backfill:logistics-parties`
 
 These scripts use the March 2026 main import/export files already preserved under `data/sources/chile-aduana/`. They load 100 rows per flow by default, preserve raw rows first, then normalize those rows into `trade_records`.
 
 They are not full ingestion. They do not import complete files, production data, legal company identities, export companion bultos, or transport-document files.
+
+The logistics-party backfill extracts `Compañía de transporte` and
+`Emisor documento transporte` appearances from normalized trade records and
+preserved raw source rows. It supports period/flow scoping with:
+
+```bash
+DUANERA_DB_TARGET=dev \
+LOGISTICS_PARTY_BACKFILL_PERIOD=2026-04 \
+LOGISTICS_PARTY_BACKFILL_FLOW=export \
+npm run db:backfill:logistics-parties
+```
+
+For quick verification, set `LOGISTICS_PARTY_BACKFILL_LIMIT`. Full product-facing
+backfills should be run month by month after reviewing runtime because the
+current script still performs many per-party/link upserts against Neon.
 
 `db:seed:source-files` validates manifest numeric fields strictly; malformed year, month, or file-size values must fail instead of being partially parsed. `db:seed:source-layouts` maps coded raw fields only to confirmed seeded dictionary keys and leaves coded fields without a matching dictionary unmapped. `db:seed:code-tables` reseeds workbook-backed rows only. Reviewed official-update rows in `code_values` are preserved so later evidence-backed remediation, such as Aduana port rows absent from the baseline workbook, is not deleted by rerunning the workbook seed.
 
@@ -113,6 +129,14 @@ npm run preflight:aduana-load -- \
 ```
 
 Treat `blocker` as a stop signal before any dev load. Treat `manual_review` as a source/layout review requirement. Treat `warning` as a checklist item; common warnings include dictionary coverage gaps and the recommendation to set `RAW_ROW_PAYLOAD_RETENTION=errors_and_warnings` for real additional dev-month validation.
+
+## Product-facing Chile Aduana coverage window
+
+The current product-facing Chile Aduana backfill target is `2021-01` through the latest available product-facing month.
+
+This window is based on local DataSur product research showing Chile D-Comex/Aduanas Detalladas availability from `2021-01` through `2026-04` at the time of review. The ingestion roadmap should prioritize completing this window before older historical periods.
+
+Do not load pre-2021 Aduana files into product-facing Explorer paths by default. Older official files and historical local samples may still be preserved, inspected, and used for research, parser validation, or internal evidence, but exposing them as product coverage requires a later decision.
 
 ## Raw row retention and storage policy
 
