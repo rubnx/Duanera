@@ -1,0 +1,2 @@
+CREATE INDEX "trade_records_trade_flow_period_embark_port_idx" ON "trade_records" ("trade_flow","period_year","period_month","embark_port_code");--> statement-breakpoint
+CREATE INDEX "trade_records_trade_flow_period_disembark_port_idx" ON "trade_records" ("trade_flow","period_year","period_month","disembark_port_code");

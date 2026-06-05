@@ -16,7 +16,8 @@ export type CodeTableRemediationFilterKind =
   | "originCountry"
   | "destinationCountry"
   | "customsOffice"
-  | "port"
+  | "embarkPort"
+  | "disembarkPort"
   | "transportMode";
 
 export type CodeTableRemediationDefinition = {
@@ -114,13 +115,13 @@ export const remediationDefinitions: CodeTableRemediationDefinition[] = [
     id: "import_disembark_port",
     tradeFlow: "import",
     dimension: "ports",
-    label: "Puerto relevante importación",
+    label: "Puerto de desembarque importación",
     normalizedField: "disembarkPortCode",
     rawFields: ["PTO_DESEM"],
     codeTableKey: "chile_aduana:puertos",
     priority: "high",
-    filterKind: "port",
-    commercialUse: "Puerto de llegada usado por el filtro de puerto relevante.",
+    filterKind: "disembarkPort",
+    commercialUse: "Puerto de llegada usado por el filtro de puerto de desembarque.",
   },
   {
     id: "import_embark_port",
@@ -131,20 +132,20 @@ export const remediationDefinitions: CodeTableRemediationDefinition[] = [
     rawFields: ["PTO_EMB"],
     codeTableKey: "chile_aduana:puertos",
     priority: "low",
+    filterKind: "embarkPort",
     commercialUse: "Campo logístico secundario para importaciones.",
-    unsupportedReason: "El filtro de puerto usa desembarque como puerto relevante en importación.",
   },
   {
     id: "export_embark_port",
     tradeFlow: "export",
     dimension: "ports",
-    label: "Puerto relevante exportación",
+    label: "Puerto de embarque exportación",
     normalizedField: "embarkPortCode",
     rawFields: ["PUERTOEMB"],
     codeTableKey: "chile_aduana:puertos",
     priority: "high",
-    filterKind: "port",
-    commercialUse: "Puerto de salida usado por el filtro de puerto relevante.",
+    filterKind: "embarkPort",
+    commercialUse: "Puerto de salida usado por el filtro de puerto de embarque.",
     sourceSpecialCodes: {
       codes: ["0"],
       note: "Código 0 aparece en DUS como puerto sin glosa, principalmente junto a vía 0 y registros de servicios; se conserva como código fuente, no como brecha de diccionario accionable.",
@@ -159,8 +160,8 @@ export const remediationDefinitions: CodeTableRemediationDefinition[] = [
     rawFields: ["PUERTODESEMB"],
     codeTableKey: "chile_aduana:puertos",
     priority: "low",
+    filterKind: "disembarkPort",
     commercialUse: "Campo logístico secundario para exportaciones.",
-    unsupportedReason: "El filtro de puerto usa embarque como puerto relevante en exportación.",
   },
   {
     id: "import_transport_mode",

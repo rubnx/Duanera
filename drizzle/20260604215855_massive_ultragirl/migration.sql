@@ -1,0 +1,1 @@
+CREATE INDEX "trade_records_trade_flow_period_cargo_type_idx" ON "trade_records" ("trade_flow","period_year","period_month","cargo_type_code");

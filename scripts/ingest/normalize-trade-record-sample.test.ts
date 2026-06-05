@@ -2,8 +2,11 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  normalizeStartRowForFlow,
   parseIntegerValue,
   parseNormalizePeriod,
+  parseNormalizeStartFlow,
+  parseNormalizeStartRow,
   rawValuesRecord,
 } from "./normalize-trade-record-sample";
 
@@ -52,4 +55,42 @@ test("parses optional normalizer period filters", () => {
     () => parseNormalizePeriod("2026-13"),
     /month must be between 01 and 12/,
   );
+});
+
+test("parses optional normalizer start row filters", () => {
+  assert.equal(parseNormalizeStartRow(""), 0);
+  assert.equal(parseNormalizeStartRow("0"), 0);
+  assert.equal(parseNormalizeStartRow("141528"), 141528);
+  assert.equal(parseNormalizeStartRow(" 25 "), 25);
+
+  assert.throws(
+    () => parseNormalizeStartRow("12x"),
+    /must be a non-negative integer/,
+  );
+  assert.throws(
+    () => parseNormalizeStartRow("-1"),
+    /must be a non-negative integer/,
+  );
+});
+
+test("parses optional normalizer start flow filters", () => {
+  assert.equal(parseNormalizeStartFlow(""), "export");
+  assert.equal(parseNormalizeStartFlow("export"), "export");
+  assert.equal(parseNormalizeStartFlow("import"), "import");
+
+  assert.throws(
+    () => parseNormalizeStartFlow("imports"),
+    /must be export or import/,
+  );
+});
+
+test("scopes normalizer resume rows to the active and remaining flows", () => {
+  assert.equal(normalizeStartRowForFlow("export", "export", 0), 0);
+  assert.equal(normalizeStartRowForFlow("import", "export", 0), 0);
+
+  assert.equal(normalizeStartRowForFlow("export", "export", 141528), 141528);
+  assert.equal(normalizeStartRowForFlow("import", "export", 141528), 0);
+
+  assert.equal(normalizeStartRowForFlow("export", "import", 141528), null);
+  assert.equal(normalizeStartRowForFlow("import", "import", 141528), 141528);
 });

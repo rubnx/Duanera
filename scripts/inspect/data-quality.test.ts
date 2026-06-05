@@ -387,7 +387,7 @@ test("keeps source-special code-table values out of actionable undecoded ranking
       { code: "992", records: 25 },
     ],
     codeSet: new Set(["992"]),
-    definition: { filterKind: "port", tradeFlow: "export" },
+    definition: { filterKind: "embarkPort", tradeFlow: "export" },
     ignoredSourceCodes: new Set(["0"]),
     limit: 5,
   });
@@ -769,7 +769,7 @@ test("builds a remediation queue from existing QA reports", () => {
         ],
         status: "warning",
         title: "Puertos sin etiqueta",
-        tradeRecordsHref: "/trade-records?tradeFlow=import&port=999",
+        tradeRecordsHref: "/trade-records?tradeFlow=import&disembarkPort=999",
       },
     ],
     payloadCoverage: [
@@ -823,7 +823,7 @@ test("builds a remediation queue from existing QA reports", () => {
         },
         status: "warning",
         tradeFlow: "import",
-        tradeRecordsHref: "/trade-records?tradeFlow=import&port=999",
+        tradeRecordsHref: "/trade-records?tradeFlow=import&disembarkPort=999",
       },
     ],
   } as unknown as CodeTableRemediationReport;

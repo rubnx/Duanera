@@ -298,6 +298,68 @@ export const sourceTradeParticipants = pgTable(
   ],
 );
 
+export const sourceLogisticsParties = pgTable(
+  "source_logistics_parties",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    identityKey: text("identity_key").notNull(),
+    displayName: text("display_name").notNull(),
+    rawNameRepresentative: text("raw_name_representative"),
+    normalizedLegalEntityName: text("normalized_legal_entity_name"),
+    normalizedGroupName: text("normalized_group_name"),
+    countryCode: varchar("country_code", { length: 2 }),
+    entityType: text("entity_type"),
+    confidence: text("confidence").notNull().default("low"),
+    matchReason: text("match_reason"),
+    isAmbiguous: boolean("is_ambiguous").notNull().default(false),
+    identitySource: text("identity_source").notNull(),
+    firstSeenYear: integer("first_seen_year"),
+    firstSeenMonth: integer("first_seen_month"),
+    lastSeenYear: integer("last_seen_year"),
+    lastSeenMonth: integer("last_seen_month"),
+    recordCount: integer("record_count").notNull().default(0),
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex("source_logistics_parties_identity_idx").on(table.identityKey),
+    index("source_logistics_parties_display_name_idx").on(table.displayName),
+    index("source_logistics_parties_group_idx").on(table.normalizedGroupName),
+  ],
+);
+
+export const sourceLogisticsPartyAliases = pgTable(
+  "source_logistics_party_aliases",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    partyId: uuid("party_id")
+      .notNull()
+      .references(() => sourceLogisticsParties.id, { onDelete: "cascade" }),
+    role: text("role").notNull(),
+    sourceField: text("source_field").notNull(),
+    rawValue: text("raw_value").notNull(),
+    rawValueNormalized: text("raw_value_normalized").notNull(),
+    sourceRut: text("source_rut"),
+    sourceRutDv: text("source_rut_dv"),
+    sourceCountryCode: text("source_country_code"),
+    firstSeenYear: integer("first_seen_year"),
+    firstSeenMonth: integer("first_seen_month"),
+    lastSeenYear: integer("last_seen_year"),
+    lastSeenMonth: integer("last_seen_month"),
+    recordCount: integer("record_count").notNull().default(0),
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex("source_logistics_party_aliases_identity_idx").on(
+      table.partyId,
+      table.role,
+      table.sourceField,
+      table.rawValueNormalized,
+    ),
+    index("source_logistics_party_aliases_party_idx").on(table.partyId),
+    index("source_logistics_party_aliases_raw_value_idx").on(table.rawValueNormalized),
+  ],
+);
+
 export const tradeRecords = pgTable(
   "trade_records",
   {
@@ -399,6 +461,24 @@ export const tradeRecords = pgTable(
       table.periodMonth,
       table.transportModeCode,
     ),
+    index("trade_records_trade_flow_period_embark_port_idx").on(
+      table.tradeFlow,
+      table.periodYear,
+      table.periodMonth,
+      table.embarkPortCode,
+    ),
+    index("trade_records_trade_flow_period_disembark_port_idx").on(
+      table.tradeFlow,
+      table.periodYear,
+      table.periodMonth,
+      table.disembarkPortCode,
+    ),
+    index("trade_records_trade_flow_period_cargo_type_idx").on(
+      table.tradeFlow,
+      table.periodYear,
+      table.periodMonth,
+      table.cargoTypeCode,
+    ),
     index("trade_records_hs_code_idx").on(table.hsCodeNormalized),
     index("trade_records_product_search_trgm_idx").using(
       "gin",
@@ -410,6 +490,48 @@ export const tradeRecords = pgTable(
     ),
     index("trade_records_exporter_secondary_correlative_idx").on(
       table.exporterSecondaryCorrelativeId,
+    ),
+  ],
+);
+
+export const tradeRecordLogisticsPartyLinks = pgTable(
+  "trade_record_logistics_party_links",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tradeRecordId: uuid("trade_record_id")
+      .notNull()
+      .references(() => tradeRecords.id, { onDelete: "cascade" }),
+    partyId: uuid("party_id")
+      .notNull()
+      .references(() => sourceLogisticsParties.id, { onDelete: "cascade" }),
+    role: text("role").notNull(),
+    sourceField: text("source_field").notNull(),
+    rawValue: text("raw_value").notNull(),
+    sourceRut: text("source_rut"),
+    sourceRutDv: text("source_rut_dv"),
+    sourceCountryCode: text("source_country_code"),
+    tradeFlow: text("trade_flow").notNull(),
+    periodYear: integer("period_year").notNull(),
+    periodMonth: integer("period_month").notNull(),
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex("trade_record_logistics_party_links_identity_idx").on(
+      table.tradeRecordId,
+      table.partyId,
+      table.role,
+      table.sourceField,
+    ),
+    index("trade_record_logistics_party_links_record_idx").on(table.tradeRecordId),
+    index("trade_record_logistics_party_links_party_idx").on(table.partyId),
+    index("trade_record_logistics_party_links_party_role_idx").on(
+      table.partyId,
+      table.role,
+    ),
+    index("trade_record_logistics_party_links_flow_period_idx").on(
+      table.tradeFlow,
+      table.periodYear,
+      table.periodMonth,
     ),
   ],
 );

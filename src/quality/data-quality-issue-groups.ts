@@ -112,7 +112,7 @@ export async function loadDataQualityIssueGroups(
           searchFilter: (code) => ({
             ...periodFilters,
             tradeFlow: "import",
-            portCode: code,
+            disembarkPortCode: code,
           }),
         },
         {
@@ -123,7 +123,7 @@ export async function loadDataQualityIssueGroups(
           searchFilter: (code) => ({
             ...periodFilters,
             tradeFlow: "export",
-            portCode: code,
+            embarkPortCode: code,
           }),
         },
       ],

@@ -35,6 +35,7 @@ export type ManifestRow = {
 
 const manifestPaths = [
   "data/sources/chile-aduana/datos-gob-cl/manifests/cl_aduana_datos_gob_cl_2026_source_files_manifest.csv",
+  "data/sources/chile-aduana/datos-gob-cl/manifests/cl_aduana_datos_gob_cl_historical_source_files_manifest.csv",
   "data/sources/chile-aduana/aduana-cl/manifests/cl_aduana_aduana_cl_source_files_manifest.csv",
 ];
 

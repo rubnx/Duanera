@@ -6,6 +6,12 @@ import type { DbClient } from "../../src/db/client";
 import { assertDevDatabaseTarget } from "../../src/db/dev-guard";
 import { rawTradeRows, tradeRecords } from "../../src/db/schema";
 import { positiveIntegerEnvValue } from "../../src/lib/env";
+import {
+  deleteLogisticsPartyLinksForRawRows,
+  TradeLogisticsPartyTracker,
+  type LogisticsPartyRawRow,
+  upsertLogisticsPartyLinksForRawRows,
+} from "./normalize-trade-record-logistics-parties";
 import { TradeParticipantTracker } from "./normalize-trade-record-participants";
 import { mapTradeRecordValues, rawValuesRecord } from "./normalize-trade-record-values";
 export { parseIntegerValue, rawValuesRecord } from "./normalize-trade-record-values";
@@ -50,9 +56,57 @@ export function parseNormalizePeriod(value = process.env.NORMALIZE_PERIOD) {
   return { year, month, period: value.trim() };
 }
 
+export function parseNormalizeStartRow(value = process.env.NORMALIZE_START_ROW) {
+  if (!value?.trim()) {
+    return 0;
+  }
+
+  const trimmed = value.trim();
+  if (!/^\d+$/.test(trimmed)) {
+    throw new Error(`NORMALIZE_START_ROW must be a non-negative integer, got ${value}.`);
+  }
+
+  return Number.parseInt(trimmed, 10);
+}
+
+export function parseNormalizeStartFlow(value = process.env.NORMALIZE_START_FLOW) {
+  if (!value?.trim()) {
+    return "export";
+  }
+
+  const normalized = value.trim();
+  if (normalized !== "export" && normalized !== "import") {
+    throw new Error(`NORMALIZE_START_FLOW must be export or import, got ${value}.`);
+  }
+
+  return normalized;
+}
+
+type NormalizerTradeFlow = "export" | "import";
+
+const normalizerFlowOrder: NormalizerTradeFlow[] = ["export", "import"];
+
+export function normalizeStartRowForFlow(
+  tradeFlow: NormalizerTradeFlow,
+  startFlow: NormalizerTradeFlow,
+  startRow: number,
+) {
+  if (startRow <= 0) {
+    return 0;
+  }
+
+  if (normalizerFlowOrder.indexOf(tradeFlow) < normalizerFlowOrder.indexOf(startFlow)) {
+    return null;
+  }
+
+  return tradeFlow === startFlow ? startRow : 0;
+}
+
 async function flushTradeRecordBatch(
   database: DbClient,
   batch: Array<typeof tradeRecords.$inferInsert>,
+  logisticsRows: LogisticsPartyRawRow[],
+  logisticsParties: TradeLogisticsPartyTracker,
 ) {
   if (batch.length === 0) {
     return;
@@ -114,7 +168,15 @@ async function flushTradeRecordBatch(
       },
     });
 
+  const deletedPartyIds = await deleteLogisticsPartyLinksForRawRows(
+    database,
+    logisticsRows.map((row) => row.rawTradeRowId),
+  );
+  logisticsParties.markPartyIdsTouched(deletedPartyIds);
+  await upsertLogisticsPartyLinksForRawRows(database, logisticsParties, logisticsRows);
+
   batch.length = 0;
+  logisticsRows.length = 0;
 }
 
 export async function runTradeRecordNormalizer(database: DbClient) {
@@ -122,17 +184,35 @@ export async function runTradeRecordNormalizer(database: DbClient) {
   const chunkSize = rawChunkSize();
   const insertBatchSize = tradeRecordBatchSize();
   const period = parseNormalizePeriod();
+  const startRow = parseNormalizeStartRow();
+  const startFlow = parseNormalizeStartFlow();
   const tradeRecordBatch: Array<typeof tradeRecords.$inferInsert> = [];
+  const logisticsRowsBatch: LogisticsPartyRawRow[] = [];
   const participants = new TradeParticipantTracker(database);
+  const logisticsParties = new TradeLogisticsPartyTracker(database);
 
   await participants.loadExisting();
+  await logisticsParties.loadExisting();
 
   if (period) {
     process.stdout.write(`Normalizing raw trade rows for period ${period.period} only.\n`);
   }
+  if (startRow > 0) {
+    process.stdout.write(
+      `Resuming ${startFlow} normalization after raw row ${startRow}.\n`,
+    );
+  }
 
-  for (const tradeFlow of ["export", "import"] as const) {
-    let lastRowNumber = 0;
+  for (const tradeFlow of normalizerFlowOrder) {
+    const resumeRow = normalizeStartRowForFlow(tradeFlow, startFlow, startRow);
+    if (resumeRow === null) {
+      process.stdout.write(
+        `Skipping ${tradeFlow} normalization because resume starts at ${startFlow} row ${startRow}.\n`,
+      );
+      continue;
+    }
+
+    let lastRowNumber = resumeRow;
 
     while (true) {
       const filters = [
@@ -217,11 +297,25 @@ export async function runTradeRecordNormalizer(database: DbClient) {
           parserName,
           parserVersion,
         });
+        logisticsRowsBatch.push({
+          rawTradeRowId: row.id,
+          sourceFileId: row.sourceFileId,
+          importBatchId: row.importBatchId,
+          tradeFlow: row.tradeFlow,
+          periodYear: row.periodYear,
+          periodMonth: row.periodMonth,
+          rawValues,
+        });
 
         normalized += 1;
 
         if (tradeRecordBatch.length >= insertBatchSize) {
-          await flushTradeRecordBatch(database, tradeRecordBatch);
+          await flushTradeRecordBatch(
+            database,
+            tradeRecordBatch,
+            logisticsRowsBatch,
+            logisticsParties,
+          );
         }
       }
 
@@ -231,14 +325,19 @@ export async function runTradeRecordNormalizer(database: DbClient) {
     }
   }
 
-  await flushTradeRecordBatch(database, tradeRecordBatch);
+  await flushTradeRecordBatch(database, tradeRecordBatch, logisticsRowsBatch, logisticsParties);
   await participants.refreshStats();
+  await logisticsParties.refreshStats();
 
   process.stdout.write(
-    `Trade record normalization complete. Normalized ${normalized} raw rows and touched ${participants.participantCount} anonymous participants.\n`,
+    `Trade record normalization complete. Normalized ${normalized} raw rows, touched ${participants.participantCount} anonymous participants, and touched ${logisticsParties.partyCount} logistics parties.\n`,
   );
 
-  return { normalized, participantCount: participants.participantCount };
+  return {
+    normalized,
+    participantCount: participants.participantCount,
+    logisticsPartyCount: logisticsParties.partyCount,
+  };
 }
 
 async function main() {

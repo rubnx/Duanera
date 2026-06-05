@@ -3,6 +3,7 @@ import {
   parseAduanaDate,
   parseDecimalComma,
 } from "../../src/ingest/aduana-main-file";
+import { normalizePublicSearchText } from "../../src/text/public-text";
 
 export type RawValues = Record<string, string>;
 
@@ -63,14 +64,11 @@ function decimal(values: RawValues, key: string): string | null {
 }
 
 function productSearchText(parts: Array<string | null>): string | null {
-  const value = parts
-    .filter((part): part is string => Boolean(part))
-    .join(" ")
-    .normalize("NFD")
-    .replace(/\p{Diacritic}/gu, "")
-    .toLowerCase()
-    .replace(/\s+/g, " ")
-    .trim();
+  const value = normalizePublicSearchText(
+    parts
+      .filter((part): part is string => Boolean(part))
+      .join(" "),
+  );
 
   return value.length > 0 ? value : null;
 }
