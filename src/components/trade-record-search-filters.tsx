@@ -16,6 +16,10 @@ import {
   type TradeRecordFilterOptions,
 } from "@/trade/trade-record-filter-options";
 import type { TradeRecordSearchResponse } from "@/trade/trade-record-search";
+import {
+  tradeRecordSortLabels,
+  tradeRecordSortValues,
+} from "@/trade/trade-record-sort";
 
 function LookupSelect({
   id,
@@ -241,12 +245,11 @@ export function TradeRecordSearchFilters({
               defaultValue={result.filters.sort ?? "source"}
               className="h-8 w-full min-w-0 rounded-lg border border-input bg-background px-2.5 text-sm"
             >
-              <option value="source">Orden fuente</option>
-              <option value="item_value_desc">Mayor valor item</option>
-              <option value="item_value_asc">Menor valor item</option>
-              <option value="declaration_fob_desc">Mayor FOB declaración</option>
-              <option value="quantity_desc">Mayor cantidad</option>
-              <option value="gross_weight_desc">Mayor peso bruto</option>
+              {tradeRecordSortValues.map((value) => (
+                <option key={value} value={value}>
+                  {tradeRecordSortLabels[value]}
+                </option>
+              ))}
             </select>
           </div>
           <RangeInput

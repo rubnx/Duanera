@@ -5,11 +5,14 @@ import {
   ChevronDownIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  MapPinIcon,
   SearchIcon,
+  ShipIcon,
+  SlidersHorizontalIcon,
   XIcon,
 } from "lucide-react"
 import { createContext, useContext, useEffect, useId, useMemo, useRef, useState } from "react"
-import type { ReactNode } from "react"
+import type { ComponentProps, ReactNode } from "react"
 
 import { CountryMultiFilter } from "@/components/explorer/country-multi-filter"
 import { cn } from "@/lib/utils"
@@ -29,6 +32,10 @@ import {
   type TradeFlowUiConfig,
 } from "@/trade/trade-flow-ui"
 import type { TradeFlow } from "@/trade/trade-records"
+import {
+  tradeRecordSortLabels,
+  tradeRecordSortValues,
+} from "@/trade/trade-record-sort"
 
 type ExplorerFlowFilterContextValue = {
   config: TradeFlowUiConfig
@@ -96,6 +103,34 @@ function FilterControlLabel({
 const compactControlClassName =
   "h-(--ds-control-height-sm) w-full rounded-ds-md border border-ds-border bg-ds-surface px-2.5 text-ds-sm text-ds-text-primary outline-none placeholder:text-ds-text-muted focus-visible:border-ds-focus-ring focus-visible:ring-3 focus-visible:ring-ds-focus-ring/20"
 
+function ControlledFilterInput({
+  className,
+  name,
+  placeholder,
+  value,
+}: {
+  className?: string
+  name: string
+  placeholder?: string
+  value?: string
+}) {
+  const [inputValue, setInputValue] = useState(value ?? "")
+
+  useEffect(() => {
+    setInputValue(value ?? "")
+  }, [value])
+
+  return (
+    <input
+      className={cn(compactControlClassName, className)}
+      name={name}
+      onChange={(event) => setInputValue(event.target.value)}
+      placeholder={placeholder}
+      value={inputValue}
+    />
+  )
+}
+
 function FilterInput({
   className,
   label,
@@ -109,22 +144,34 @@ function FilterInput({
   placeholder?: string
   value?: string
 }) {
-  const [inputValue, setInputValue] = useState(value ?? "")
-
-  useEffect(() => {
-    setInputValue(value ?? "")
-  }, [value])
-
   return (
     <FilterControlLabel className={cn("w-36", className)} label={label}>
-      <input
-        className={compactControlClassName}
-        name={name}
-        onChange={(event) => setInputValue(event.target.value)}
-        placeholder={placeholder}
-        value={inputValue}
-      />
+      <ControlledFilterInput name={name} placeholder={placeholder} value={value} />
     </FilterControlLabel>
+  )
+}
+
+function FilterRange({
+  label,
+  maxName,
+  maxValue,
+  minName,
+  minValue,
+}: {
+  label: string
+  maxName: string
+  maxValue?: string
+  minName: string
+  minValue?: string
+}) {
+  return (
+    <div className="flex w-full flex-col gap-0.5 text-[11px] font-medium text-ds-text-muted">
+      <span>{label}</span>
+      <div className="grid grid-cols-2 gap-1.5">
+        <ControlledFilterInput name={minName} placeholder="mín" value={minValue} />
+        <ControlledFilterInput name={maxName} placeholder="máx" value={maxValue} />
+      </div>
+    </div>
   )
 }
 
@@ -729,149 +776,243 @@ function ExplorerAdvancedFilterControls({
       : searchInput.disembarkPort
 
   return (
-    <>
-      <CountryMultiFilter
-        key={config.countryFilter.name}
-        className="w-full"
-        label={config.countryFilter.label}
-        name={config.countryFilter.name}
-        options={filterOptions.countries}
-        value={countryValue}
-      />
-      <FilterSelect
-        key={config.primaryPortFilter.name}
-        className="w-full"
-        label={config.primaryPortFilter.label}
-        name={config.primaryPortFilter.name}
-        value={primaryPortValue}
+    <div className="grid gap-x-4 gap-y-3 lg:grid-cols-2">
+      <fieldset className="min-w-0">
+        <legend className="mb-1.5 flex items-center gap-1 text-[11px] font-semibold text-ds-text-secondary">
+          <ShipIcon aria-hidden="true" className="size-3 shrink-0" />
+          Logística
+        </legend>
+        <div className="grid gap-1.5 sm:grid-cols-2">
+          <FilterSelect
+            key={config.primaryPortFilter.name}
+            className="w-full"
+            label={config.primaryPortFilter.label}
+            name={config.primaryPortFilter.name}
+            value={primaryPortValue}
+          >
+            {selectOptions(filterOptions.ports, "Todos", "port")}
+          </FilterSelect>
+          <FilterSelect
+            key={config.secondaryPortFilter.name}
+            className="w-full"
+            label={config.secondaryPortFilter.label}
+            name={config.secondaryPortFilter.name}
+            value={secondaryPortValue}
+          >
+            {selectOptions(filterOptions.ports, "Todos", "port")}
+          </FilterSelect>
+          <FilterSelect
+            className="w-full"
+            label="Vía transporte"
+            name="transportMode"
+            value={searchInput.transportMode}
+          >
+            {selectOptions(filterOptions.transportModes, "Todos", "transportMode")}
+          </FilterSelect>
+          <FilterSelect
+            className="w-full"
+            label="Tipo de carga"
+            name="cargoType"
+            value={searchInput.cargoType}
+          >
+            {selectOptions(filterOptions.cargoTypes, "Todos", "cargoType")}
+          </FilterSelect>
+          <LogisticsPartyTypeahead
+            initialOptions={filterOptions.logisticsParties}
+            value={searchInput.logisticsParty}
+          />
+          <FilterSelect
+            className="w-full"
+            label="Rol logístico"
+            name="logisticsRole"
+            value={searchInput.logisticsRole}
+          >
+            <option value="">Todos</option>
+            <option value="issuer">Emisor documento transporte</option>
+            <option value="carrier">Compañía de transporte</option>
+          </FilterSelect>
+        </div>
+      </fieldset>
+
+      <div className="flex min-w-0 flex-col gap-3">
+        <fieldset className="min-w-0">
+          <legend className="mb-1.5 flex items-center gap-1 text-[11px] font-semibold text-ds-text-secondary">
+            <MapPinIcon aria-hidden="true" className="size-3 shrink-0" />
+            Geografía
+          </legend>
+          <div className="grid gap-1.5 sm:grid-cols-2">
+            <CountryMultiFilter
+              key={config.countryFilter.name}
+              className="w-full"
+              label={config.countryFilter.label}
+              name={config.countryFilter.name}
+              options={filterOptions.countries}
+              value={countryValue}
+            />
+            <FilterSelect
+              className="w-full"
+              label="Aduana"
+              name="customsOffice"
+              value={searchInput.customsOffice}
+            >
+              {selectOptions(filterOptions.customsOffices, "Todas", "customsOffice")}
+            </FilterSelect>
+          </div>
+        </fieldset>
+
+        <fieldset className="min-w-0">
+          <legend className="mb-1.5 flex items-center gap-1 text-[11px] font-semibold text-ds-text-secondary">
+          <SlidersHorizontalIcon aria-hidden="true" className="size-3 shrink-0" />
+          Rangos comerciales
+          </legend>
+          <div className="grid gap-1.5 sm:grid-cols-2">
+            <FilterRange
+              label={config.itemValueLabel}
+              minName="minItemValue"
+              minValue={searchInput.minItemValue}
+              maxName="maxItemValue"
+              maxValue={searchInput.maxItemValue}
+            />
+            <FilterRange
+              label="FOB total"
+              minName="minDeclarationFob"
+              minValue={searchInput.minDeclarationFob}
+              maxName="maxDeclarationFob"
+              maxValue={searchInput.maxDeclarationFob}
+            />
+            <FilterRange
+              label="Cantidad"
+              minName="minQuantity"
+              minValue={searchInput.minQuantity}
+              maxName="maxQuantity"
+              maxValue={searchInput.maxQuantity}
+            />
+            {config.grossWeightFilters.map((filter) => (
+              <FilterRange
+                key={filter.minName}
+                label={filter.label}
+                minName={filter.minName}
+                minValue={
+                  filter.minName === "minGrossWeightItem"
+                    ? searchInput.minGrossWeightItem
+                    : searchInput.minGrossWeightTotal
+                }
+                maxName={filter.maxName}
+                maxValue={
+                  filter.maxName === "maxGrossWeightItem"
+                    ? searchInput.maxGrossWeightItem
+                    : searchInput.maxGrossWeightTotal
+                }
+              />
+            ))}
+          </div>
+        </fieldset>
+      </div>
+    </div>
+  )
+}
+
+function ExplorerSortFilterControl({ value }: { value?: string }) {
+  return (
+    <FilterSelect className="w-44" label="Orden" name="sort" value={value}>
+      <option value="">Orden fuente</option>
+      {tradeRecordSortValues
+        .filter((sortValue) => sortValue !== "source")
+        .map((sortValue) => (
+          <option key={sortValue} value={sortValue}>
+            {tradeRecordSortLabels[sortValue]}
+          </option>
+        ))}
+    </FilterSelect>
+  )
+}
+
+function ExplorerAdvancedFiltersPopover({
+  activeCount,
+  filterOptions,
+  searchInput,
+}: {
+  activeCount: number
+  filterOptions: TradeRecordFilterOptions
+  searchInput: ComponentProps<typeof ExplorerAdvancedFilterControls>["searchInput"]
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!isOpen) {
+      return
+    }
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target
+      if (target instanceof Node && containerRef.current?.contains(target)) {
+        return
+      }
+      setIsOpen(false)
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsOpen(false)
+      }
+    }
+
+    document.addEventListener("pointerdown", handlePointerDown)
+    document.addEventListener("keydown", handleKeyDown)
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown)
+      document.removeEventListener("keydown", handleKeyDown)
+    }
+  }, [isOpen])
+
+  return (
+    <div
+      ref={containerRef}
+      className="relative border-b border-ds-border-soft px-3 py-1.5 text-ds-xs"
+    >
+      <button
+        type="button"
+        aria-expanded={isOpen}
+        className="flex w-fit cursor-pointer items-center gap-1.5 font-medium text-ds-text-secondary hover:text-ds-text-primary"
+        onClick={() => setIsOpen((current) => !current)}
       >
-        {selectOptions(filterOptions.ports, "Todos", "port")}
-      </FilterSelect>
-      <FilterSelect
-        key={config.secondaryPortFilter.name}
-        className="w-full"
-        label={config.secondaryPortFilter.label}
-        name={config.secondaryPortFilter.name}
-        value={secondaryPortValue}
-      >
-        {selectOptions(filterOptions.ports, "Todos", "port")}
-      </FilterSelect>
-      <FilterSelect
-        className="w-full"
-        label="Aduana"
-        name="customsOffice"
-        value={searchInput.customsOffice}
-      >
-        {selectOptions(filterOptions.customsOffices, "Todas", "customsOffice")}
-      </FilterSelect>
-      <FilterSelect
-        className="w-full"
-        label="Vía transporte"
-        name="transportMode"
-        value={searchInput.transportMode}
-      >
-        {selectOptions(filterOptions.transportModes, "Todos", "transportMode")}
-      </FilterSelect>
-      <FilterSelect
-        className="w-full"
-        label="Tipo de carga"
-        name="cargoType"
-        value={searchInput.cargoType}
-      >
-        {selectOptions(filterOptions.cargoTypes, "Todos", "cargoType")}
-      </FilterSelect>
-      <LogisticsPartyTypeahead
-        initialOptions={filterOptions.logisticsParties}
-        value={searchInput.logisticsParty}
-      />
-      <FilterSelect
-        className="w-full"
-        label="Rol logístico"
-        name="logisticsRole"
-        value={searchInput.logisticsRole}
-      >
-        <option value="">Todos</option>
-        <option value="issuer">Emisor documento transporte</option>
-        <option value="carrier">Compañía de transporte</option>
-      </FilterSelect>
-      <FilterSelect className="w-full" label="Orden" name="sort" value={searchInput.sort}>
-        <option value="">Orden fuente</option>
-        <option value="item_value_desc">Mayor valor</option>
-        <option value="item_value_asc">Menor valor</option>
-        <option value="declaration_fob_desc">Mayor US$ FOB</option>
-        <option value="quantity_desc">Mayor cantidad</option>
-        <option value="gross_weight_desc">Mayor peso bruto</option>
-      </FilterSelect>
-      <FilterInput
-        className="w-full"
-        label={`${config.itemValueLabel} min.`}
-        name="minItemValue"
-        value={searchInput.minItemValue}
-      />
-      <FilterInput
-        className="w-full"
-        label={`${config.itemValueLabel} max.`}
-        name="maxItemValue"
-        value={searchInput.maxItemValue}
-      />
-      <FilterInput
-        className="w-full"
-        label="FOB total min."
-        name="minDeclarationFob"
-        value={searchInput.minDeclarationFob}
-      />
-      <FilterInput
-        className="w-full"
-        label="FOB total max."
-        name="maxDeclarationFob"
-        value={searchInput.maxDeclarationFob}
-      />
-      <FilterInput
-        className="w-full"
-        label="Cantidad mín."
-        name="minQuantity"
-        value={searchInput.minQuantity}
-      />
-      <FilterInput
-        className="w-full"
-        label="Cantidad máx."
-        name="maxQuantity"
-        value={searchInput.maxQuantity}
-      />
-      {config.grossWeightFilters.map((filter) => (
-        <FilterInput
-          key={filter.minName}
-          className="w-full"
-          label={`${filter.label} min.`}
-          name={filter.minName}
-          value={
-            filter.minName === "minGrossWeightItem"
-              ? searchInput.minGrossWeightItem
-              : searchInput.minGrossWeightTotal
-          }
+        Más filtros
+        {activeCount > 0 ? (
+          <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-ds-primary px-1 text-[10px] font-semibold leading-none text-ds-text-inverse">
+            {activeCount}
+          </span>
+        ) : null}
+        <ChevronDownIcon
+          aria-hidden="true"
+          className={cn("size-3.5 transition-transform", isOpen && "rotate-180")}
         />
-      ))}
-      {config.grossWeightFilters.map((filter) => (
-        <FilterInput
-          key={filter.maxName}
-          className="w-full"
-          label={`${filter.label} max.`}
-          name={filter.maxName}
-          value={
-            filter.maxName === "maxGrossWeightItem"
-              ? searchInput.maxGrossWeightItem
-              : searchInput.maxGrossWeightTotal
-          }
+      </button>
+      <div
+        className={cn(
+          "absolute left-3 top-[calc(100%+0.25rem)] z-40 w-[min(52rem,calc(100vw-3rem))] rounded-ds-md border border-ds-border bg-ds-surface p-3 shadow-lg",
+          isOpen ? "block" : "hidden"
+        )}
+      >
+        <ExplorerAdvancedFilterControls
+          filterOptions={filterOptions}
+          searchInput={searchInput}
         />
-      ))}
-    </>
+        <p className="mt-2 text-[11px] leading-snug text-ds-text-muted">
+          País y peso disponibles cambian según la operación; el puerto secundario es
+          contexto de ruta.
+        </p>
+      </div>
+    </div>
   )
 }
 
 export {
   ExplorerAdvancedFilterControls,
+  ExplorerAdvancedFiltersPopover,
   ExplorerFlowFilterProvider,
   ExplorerPeriodFilterControl,
   ExplorerPrimaryFilterControls,
+  ExplorerSortFilterControl,
   FilterInput,
 }

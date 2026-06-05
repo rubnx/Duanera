@@ -5,8 +5,11 @@ import {
   type TradeFlow,
   type TradeRecordFilters,
   type TradeRecordLogisticsRole,
-  type TradeRecordSort,
 } from "@/trade/trade-records";
+import {
+  isTradeRecordSort,
+  type TradeRecordSort,
+} from "@/trade/trade-record-sort";
 
 export type TradeRecordSearchInput =
   | URLSearchParams
@@ -180,20 +183,11 @@ function tradeRecordSort(input: TradeRecordSearchInput): TradeRecordSort | undef
     return undefined;
   }
 
-  const validSorts = [
-    "source",
-    "item_value_desc",
-    "item_value_asc",
-    "declaration_fob_desc",
-    "quantity_desc",
-    "gross_weight_desc",
-  ] satisfies TradeRecordSort[];
-
-  if (!validSorts.includes(value as TradeRecordSort)) {
+  if (!isTradeRecordSort(value)) {
     throw new TradeRecordSearchError("sort is not supported.");
   }
 
-  return value as TradeRecordSort;
+  return value;
 }
 
 function logisticsRole(input: TradeRecordSearchInput): TradeRecordLogisticsRole | undefined {

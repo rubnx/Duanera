@@ -5,6 +5,7 @@ import {
 } from "@/trade/trade-record-filter-options";
 import { formatTradeRecordPeriodRangeLabel } from "@/trade/trade-record-period-labels";
 import type { TradeRecordSearchResponse } from "@/trade/trade-record-search";
+import { formatTradeRecordSortLabel } from "@/trade/trade-record-sort";
 
 function optionLabel(options: TradeRecordFilterOption[], value: string | undefined) {
   if (!value) {
@@ -12,19 +13,6 @@ function optionLabel(options: TradeRecordFilterOption[], value: string | undefin
   }
 
   return options.find((option) => option.value === value)?.displayLabel ?? value;
-}
-
-function sortLabel(value: string | undefined) {
-  const labels: Record<string, string> = {
-    source: "Orden fuente",
-    item_value_desc: "Mayor valor item",
-    item_value_asc: "Menor valor item",
-    declaration_fob_desc: "Mayor FOB declaración",
-    quantity_desc: "Mayor cantidad",
-    gross_weight_desc: "Mayor peso bruto",
-  };
-
-  return value ? labels[value] ?? value : undefined;
 }
 
 function rangeLabel(from: string | undefined, to: string | undefined) {
@@ -131,7 +119,7 @@ function activeFilterItems(
       label: "Orden",
       value:
         filters.sort && filters.sort !== "source"
-          ? sortLabel(filters.sort)
+          ? formatTradeRecordSortLabel(filters.sort)
           : undefined,
     },
   ];

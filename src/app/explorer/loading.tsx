@@ -55,6 +55,24 @@ export default function ExplorerLoading() {
       <AppShellMain>
         <AppShellContent>
           <div className="h-8 w-36 rounded-ds-md bg-ds-muted" />
+          <section
+            aria-label="Resumen del resultado"
+            className="overflow-hidden rounded-ds-md border border-ds-border-soft bg-ds-surface/80"
+          >
+            <div className="grid grid-cols-2 divide-y divide-ds-border-soft sm:grid-cols-4 lg:grid-cols-8 lg:divide-y-0">
+              {Array.from({ length: 8 }, (_, index) => (
+                <div
+                  key={index}
+                  className="border-r border-ds-border-soft px-2.5 py-1.5 last:border-r-0"
+                >
+                  <SkeletonCell width={64} />
+                  <div className="mt-2">
+                    <SkeletonCell width={88} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
           <DataTableShell className="overflow-hidden rounded-ds-lg border border-ds-border-soft">
             <DataTableToolbar>
               <DataTableTitle>Cargando registros</DataTableTitle>

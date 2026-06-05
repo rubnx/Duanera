@@ -137,6 +137,14 @@ export function tradeRecordOrderBy(filters: TradeRecordFilters): SQL[] {
         asc(rawTradeRows.rowNumber),
         asc(rawTradeRows.id),
       ];
+    case "declaration_fob_asc":
+      return [
+        sql`${tradeRecords.declarationFobValue} asc nulls last`,
+        desc(tradeRecords.periodYear),
+        desc(tradeRecords.periodMonth),
+        asc(rawTradeRows.rowNumber),
+        asc(rawTradeRows.id),
+      ];
     case "quantity_desc":
       return [
         sql`${tradeRecords.quantity} desc nulls last`,
@@ -145,9 +153,25 @@ export function tradeRecordOrderBy(filters: TradeRecordFilters): SQL[] {
         asc(rawTradeRows.rowNumber),
         asc(rawTradeRows.id),
       ];
+    case "quantity_asc":
+      return [
+        sql`${tradeRecords.quantity} asc nulls last`,
+        desc(tradeRecords.periodYear),
+        desc(tradeRecords.periodMonth),
+        asc(rawTradeRows.rowNumber),
+        asc(rawTradeRows.id),
+      ];
     case "gross_weight_desc":
       return [
         sql`${tradeRecordGrossWeightExpression()} desc nulls last`,
+        desc(tradeRecords.periodYear),
+        desc(tradeRecords.periodMonth),
+        asc(rawTradeRows.rowNumber),
+        asc(rawTradeRows.id),
+      ];
+    case "gross_weight_asc":
+      return [
+        sql`${tradeRecordGrossWeightExpression()} asc nulls last`,
         desc(tradeRecords.periodYear),
         desc(tradeRecords.periodMonth),
         asc(rawTradeRows.rowNumber),

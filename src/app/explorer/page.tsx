@@ -1,4 +1,6 @@
 import {
+  ArrowDownIcon,
+  ArrowUpIcon,
   BoxIcon,
   Building2Icon,
   DatabaseIcon,
@@ -10,6 +12,7 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import type { ReactNode } from "react"
+import { and, eq, or, sql } from "drizzle-orm"
 
 import { CountryFlag } from "@/components/common/country-flag"
 import {
@@ -43,20 +46,24 @@ import {
   SidebarItem,
   SidebarSection,
 } from "@/components/explorer"
+import { ExplorerColumnHelp } from "@/components/explorer/explorer-column-help"
 import { ExplorerDrawerProvider } from "@/components/explorer/explorer-drawer-context"
 import { ExplorerExportPanel } from "@/components/explorer/explorer-export-panel"
 import {
-  ExplorerAdvancedFilterControls,
+  ExplorerAdvancedFiltersPopover,
   ExplorerFlowFilterProvider,
   ExplorerPeriodFilterControl,
   ExplorerPrimaryFilterControls,
+  ExplorerSortFilterControl,
   FilterInput,
 } from "@/components/explorer/explorer-primary-filter-controls"
 import { ExplorerRecordDetailDrawer } from "@/components/explorer/explorer-record-detail"
-import { Button, buttonVariants } from "@/components/ui/button"
+import { ExplorerSubmitButton } from "@/components/explorer/explorer-submit-button"
+import { buttonVariants } from "@/components/ui/button"
 import { FilterChip } from "@/components/ui/filter-chip"
 import { StatusBadge, type StatusBadgeProps } from "@/components/ui/status-badge"
 import { db } from "@/db/client"
+import { sourceFiles } from "@/db/schema"
 import { normalizeUuid } from "@/lib/ids"
 import { cn } from "@/lib/utils"
 import { sourceFilenameLabel } from "@/sources/source-provenance-helpers"
@@ -97,6 +104,11 @@ import {
   TradeRecordSearchError,
   type TradeRecordSearchResponse,
 } from "@/trade/trade-record-search"
+import {
+  formatTradeRecordSortLabel,
+  type TradeRecordSort,
+} from "@/trade/trade-record-sort"
+import { internalSourceCategories } from "@/trade/trade-record-where"
 import {
   parseTradeRecordTableView,
   tradeRecordTableViewById,
@@ -149,6 +161,11 @@ const searchableParamKeys = [
 
 const recordDetailDrawerId = "explorer-record-detail-drawer"
 const rowActionDescriptionId = "explorer-row-action-description"
+const resetSelectionAndPagination = {
+  selected: null,
+  offset: null,
+  after: null,
+}
 
 function firstValue(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value
@@ -292,12 +309,6 @@ function explorerRankingHref(
 }
 
 function removeFilterHref(params: ExplorerParams, key: string) {
-  const resetSelectionAndPagination = {
-    selected: null,
-    offset: null,
-    after: null,
-  }
-
   if (key === "period") {
     return buildExplorerHref(params, {
       periodFrom: null,
@@ -362,16 +373,7 @@ function resetExplorerHref() {
 }
 
 function sortLabel(value: string) {
-  const labels: Record<string, string> = {
-    source: "Orden fuente",
-    item_value_desc: "Mayor valor",
-    item_value_asc: "Menor valor",
-    declaration_fob_desc: "Mayor US$ FOB",
-    quantity_desc: "Mayor cantidad",
-    gross_weight_desc: "Mayor peso bruto",
-  }
-
-  return labels[value] ?? value
+  return formatTradeRecordSortLabel(value) ?? value
 }
 
 function logisticsRoleLabel(value: string | undefined) {
@@ -760,35 +762,68 @@ function HiddenSearchFields({
   )
 }
 
-function hasDevelopmentSignal(record: ExplorerRecord) {
-  const values = [
-    record.declarationIdRaw,
-    record.productDescriptionRaw,
-    record.sourceFilename,
-    record.parserName,
-    record.importerCorrelativeId,
-    record.exporterPrimaryCorrelativeId,
-    record.exporterSecondaryCorrelativeId,
-  ]
-    .filter(Boolean)
-    .join(" ")
-    .toLowerCase()
-
-  return (
-    record.periodYear >= 2090 ||
-    values.includes("smoke") ||
-    values.includes("fixture") ||
-    values.includes("test") ||
-    values.includes("dummy")
-  )
-}
-
 function optionLabel(options: TradeRecordFilterOption[], code: string | null | undefined) {
   if (!code) {
     return undefined
   }
 
   return options.find((option) => option.value === code)?.label ?? code
+}
+
+function parsedPeriodParam(value: string | null | undefined) {
+  const match = /^(\d{4})-(\d{2})$/.exec(value ?? "")
+  if (!match) {
+    return undefined
+  }
+
+  return {
+    year: Number.parseInt(match[1], 10),
+    month: Number.parseInt(match[2], 10),
+  }
+}
+
+async function hasDevelopmentSourceSignal(
+  filters: TradeRecordSearchResponse["filters"]
+) {
+  const conditions = []
+  const from = parsedPeriodParam(filters.periodFrom)
+  const to = parsedPeriodParam(filters.periodTo)
+  const now = new Date()
+  const currentYear = now.getUTCFullYear()
+  const currentMonth = now.getUTCMonth() + 1
+
+  if (filters.tradeFlow) {
+    conditions.push(eq(sourceFiles.tradeFlow, filters.tradeFlow))
+  }
+
+  if (from) {
+    conditions.push(sql`(${sourceFiles.periodYear}, ${sourceFiles.periodMonth}) >= (${from.year}, ${from.month})`)
+  }
+
+  if (to) {
+    conditions.push(sql`(${sourceFiles.periodYear}, ${sourceFiles.periodMonth}) <= (${to.year}, ${to.month})`)
+  }
+
+  const developmentSignal = or(
+    sql`coalesce(lower(${sourceFiles.sourceCategory}), '') in (${sql.join(
+      internalSourceCategories.map((category) => sql`${category}`),
+      sql`, `
+    )})`,
+    sql`lower(${sourceFiles.sourceSystem}) = 'duanera_test'`,
+    sql`(${sourceFiles.periodYear}, ${sourceFiles.periodMonth}) > (${currentYear}, ${currentMonth})`,
+    sql`lower(coalesce(${sourceFiles.originalFilename}, '') || ' ' || coalesce(${sourceFiles.normalizedRawFilename}, '') || ' ' || coalesce(${sourceFiles.normalizedWorkingFilename}, '')) like '%smoke%'`,
+    sql`lower(coalesce(${sourceFiles.originalFilename}, '') || ' ' || coalesce(${sourceFiles.normalizedRawFilename}, '') || ' ' || coalesce(${sourceFiles.normalizedWorkingFilename}, '')) like '%fixture%'`,
+    sql`lower(coalesce(${sourceFiles.originalFilename}, '') || ' ' || coalesce(${sourceFiles.normalizedRawFilename}, '') || ' ' || coalesce(${sourceFiles.normalizedWorkingFilename}, '')) like '%test%'`,
+    sql`lower(coalesce(${sourceFiles.originalFilename}, '') || ' ' || coalesce(${sourceFiles.normalizedRawFilename}, '') || ' ' || coalesce(${sourceFiles.normalizedWorkingFilename}, '')) like '%dummy%'`
+  )
+
+  const rows = await db
+    .select({ id: sourceFiles.id })
+    .from(sourceFiles)
+    .where(and(...conditions, developmentSignal))
+    .limit(1)
+
+  return rows.length > 0
 }
 
 function summaryMetricValue(
@@ -1205,6 +1240,10 @@ type ExplorerTableColumn = {
   help: string
   label: string
   numeric?: boolean
+  sort?: {
+    asc: TradeRecordSort
+    desc: TradeRecordSort
+  }
   tooltipAlign?: "center" | "end" | "start"
   width: number
 }
@@ -1218,6 +1257,10 @@ function explorerValueColumn(flow: string, width = 112): ExplorerTableColumn {
         ? "Valor FOB declarado para el ítem, sin flete ni seguro internacional."
         : "Valor CIF declarado para el ítem, incluyendo costo, seguro y flete.",
     numeric: true,
+    sort: {
+      asc: "item_value_asc",
+      desc: "item_value_desc",
+    },
     width,
   }
 }
@@ -1272,6 +1315,10 @@ function explorerTableColumnsForView(
             label: "Peso bruto ítem",
             help: "Peso bruto informado para el ítem exportado.",
             numeric: true,
+            sort: {
+              asc: "gross_weight_asc",
+              desc: "gross_weight_desc",
+            },
             width: 132,
           },
           {
@@ -1279,6 +1326,10 @@ function explorerTableColumnsForView(
             label: "Peso bruto total",
             help: "Peso bruto total informado para la operación.",
             numeric: true,
+            sort: {
+              asc: "gross_weight_asc",
+              desc: "gross_weight_desc",
+            },
             tooltipAlign: "end",
             width: 132,
           },
@@ -1289,6 +1340,10 @@ function explorerTableColumnsForView(
             label: "Peso bruto total",
             help: "Peso bruto total informado para la importación.",
             numeric: true,
+            sort: {
+              asc: "gross_weight_asc",
+              desc: "gross_weight_desc",
+            },
             tooltipAlign: "end",
             width: 132,
           },
@@ -1391,6 +1446,10 @@ function explorerTableColumnsForView(
         label: "Cantidad",
         help: "Cantidad declarada con su unidad. Cuando dice kg, corresponde a kilogramos netos.",
         numeric: true,
+        sort: {
+          asc: "quantity_asc",
+          desc: "quantity_desc",
+        },
         tooltipAlign: "end",
         width: 136,
       },
@@ -1415,6 +1474,10 @@ function explorerTableColumnsForView(
         label: "US$ FOB total",
         help: "Valor FOB total declarado para la operación.",
         numeric: true,
+        sort: {
+          asc: "declaration_fob_asc",
+          desc: "declaration_fob_desc",
+        },
         width: 128,
       },
       {
@@ -1450,6 +1513,10 @@ function explorerTableColumnsForView(
         label: "Cantidad",
         help: "Cantidad declarada con su unidad. Cuando dice kg, corresponde a kilogramos netos.",
         numeric: true,
+        sort: {
+          asc: "quantity_asc",
+          desc: "quantity_desc",
+        },
         width: 136,
       },
       ...grossWeightColumns,
@@ -1527,6 +1594,10 @@ function explorerTableColumnsForView(
         label: "Cantidad",
         help: "Cantidad declarada con su unidad. Cuando dice kg, corresponde a kilogramos netos.",
         numeric: true,
+        sort: {
+          asc: "quantity_asc",
+          desc: "quantity_desc",
+        },
         width: 136,
       },
       {
@@ -1675,39 +1746,88 @@ function explorerPaginationLabel(
   return `Mostrando ${start.toLocaleString("es-CL")}-${end.toLocaleString("es-CL")} de ${pagination.total.toLocaleString("es-CL")}`
 }
 
-function ExplorerColumnHelp({ column }: { column: ExplorerTableColumn }) {
-  const tooltipId = `explorer-column-help-${column.key}`
-  const tooltipAlign = column.tooltipAlign ?? "center"
+const explorerPageSizeOptions = [25, 50, 100] as const
 
-  return (
-    <span className="group/help relative inline-flex shrink-0">
-      <button
-        aria-describedby={tooltipId}
-        aria-label={`Qué significa ${column.label}`}
-        className="inline-flex size-3.5 items-center justify-center rounded-ds-xs text-ds-text-muted outline-none transition-colors hover:bg-ds-surface hover:text-ds-text-primary focus-visible:bg-ds-surface focus-visible:text-ds-text-primary focus-visible:ring-2 focus-visible:ring-ds-focus-ring/25"
-        type="button"
-      >
-        <HelpCircleIcon aria-hidden="true" className="size-3" />
-      </button>
-      <span
-        id={tooltipId}
-        role="tooltip"
-        className={cn(
-          "pointer-events-none invisible absolute top-full z-30 mt-1.5 w-56 max-w-[calc(100vw-2rem)] whitespace-normal rounded-ds-sm bg-ds-text-primary px-2 py-1.5 text-left text-[11px] font-medium leading-tight text-ds-text-inverse opacity-0 shadow-ds-md transition-opacity delay-150 group-hover/help:visible group-hover/help:opacity-100 group-focus-within/help:visible group-focus-within/help:opacity-100",
-          tooltipAlign === "start"
-            ? "left-0"
-            : tooltipAlign === "end"
-              ? "right-0"
-              : "left-1/2 -translate-x-1/2"
-        )}
-      >
-        {column.help}
-      </span>
-    </span>
-  )
+function explorerPageSizeHref(params: ExplorerParams, limit: number) {
+  return buildExplorerHref(params, {
+    limit: String(limit),
+    ...resetSelectionAndPagination,
+  })
 }
 
-function ExplorerTableHeaderLabel({ column }: { column: ExplorerTableColumn }) {
+function nextSortForColumn(
+  column: ExplorerTableColumn,
+  currentSort: string | null | undefined
+) {
+  if (!column.sort) {
+    return undefined
+  }
+
+  if (currentSort === column.sort.desc) {
+    return column.sort.asc
+  }
+
+  if (currentSort === column.sort.asc) {
+    return "source"
+  }
+
+  return column.sort.desc
+}
+
+function explorerSortHref(
+  params: ExplorerParams,
+  column: ExplorerTableColumn,
+  currentSort: string | null | undefined
+) {
+  const nextSort = nextSortForColumn(column, currentSort)
+
+  if (!nextSort) {
+    return undefined
+  }
+
+  return buildExplorerHref(params, {
+    sort: nextSort === "source" ? null : nextSort,
+    ...resetSelectionAndPagination,
+  })
+}
+
+function explorerColumnSortDirection(
+  column: ExplorerTableColumn,
+  currentSort: string | null | undefined
+) {
+  if (!column.sort) {
+    return undefined
+  }
+
+  if (currentSort === column.sort.asc) {
+    return "ascending" as const
+  }
+
+  if (currentSort === column.sort.desc) {
+    return "descending" as const
+  }
+
+  return undefined
+}
+
+function ExplorerTableHeaderLabel({
+  column,
+  currentSort,
+  params,
+}: {
+  column: ExplorerTableColumn
+  currentSort?: string
+  params: ExplorerParams
+}) {
+  const sortHref = explorerSortHref(params, column, currentSort)
+  const sortDirection = explorerColumnSortDirection(column, currentSort)
+  const sortLabel =
+    sortDirection === "ascending"
+      ? "Orden ascendente"
+      : sortDirection === "descending"
+        ? "Orden descendente"
+        : "Ordenar"
+
   return (
     <span
       className={cn(
@@ -1715,8 +1835,36 @@ function ExplorerTableHeaderLabel({ column }: { column: ExplorerTableColumn }) {
         column.numeric ? "justify-end" : "justify-start"
       )}
     >
-      <span className="truncate">{column.label}</span>
-      <ExplorerColumnHelp column={column} />
+      {sortHref ? (
+        <Link
+          aria-label={`${sortLabel} por ${column.label}`}
+          className={cn(
+            "inline-flex min-w-0 items-center gap-1 rounded-ds-xs underline-offset-4 hover:text-ds-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ds-focus-ring/25",
+            sortDirection ? "text-ds-primary" : "text-inherit"
+          )}
+          href={sortHref}
+        >
+          <span className="truncate">{column.label}</span>
+          {sortDirection === "ascending" ? (
+            <ArrowUpIcon aria-hidden="true" className="size-3 shrink-0" />
+          ) : (
+            <ArrowDownIcon
+              aria-hidden="true"
+              className={cn(
+                "size-3 shrink-0",
+                sortDirection === "descending" ? undefined : "opacity-35"
+              )}
+            />
+          )}
+        </Link>
+      ) : (
+        <span className="truncate">{column.label}</span>
+      )}
+      <ExplorerColumnHelp
+        align={column.tooltipAlign}
+        help={column.help}
+        label={column.label}
+      />
     </span>
   )
 }
@@ -2111,7 +2259,7 @@ export default async function ExplorerPage({
   const selectedId = requestedSelectedId ?? null
   const periodScope = formatTradeRecordPeriodScope(availablePeriods)
   const hasAvailablePeriods = availablePeriods.length > 0
-  const hasDevelopmentData = result.data.some(hasDevelopmentSignal)
+  const hasDevelopmentData = await hasDevelopmentSourceSignal(result.filters)
   const activeTableView = tradeRecordTableViewById(tableView)
   const flowUiConfig = tradeFlowUiConfig(result.filters.tradeFlow ?? "import")
   const tableColumns = explorerTableColumnsForView(
@@ -2136,28 +2284,27 @@ export default async function ExplorerPage({
     result.data.length,
     Boolean(firstValue(params.after))
   )
-  const hasMoreFiltersOpen = Boolean(
-      searchInput.originCountry ||
-      searchInput.destinationCountry ||
-      searchInput.embarkPort ||
-      searchInput.disembarkPort ||
-      searchInput.customsOffice ||
-      searchInput.transportMode ||
-      searchInput.cargoType ||
-      searchInput.sort ||
-      searchInput.minItemValue ||
-      searchInput.maxItemValue ||
-      searchInput.minDeclarationFob ||
-      searchInput.maxDeclarationFob ||
-      searchInput.minQuantity ||
-      searchInput.maxQuantity ||
-      searchInput.minGrossWeightItem ||
-      searchInput.maxGrossWeightItem ||
-      searchInput.minGrossWeightTotal ||
-      searchInput.maxGrossWeightTotal ||
-      searchInput.logisticsParty ||
-      searchInput.logisticsRole
-  )
+  const activeAdvancedFilterCount = [
+    searchInput.originCountry,
+    searchInput.destinationCountry,
+    searchInput.embarkPort,
+    searchInput.disembarkPort,
+    searchInput.customsOffice,
+    searchInput.transportMode,
+    searchInput.cargoType,
+    searchInput.minItemValue,
+    searchInput.maxItemValue,
+    searchInput.minDeclarationFob,
+    searchInput.maxDeclarationFob,
+    searchInput.minQuantity,
+    searchInput.maxQuantity,
+    searchInput.minGrossWeightItem,
+    searchInput.maxGrossWeightItem,
+    searchInput.minGrossWeightTotal,
+    searchInput.maxGrossWeightTotal,
+    searchInput.logisticsParty,
+    searchInput.logisticsRole,
+  ].filter(Boolean).length
   const periodPickerFrom =
     searchInput.periodFrom || result.filters.periodFrom || defaultInput.periodFrom
   const periodPickerTo =
@@ -2231,6 +2378,7 @@ export default async function ExplorerPage({
                   periodTo={periodPickerTo}
                 />
                 <FilterInput className="w-36" label="Partida arancelaria" name="hsCodePrefix" value={searchInput.hsCodePrefix} placeholder="8471" />
+                <ExplorerSortFilterControl value={searchInput.sort} />
               </FilterBarGroup>
               <FilterBarActions>
                 <input type="hidden" name="q" value={searchInput.q ?? ""} />
@@ -2238,9 +2386,7 @@ export default async function ExplorerPage({
                 <input type="hidden" name="importBatchId" value={searchInput.importBatchId ?? ""} />
                 <input type="hidden" name="view" value={tableView} />
                 <input type="hidden" name="ranking" value={activeRanking} />
-                <Button type="submit" variant="primary" size="product-md">
-                  Aplicar
-                </Button>
+                <ExplorerSubmitButton />
                 <Link
                   className={cn(buttonVariants({ variant: "secondary", size: "product-md" }))}
                   href={resetExplorerHref()}
@@ -2249,26 +2395,11 @@ export default async function ExplorerPage({
                 </Link>
               </FilterBarActions>
             </FilterBar>
-            <details
-              className="border-b border-ds-border-soft px-3 py-1.5 text-ds-xs"
-              open={hasMoreFiltersOpen}
-            >
-              <summary className="w-fit cursor-pointer font-medium text-ds-text-secondary hover:text-ds-text-primary">
-                Más filtros
-              </summary>
-              <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 2xl:grid-cols-8">
-                <ExplorerAdvancedFilterControls
-                  filterOptions={filterOptions}
-                  searchInput={searchInput}
-                />
-              </div>
-              <p className="mt-2 max-w-4xl text-[11px] leading-snug text-ds-text-muted">
-                El país y el peso disponibles cambian según la operación. El puerto
-                secundario queda como contexto de ruta logística. Tipo de bulto queda
-                pendiente porque hoy vive en campos de bultos crudos/archivos companion
-                y no está normalizado para búsqueda.
-              </p>
-            </details>
+            <ExplorerAdvancedFiltersPopover
+              activeCount={activeAdvancedFilterCount}
+              filterOptions={filterOptions}
+              searchInput={searchInput}
+            />
             </ExplorerFlowFilterProvider>
             {activeChips.length > 0 ? (
               <div className="flex flex-wrap gap-1 px-3 py-1.5">
@@ -2306,6 +2437,8 @@ export default async function ExplorerPage({
             </div>
           ) : null}
 
+          <ExplorerResultsSummary filterOptions={filterOptions} result={result} />
+
           <DataTableShell className="overflow-hidden rounded-ds-md border border-ds-border-soft">
             <p id={rowActionDescriptionId} className="sr-only">
               Las filas de registros abren el detalle del registro. Presiona Enter o
@@ -2336,9 +2469,14 @@ export default async function ExplorerPage({
                     {tableColumns.map((column) => (
                       <DataTableHead
                         key={column.key}
+                        aria-sort={explorerColumnSortDirection(column, result.filters.sort)}
                         className={column.numeric ? "text-right" : undefined}
                       >
-                        <ExplorerTableHeaderLabel column={column} />
+                        <ExplorerTableHeaderLabel
+                          column={column}
+                          currentSort={result.filters.sort}
+                          params={params}
+                        />
                       </DataTableHead>
                     ))}
                   </DataTableRow>
@@ -2381,8 +2519,35 @@ export default async function ExplorerPage({
                 </DataTableBody>
               </DataTable>
             </div>
-            <DataTablePagination className="justify-between">
-              <span>{paginationLabel}</span>
+            <DataTablePagination className="flex-wrap justify-between">
+              <div className="flex min-w-0 flex-wrap items-center gap-2">
+                <span>{paginationLabel}</span>
+                <span aria-hidden="true" className="text-ds-text-subtle">·</span>
+                <div className="flex items-center gap-1 text-ds-xs">
+                  <span className="text-ds-text-muted">Filas</span>
+                  {explorerPageSizeOptions.map((limit) => {
+                    const isActive = result.pagination.limit === limit
+
+                    return isActive ? (
+                      <span
+                        key={limit}
+                        aria-current="true"
+                        className="rounded-ds-sm bg-ds-primary-soft px-1.5 py-0.5 font-semibold text-ds-primary"
+                      >
+                        {limit}
+                      </span>
+                    ) : (
+                      <Link
+                        key={limit}
+                        className="rounded-ds-sm px-1.5 py-0.5 font-medium text-ds-text-secondary underline-offset-4 hover:text-ds-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ds-focus-ring/25"
+                        href={explorerPageSizeHref(params, limit)}
+                      >
+                        {limit}
+                      </Link>
+                    )
+                  })}
+                </div>
+              </div>
               <div className="flex items-center gap-2">
                 {previousPageHref ? (
                   <Link
@@ -2423,8 +2588,6 @@ export default async function ExplorerPage({
               </div>
             </DataTablePagination>
           </DataTableShell>
-
-          <ExplorerResultsSummary filterOptions={filterOptions} result={result} />
 
           <ExplorerSearchMemory
             currentHref={currentExplorerHref}

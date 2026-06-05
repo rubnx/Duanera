@@ -387,6 +387,26 @@ The current `/explorer` route implements the Explorer-first workflow with:
 - keyboard-accessible row opening and `Escape` close
 - focus restoration to the selected row after close
 
+The default vertical reading order is title/context, filters and chips, result
+summary metrics, records table, saved searches, then the secondary ranking
+module. Keep the summary compact so it orients the user without displacing the
+table as the primary working surface.
+
+Numeric table headers for core analyst metrics are sortable when the query
+service supports the corresponding sort: flow-aware `US$ CIF` / `US$ FOB`,
+`US$ FOB total`, `Cantidad`, and `Peso bruto`. Header sort links preserve the
+current filters and table view, clear selection and pagination, and cycle
+descending, ascending, then source order.
+
+Explorer pagination exposes compact page-size controls for 25, 50, and 100
+rows. Changing page size preserves filters and view state but resets selection,
+offset, and cursor pagination.
+
+The advanced filter drawer is grouped by meaning instead of a single dense
+grid: geografia, logistica, rangos comerciales, and orden. Keep this surface
+capped to four main groups on wide layouts so labels and controls remain
+scannable on laptop widths.
+
 The product-facing Explorer default should use the latest non-test Aduana dataset period available to users. Internal, smoke, fixture, future-dated, or `source_category = 'test'` data may remain in the database for QA, but it must be excluded from product-facing default period discovery and default Explorer results.
 
 For Chile Aduana, the product-facing Explorer coverage target starts at `2021-01` and runs through the latest available product-facing month. Older official or historical files may remain useful for research, parser validation, and internal evidence, but should not appear in product-facing Explorer defaults unless a later decision expands the supported coverage window.

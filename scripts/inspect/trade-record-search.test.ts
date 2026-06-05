@@ -285,6 +285,24 @@ test("rejects unsupported sort values", () => {
   );
 });
 
+test("parses all supported table sort values", () => {
+  const sortValues = [
+    "source",
+    "item_value_desc",
+    "item_value_asc",
+    "declaration_fob_desc",
+    "declaration_fob_asc",
+    "quantity_desc",
+    "quantity_asc",
+    "gross_weight_desc",
+    "gross_weight_asc",
+  ];
+
+  for (const sort of sortValues) {
+    assert.equal(parseTradeRecordSearchParams({ sort }).sort, sort);
+  }
+});
+
 test("parses trade record table views with a commercial fallback", () => {
   assert.equal(parseTradeRecordTableView(undefined), "commercial");
   assert.equal(parseTradeRecordTableView("values"), "values");

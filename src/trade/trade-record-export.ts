@@ -34,6 +34,7 @@ import {
   tradeRecordTableViewById,
   type TradeRecordTableViewId,
 } from "@/trade/trade-record-table-views";
+import { formatTradeRecordSortLabel } from "@/trade/trade-record-sort";
 import {
   enrichTradeRecordsWithLabels,
   type TradeRecordWithLabels,
@@ -384,7 +385,7 @@ export function summarizeTradeRecordExportFilters(filters: TradeRecordFilters) {
       `Peso bruto total: ${filters.minGrossWeightTotal ?? "sin mínimo"} a ${filters.maxGrossWeightTotal ?? "sin máximo"}`,
     );
   }
-  if (filters.sort) items.push(`Orden: ${filters.sort}`);
+  if (filters.sort) items.push(`Orden: ${formatTradeRecordSortLabel(filters.sort)}`);
 
   return items.length > 0 ? items : ["Sin filtros aplicados"];
 }

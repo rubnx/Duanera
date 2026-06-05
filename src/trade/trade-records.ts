@@ -15,6 +15,7 @@ import {
   encodeTradeRecordCursor,
   type TradeRecordCursor,
 } from "./trade-record-pagination";
+import type { TradeRecordSort } from "./trade-record-sort";
 import { buildTradeRecordRelatedGroupDefinitions } from "./trade-record-related-groups";
 import {
   exactMonthForRawOrderedList,
@@ -37,6 +38,7 @@ export {
   encodeTradeRecordCursor,
   type TradeRecordCursor,
 } from "./trade-record-pagination";
+export type { TradeRecordSort } from "./trade-record-sort";
 export {
   compareTradeRecordGroups,
   emptyTradeRecordComparison,
@@ -50,13 +52,6 @@ export {
 export { buildTradeRecordRelatedGroupDefinitions } from "./trade-record-related-groups";
 
 export type TradeFlow = "import" | "export";
-export type TradeRecordSort =
-  | "source"
-  | "item_value_desc"
-  | "item_value_asc"
-  | "declaration_fob_desc"
-  | "quantity_desc"
-  | "gross_weight_desc";
 export type TradeRecordLogisticsRole = "issuer" | "carrier";
 
 export type TradeRecordFilters = {
