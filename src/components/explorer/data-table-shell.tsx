@@ -113,7 +113,7 @@ function DataTableHead({
     <TableHead
       data-slot="data-table-head"
       className={cn(
-        "h-(--ds-table-header-height) px-(--ds-table-cell-x) text-[length:var(--ds-text-xs)] font-semibold text-ds-text-secondary",
+        "group/help h-(--ds-table-header-height) bg-ds-subtle px-(--ds-table-cell-x) text-[length:var(--ds-text-xs)] font-semibold text-ds-text-secondary",
         className
       )}
       {...props}

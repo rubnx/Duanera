@@ -132,7 +132,7 @@ function ExplorerExportPanel({
               </div>
               <div
                 className={cn(
-                  "shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold",
+                  "shrink-0 rounded-full px-2 py-0.5 text-ds-xs font-semibold",
                   plan.allowed
                     ? "bg-ds-success-soft text-ds-success"
                     : "bg-ds-warning-soft text-ds-warning"
@@ -165,7 +165,7 @@ function ExplorerExportPanel({
               <div className="flex items-center gap-1">
                 <button
                   type="button"
-                  className="rounded-ds-sm px-1.5 py-1 text-[11px] font-medium text-ds-primary hover:bg-ds-primary-soft"
+                  className="rounded-ds-sm px-1.5 py-1 text-ds-xs font-medium text-ds-primary hover:bg-ds-primary-soft"
                   onClick={() =>
                     setSelectedColumnKeys(plan.availableColumns.map((column) => column.key))
                   }
@@ -174,7 +174,7 @@ function ExplorerExportPanel({
                 </button>
                 <button
                   type="button"
-                  className="rounded-ds-sm px-1.5 py-1 text-[11px] font-medium text-ds-text-muted hover:bg-ds-muted hover:text-ds-text-primary"
+                  className="rounded-ds-sm px-1.5 py-1 text-ds-xs font-medium text-ds-text-muted hover:bg-ds-muted hover:text-ds-text-primary"
                   onClick={() => setSelectedColumnKeys([])}
                 >
                   Ninguna
@@ -206,7 +206,7 @@ function ExplorerExportPanel({
               })}
             </div>
 
-            <ul className="mt-2 space-y-1 border-t border-ds-border-soft pt-2 text-[11px] leading-(--ds-leading-normal) text-ds-text-muted">
+            <ul className="mt-2 space-y-1 border-t border-ds-border-soft pt-2 text-ds-xs leading-(--ds-leading-normal) text-ds-text-muted">
               {plan.caveats.map((caveat) => (
                 <li key={caveat}>{caveat}</li>
               ))}
@@ -214,7 +214,7 @@ function ExplorerExportPanel({
           </div>
 
           <div className="flex items-center justify-between gap-2 border-t border-ds-border-soft bg-ds-subtle px-3 py-2">
-            <div className="text-[11px] text-ds-text-muted">
+            <div className="text-ds-xs text-ds-text-muted">
               {selectedCount === 0
                 ? "Selecciona al menos una columna."
                 : `${selectedCount} columnas seleccionadas.`}

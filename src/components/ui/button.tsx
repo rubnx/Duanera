@@ -22,7 +22,7 @@ const buttonVariants = cva(
       variant: {
         default: "bg-primary text-primary-foreground [a]:hover:bg-primary/80",
         primary:
-          "bg-ds-primary text-ds-text-inverse hover:bg-ds-primary-hover aria-expanded:bg-ds-primary-active",
+          "bg-ds-primary [color:var(--ds-text-inverse)] hover:bg-ds-primary-hover aria-expanded:bg-ds-primary-active",
         outline:
           "border-border bg-background hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
         secondary:
@@ -51,6 +51,8 @@ const buttonVariants = cva(
           "h-(--ds-control-height-lg) gap-2 rounded-ds-md px-4 text-[length:var(--ds-text-sm)] has-data-[icon=inline-end]:pr-3 has-data-[icon=inline-start]:pl-3",
         "product-md":
           "h-(--ds-control-height-md) gap-2 rounded-ds-md px-3 text-[length:var(--ds-text-sm)] has-data-[icon=inline-end]:pr-2.5 has-data-[icon=inline-start]:pl-2.5",
+        "product-sm":
+          "h-(--ds-control-height-sm) gap-1.5 rounded-ds-md px-3 text-ds-xs font-semibold has-data-[icon=inline-end]:pr-2.5 has-data-[icon=inline-start]:pl-2.5",
         "product-lg":
           "h-11 gap-2 rounded-ds-md px-5 text-[length:var(--ds-text-md)] has-data-[icon=inline-end]:pr-4 has-data-[icon=inline-start]:pl-4",
         "product-icon-sm": "size-(--ds-control-height-sm) rounded-ds-md",

@@ -1,6 +1,12 @@
 "use client"
 
-import { BookmarkIcon, ClockIcon, SearchIcon, Trash2Icon } from "lucide-react"
+import {
+  BookmarkIcon,
+  ClockIcon,
+  SearchIcon,
+  Trash2Icon,
+  XIcon,
+} from "lucide-react"
 import Link from "next/link"
 import * as React from "react"
 
@@ -17,7 +23,7 @@ type SavedExplorerSearch = {
   lastOpenedAt: string
 }
 
-type ExplorerSearchMemoryProps = {
+type ExplorerSearchesPanelProps = {
   currentHref: string
   defaultName: string
   filtersLabel: string
@@ -33,7 +39,7 @@ function nowIso() {
   return new Date().toISOString()
 }
 
-function readEntries(key: string) {
+function readEntries(key: string): SavedExplorerSearch[] {
   if (typeof window === "undefined") {
     return []
   }
@@ -57,7 +63,7 @@ function writeEntries(key: string, entries: SavedExplorerSearch[]) {
 
 function upsertHistory(
   entries: SavedExplorerSearch[],
-  current: Omit<SavedExplorerSearch, "id" | "createdAt" | "lastOpenedAt">,
+  current: Omit<SavedExplorerSearch, "id" | "createdAt" | "lastOpenedAt">
 ) {
   const timestamp = nowIso()
   const existing = entries.find((entry) => entry.href === current.href)
@@ -68,10 +74,10 @@ function upsertHistory(
     lastOpenedAt: timestamp,
   }
 
-  return [next, ...entries.filter((entry) => entry.href !== current.href)].slice(
-    0,
-    maxHistory,
-  )
+  return [
+    next,
+    ...entries.filter((entry) => entry.href !== current.href),
+  ].slice(0, maxHistory)
 }
 
 function formatDate(value: string) {
@@ -93,15 +99,15 @@ function EntryList({
   onDelete?: (id: string) => void
 }) {
   if (entries.length === 0) {
-    return <p className="text-ds-sm text-ds-text-muted">{emptyLabel}</p>
+    return <p className="text-ds-xs text-ds-text-muted">{emptyLabel}</p>
   }
 
   return (
-    <ul className="grid gap-2">
+    <ul className="grid gap-1.5">
       {entries.map((entry) => (
         <li
           key={entry.id}
-          className="grid gap-2 rounded-ds-md border border-ds-border-soft bg-ds-surface p-3 sm:grid-cols-[minmax(0,1fr)_auto]"
+          className="grid gap-1.5 rounded-ds-md border border-ds-border-soft bg-ds-surface p-2.5 sm:grid-cols-[minmax(0,1fr)_auto]"
         >
           <div className="min-w-0">
             <Link
@@ -110,10 +116,10 @@ function EntryList({
             >
               {entry.name}
             </Link>
-            <p className="mt-1 truncate text-ds-xs text-ds-text-muted">
+            <p className="mt-0.5 truncate text-ds-xs text-ds-text-muted">
               {entry.filtersLabel}
             </p>
-            <p className="mt-1 text-ds-xs text-ds-text-muted">
+            <p className="mt-0.5 text-ds-xs text-ds-text-muted">
               {entry.viewLabel} · {formatDate(entry.lastOpenedAt)}
             </p>
           </div>
@@ -134,17 +140,18 @@ function EntryList({
   )
 }
 
-export function ExplorerSearchMemory({
+function useSearchMemory({
   currentHref,
   defaultName,
   filtersLabel,
   viewLabel,
-}: ExplorerSearchMemoryProps) {
+}: ExplorerSearchesPanelProps) {
   const [saved, setSaved] = React.useState<SavedExplorerSearch[]>([])
   const [history, setHistory] = React.useState<SavedExplorerSearch[]>([])
   const [name, setName] = React.useState(defaultName)
-  const [mode, setMode] = React.useState<"saved" | "history" | "save">("saved")
+  const [mode, setMode] = React.useState<"save" | "saved" | "history">("saved")
   const [storageError, setStorageError] = React.useState(false)
+  const [hydrated, setHydrated] = React.useState(false)
 
   React.useEffect(() => {
     const savedEntries = readEntries(savedKey)
@@ -158,6 +165,7 @@ export function ExplorerSearchMemory({
     setSaved(savedEntries)
     setHistory(historyEntries)
     setStorageError(!writeEntries(historyKey, historyEntries))
+    setHydrated(true)
   }, [currentHref, defaultName, filtersLabel, viewLabel])
 
   function saveCurrentSearch() {
@@ -171,10 +179,10 @@ export function ExplorerSearchMemory({
       createdAt: timestamp,
       lastOpenedAt: timestamp,
     }
-    const next = [entry, ...saved.filter((item) => item.href !== currentHref)].slice(
-      0,
-      maxSaved,
-    )
+    const next = [
+      entry,
+      ...saved.filter((item) => item.href !== currentHref),
+    ].slice(0, maxSaved)
 
     setSaved(next)
     setStorageError(!writeEntries(savedKey, next))
@@ -187,81 +195,275 @@ export function ExplorerSearchMemory({
     setStorageError(!writeEntries(savedKey, next))
   }
 
+  return {
+    deleteSavedSearch,
+    hydrated,
+    history,
+    mode,
+    name,
+    saved,
+    saveCurrentSearch,
+    setMode,
+    setName,
+    storageError,
+  }
+}
+
+type ExplorerSearchesPanelContentProps = ExplorerSearchesPanelProps & {
+  embedded?: boolean
+  onRequestClose?: () => void
+}
+
+function ExplorerSearchesPanelContent({
+  currentHref,
+  defaultName,
+  filtersLabel,
+  viewLabel,
+  embedded = false,
+  onRequestClose,
+}: ExplorerSearchesPanelContentProps) {
+  const memory = useSearchMemory({
+    currentHref,
+    defaultName,
+    filtersLabel,
+    viewLabel,
+  })
+
   return (
-    <section className="rounded-ds-md border border-ds-border-soft bg-ds-surface">
-      <div className="flex flex-wrap items-center gap-2 border-b border-ds-border-soft px-4 py-3">
-        <div className="mr-auto min-w-0">
-          <h2 className="text-ds-sm font-semibold text-ds-text-primary">
-            Búsquedas de trabajo
-          </h2>
-          <p className="truncate text-ds-xs text-ds-text-muted">{filtersLabel}</p>
-        </div>
+    <div
+      className={cn(
+        "flex flex-col gap-3",
+        embedded ? "p-3" : "p-4"
+      )}
+    >
+      <div
+        role="tablist"
+        aria-label="Búsquedas de trabajo"
+        className="flex flex-wrap gap-1 rounded-ds-md border border-ds-border-soft bg-ds-muted p-0.5"
+      >
         {[
           { id: "save", label: "Guardar", icon: BookmarkIcon },
           { id: "saved", label: "Guardadas", icon: SearchIcon },
           { id: "history", label: "Historial", icon: ClockIcon },
         ].map((item) => {
           const Icon = item.icon
-          const active = mode === item.id
+          const active = memory.mode === item.id
+          const tabId = `tab-${item.id}`
+          const panelId = `panel-${item.id}`
 
           return (
-            <Button
+            <button
               key={item.id}
+              id={tabId}
+              role="tab"
               type="button"
-              variant={active ? "primary" : "secondary"}
-              size="product-md"
-              onClick={() => setMode(item.id as typeof mode)}
+              aria-selected={active}
+              aria-controls={panelId}
+              className={cn(
+                "inline-flex h-8 items-center gap-1 rounded-ds-sm px-2.5 text-ds-xs font-semibold transition-colors duration-(--ds-duration-fast) ease-(--ds-ease-standard)",
+                active
+                  ? "bg-ds-surface text-ds-text-primary shadow-ds-xs"
+                  : "text-ds-text-muted hover:bg-ds-surface/80 hover:text-ds-text-primary"
+              )}
+              onClick={() => memory.setMode(item.id as typeof memory.mode)}
             >
-              <Icon aria-hidden="true" />
+              <Icon aria-hidden="true" className="size-3.5" />
               {item.label}
-            </Button>
+              {item.id === "saved" ? (
+                <span className="ml-0.5 text-ds-xs tabular-nums text-ds-text-muted">
+                  {memory.saved.length}
+                </span>
+              ) : null}
+              {item.id === "history" ? (
+                <span className="ml-0.5 text-ds-xs tabular-nums text-ds-text-muted">
+                  {memory.history.length}
+                </span>
+              ) : null}
+            </button>
           )
         })}
       </div>
-      <div className="p-4">
-        {mode === "save" ? (
-          <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
+
+      <div
+        role="tabpanel"
+        id={`panel-${memory.mode}`}
+        aria-labelledby={`tab-${memory.mode}`}
+      >
+        {memory.mode === "save" ? (
+          <div className="grid gap-2.5 sm:grid-cols-[minmax(0,1fr)_auto]">
             <label className="grid gap-1 text-ds-xs font-medium text-ds-text-secondary">
               Nombre de la búsqueda
               <input
-                className="h-(--ds-control-height-lg) rounded-ds-md border border-ds-border bg-ds-surface px-3 text-ds-sm text-ds-text-primary outline-none focus-visible:ring-3 focus-visible:ring-ds-focus-ring/20"
-                value={name}
-                onChange={(event) => setName(event.target.value)}
+                className="h-(--ds-control-height-md) rounded-ds-md border border-ds-border bg-ds-surface px-3 text-ds-sm text-ds-text-primary outline-none focus-visible:ring-3 focus-visible:ring-ds-focus-ring/20"
+                value={memory.name}
+                onChange={(event) => memory.setName(event.target.value)}
               />
             </label>
             <Button
               type="button"
               className="self-end"
               variant="primary"
-              size="product"
-              onClick={saveCurrentSearch}
+              size="product-md"
+              onClick={() => {
+                memory.saveCurrentSearch()
+              }}
             >
               Guardar búsqueda
             </Button>
           </div>
         ) : null}
 
-        {mode === "saved" ? (
+        {memory.mode === "saved" ? (
           <EntryList
             emptyLabel="Todavía no hay búsquedas guardadas en este navegador."
-            entries={saved}
-            onDelete={deleteSavedSearch}
+            entries={memory.saved}
+            onDelete={memory.deleteSavedSearch}
           />
         ) : null}
 
-        {mode === "history" ? (
+        {memory.mode === "history" ? (
           <EntryList
             emptyLabel="El historial aparecerá cuando uses filtros en el Explorador."
-            entries={history}
+            entries={memory.history}
           />
         ) : null}
 
-        {storageError ? (
-          <p className={cn("mt-3 text-ds-xs text-ds-warning")}>
+        {memory.storageError ? (
+          <p className="mt-2 text-ds-xs text-ds-warning">
             El navegador no permitió guardar esta información localmente.
           </p>
         ) : null}
       </div>
-    </section>
+
+      {onRequestClose ? (
+        <div className="flex justify-end border-t border-ds-border-soft pt-2">
+          <Button
+            type="button"
+            size="product-md"
+            variant="secondary"
+            onClick={onRequestClose}
+          >
+            Cerrar
+          </Button>
+        </div>
+      ) : null}
+    </div>
   )
+}
+
+type ExplorerSearchesPopoverProps = ExplorerSearchesPanelProps & {
+  className?: string
+  triggerLabel?: string
+}
+
+function ExplorerSearchesPopover({
+  className,
+  currentHref,
+  defaultName,
+  filtersLabel,
+  viewLabel,
+  triggerLabel = "Búsquedas",
+}: ExplorerSearchesPopoverProps) {
+  const [isOpen, setIsOpen] = React.useState(false)
+  const containerRef = React.useRef<HTMLDivElement>(null)
+  const [savedCount, setSavedCount] = React.useState(0)
+  const [historyCount, setHistoryCount] = React.useState(0)
+
+  React.useEffect(() => {
+    setSavedCount(readEntries(savedKey).length)
+    setHistoryCount(readEntries(historyKey).length)
+  }, [isOpen])
+
+  React.useEffect(() => {
+    if (!isOpen) {
+      return
+    }
+
+    function onPointerDown(event: PointerEvent) {
+      if (!containerRef.current?.contains(event.target as Node)) {
+        setIsOpen(false)
+      }
+    }
+
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setIsOpen(false)
+      }
+    }
+
+    document.addEventListener("pointerdown", onPointerDown)
+    document.addEventListener("keydown", onKeyDown)
+
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown)
+      document.removeEventListener("keydown", onKeyDown)
+    }
+  }, [isOpen])
+
+  return (
+    <div ref={containerRef} className={cn("relative", className)}>
+      <Button
+        aria-expanded={isOpen}
+        aria-haspopup="dialog"
+        size="product-md"
+        type="button"
+        variant="secondary"
+        onClick={() => setIsOpen((current) => !current)}
+      >
+        <BookmarkIcon aria-hidden="true" />
+        {triggerLabel}
+        {(savedCount + historyCount) > 0 ? (
+          <span
+            aria-label={`${savedCount + historyCount} búsquedas guardadas`}
+            className="ml-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-ds-primary-soft text-[10px] font-semibold leading-none tabular-nums text-ds-primary"
+          >
+            {savedCount + historyCount}
+          </span>
+        ) : null}
+      </Button>
+      {isOpen ? (
+        <div
+          role="dialog"
+          aria-modal="false"
+          aria-label="Búsquedas de trabajo"
+          className="absolute right-0 top-[calc(100%+0.4rem)] z-40 w-[min(28rem,calc(100vw-2rem))] overflow-hidden rounded-ds-md border border-ds-border bg-ds-surface shadow-ds-md"
+        >
+          <div className="flex items-center justify-between border-b border-ds-border-soft px-3 py-2">
+            <h2 className="text-ds-sm font-semibold text-ds-text-primary">
+              Búsquedas de trabajo
+            </h2>
+            <Button
+              aria-label="Cerrar búsquedas"
+              size="icon-xs"
+              type="button"
+              variant="ghost"
+              onClick={() => setIsOpen(false)}
+            >
+              <XIcon aria-hidden="true" />
+            </Button>
+          </div>
+          <ExplorerSearchesPanelContent
+            currentHref={currentHref}
+            defaultName={defaultName}
+            filtersLabel={filtersLabel}
+            viewLabel={viewLabel}
+            embedded
+            onRequestClose={() => setIsOpen(false)}
+          />
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+export {
+  ExplorerSearchesPanelContent,
+  ExplorerSearchesPopover,
+  useSearchMemory,
+}
+export type {
+  ExplorerSearchesPanelContentProps,
+  ExplorerSearchesPanelProps,
+  ExplorerSearchesPopoverProps,
+  SavedExplorerSearch,
 }

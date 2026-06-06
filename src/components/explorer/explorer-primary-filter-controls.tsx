@@ -11,10 +11,28 @@ import {
   SlidersHorizontalIcon,
   XIcon,
 } from "lucide-react"
-import { createContext, useContext, useEffect, useId, useMemo, useRef, useState } from "react"
+import {
+  Children,
+  Fragment,
+  createContext,
+  isValidElement,
+  useContext,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from "react"
 import type { ComponentProps, ReactNode } from "react"
 
 import { CountryMultiFilter } from "@/components/explorer/country-multi-filter"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { cn } from "@/lib/utils"
 import {
   formatTradeDisplayCodeLabel,
@@ -81,27 +99,37 @@ function ExplorerFlowFilterProvider({
 function FilterControlLabel({
   children,
   className,
+  hideLabel,
   label,
 }: {
   children: ReactNode
   className?: string
+  hideLabel?: boolean
   label: string
 }) {
   return (
     <label
       className={cn(
-        "flex w-32 flex-none flex-col gap-0.5 text-[11px] font-medium text-ds-text-muted",
+        "flex min-w-0 flex-none flex-col gap-0.5 text-[11px] font-medium leading-none text-ds-text-muted",
         className
       )}
     >
-      {label}
+      <span className={hideLabel ? "sr-only" : undefined}>{label}</span>
       {children}
     </label>
   )
 }
 
 const compactControlClassName =
-  "h-(--ds-control-height-sm) w-full rounded-ds-md border border-ds-border bg-ds-surface px-2.5 text-ds-sm text-ds-text-primary outline-none placeholder:text-ds-text-muted focus-visible:border-ds-focus-ring focus-visible:ring-3 focus-visible:ring-ds-focus-ring/20"
+  "h-(--ds-control-height-sm) w-full min-w-0 rounded-ds-md border border-ds-border bg-ds-surface px-2 text-ds-xs leading-none text-ds-text-primary outline-none placeholder:text-ds-text-muted focus-visible:border-ds-focus-ring focus-visible:ring-3 focus-visible:ring-ds-focus-ring/20"
+
+const primaryFilterFieldWidths = {
+  tradeFlow: "w-[11rem]",
+  participant: "w-[8.25rem]",
+  period: "w-[8.5rem]",
+  hsCode: "w-[7rem]",
+  sort: "w-[11rem]",
+} as const
 
 function ControlledFilterInput({
   className,
@@ -145,7 +173,7 @@ function FilterInput({
   value?: string
 }) {
   return (
-    <FilterControlLabel className={cn("w-36", className)} label={label}>
+    <FilterControlLabel className={className} label={label}>
       <ControlledFilterInput name={name} placeholder={placeholder} value={value} />
     </FilterControlLabel>
   )
@@ -165,7 +193,7 @@ function FilterRange({
   minValue?: string
 }) {
   return (
-    <div className="flex w-full flex-col gap-0.5 text-[11px] font-medium text-ds-text-muted">
+    <div className="flex w-full flex-col gap-0.5 text-ds-xs font-medium text-ds-text-muted">
       <span>{label}</span>
       <div className="grid grid-cols-2 gap-1.5">
         <ControlledFilterInput name={minName} placeholder="mín" value={minValue} />
@@ -175,41 +203,122 @@ function FilterRange({
   )
 }
 
+type FilterSelectOption = {
+  disabled?: boolean
+  label: string
+  value: string
+}
+
+function filterSelectLabelFromChildren(children: ReactNode) {
+  return Children.toArray(children)
+    .map((child) => {
+      if (typeof child === "string" || typeof child === "number") {
+        return String(child)
+      }
+
+      return ""
+    })
+    .join("")
+    .trim()
+}
+
+function filterSelectOptionsFromChildren(children: ReactNode): FilterSelectOption[] {
+  const options: FilterSelectOption[] = []
+
+  Children.forEach(children, (child) => {
+    if (!isValidElement(child)) {
+      return
+    }
+
+    if (child.type === Fragment) {
+      const fragmentProps = child.props as { children?: ReactNode }
+      options.push(...filterSelectOptionsFromChildren(fragmentProps.children))
+      return
+    }
+
+    if (child.type !== "option") {
+      return
+    }
+
+    const optionProps = child.props as {
+      children?: ReactNode
+      disabled?: boolean
+      value?: unknown
+    }
+    const value = optionProps.value == null ? "" : String(optionProps.value)
+    const label = filterSelectLabelFromChildren(optionProps.children) || value
+    options.push({ disabled: optionProps.disabled, label, value })
+  })
+
+  return options
+}
+
 function FilterSelect({
   children,
   className,
+  hideLabel,
   label,
   name,
+  onValueChange,
   value,
 }: {
   children: ReactNode
   className?: string
+  hideLabel?: boolean
   label: string
   name: string
+  onValueChange?: (value: string) => void
   value?: string
 }) {
   const [selectValue, setSelectValue] = useState(value ?? "")
+  const options = useMemo(() => filterSelectOptionsFromChildren(children), [children])
 
   useEffect(() => {
     setSelectValue(value ?? "")
   }, [value])
 
   return (
-    <FilterControlLabel className={cn("w-40", className)} label={label}>
-      <span className="relative">
-        <select
-          className={cn(compactControlClassName, "appearance-none pr-9")}
-          name={name}
-          onChange={(event) => setSelectValue(event.target.value)}
-          value={selectValue}
+    <FilterControlLabel className={className} hideLabel={hideLabel} label={label}>
+      <input type="hidden" name={name} value={selectValue} />
+      <Select
+        items={options.map((option) => ({
+          label: option.label,
+          value: option.value,
+        }))}
+        onValueChange={(nextValue) => {
+          const normalizedValue = typeof nextValue === "string" ? nextValue : ""
+          setSelectValue(normalizedValue)
+          onValueChange?.(normalizedValue)
+        }}
+        value={selectValue}
+      >
+        <SelectTrigger
+          size="sm"
+          className={cn(
+            compactControlClassName,
+            "!h-(--ds-control-height-sm) w-full rounded-ds-md bg-ds-surface py-0 pr-2 pl-2 text-ds-xs leading-none text-ds-text-primary ring-0 data-placeholder:text-ds-text-muted [&_svg]:size-3"
+          )}
         >
-          {children}
-        </select>
-        <ChevronDownIcon
-          aria-hidden="true"
-          className="pointer-events-none absolute right-3 top-[calc(50%+1px)] size-3.5 -translate-y-1/2 text-ds-text-secondary"
-        />
-      </span>
+          <SelectValue className="min-w-0 truncate" />
+        </SelectTrigger>
+        <SelectContent
+          align="start"
+          alignItemWithTrigger={false}
+          className="max-h-72 min-w-(--anchor-width) rounded-ds-md border border-ds-border bg-ds-surface p-1 text-ds-xs text-ds-text-primary shadow-ds-md ring-0"
+        >
+          {options.map((option) => (
+            <SelectItem
+              key={option.value}
+              className="min-h-8 rounded-ds-sm px-2 py-1.5 text-ds-xs text-ds-text-primary data-highlighted:bg-ds-muted data-highlighted:text-ds-text-primary"
+              disabled={option.disabled}
+              label={option.label}
+              value={option.value}
+            >
+              <span className="min-w-0 truncate">{option.label}</span>
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     </FilterControlLabel>
   )
 }
@@ -350,7 +459,7 @@ function LogisticsPartyTypeahead({
   return (
     <div
       ref={containerRef}
-      className="relative flex w-full flex-col gap-0.5 text-[11px] font-medium text-ds-text-muted"
+      className="relative flex w-full flex-col gap-0.5 text-[11px] font-medium leading-none text-ds-text-muted"
     >
       <span id={labelId}>Entidad logística</span>
       <input type="hidden" name="logisticsParty" value={selectedId} />
@@ -411,7 +520,7 @@ function LogisticsPartyTypeahead({
                 <span className="block truncate font-semibold text-ds-text-primary">
                   {option.displayName}
                 </span>
-                <span className="block truncate text-[11px] text-ds-text-muted">
+                <span className="block truncate text-ds-xs text-ds-text-muted">
                   {option.normalizedGroupName
                     ? `${option.normalizedGroupName} · ${option.recordCount} registros`
                     : option.recordCount > 0
@@ -578,29 +687,33 @@ function ExplorerPeriodFilterControl({
   const toIndex = parsedSelectedTo?.index
 
   return (
-    <div ref={containerRef} className="relative flex w-40 flex-none flex-col gap-0.5 text-[11px] font-medium text-ds-text-muted">
-      <span>Periodo</span>
-      <input type="hidden" name="periodFrom" value={selectedFrom} />
-      <input type="hidden" name="periodTo" value={selectedTo} />
-      <button
-        type="button"
-        aria-expanded={isOpen}
-        className={cn(
-          compactControlClassName,
-          "inline-flex items-center justify-start gap-2 text-left"
-        )}
-        onClick={() => setIsOpen((current) => !current)}
-      >
-        <CalendarDaysIcon aria-hidden="true" className="size-3.5 shrink-0 text-ds-text-muted" />
-        <span className="truncate">
-          {formatTradeRecordPeriodRangeLabel(selectedFrom, selectedTo)}
-        </span>
-      </button>
+    <div
+      ref={containerRef}
+      className={cn("relative flex-none", primaryFilterFieldWidths.period)}
+    >
+      <FilterControlLabel className="w-full" label="Periodo">
+        <input type="hidden" name="periodFrom" value={selectedFrom} />
+        <input type="hidden" name="periodTo" value={selectedTo} />
+        <button
+          type="button"
+          aria-expanded={isOpen}
+          className={cn(
+            compactControlClassName,
+            "inline-flex items-center justify-start gap-1.5 text-left"
+          )}
+          onClick={() => setIsOpen((current) => !current)}
+        >
+          <CalendarDaysIcon aria-hidden="true" className="size-3 shrink-0 text-ds-text-muted" />
+          <span className="min-w-0 truncate">
+            {formatTradeRecordPeriodRangeLabel(selectedFrom, selectedTo)}
+          </span>
+        </button>
+      </FilterControlLabel>
       {isOpen ? (
         <div className="absolute left-0 top-[calc(100%+0.35rem)] z-50 w-[19rem] overflow-hidden rounded-ds-md border border-ds-border bg-ds-surface shadow-ds-md">
           {yearShortcuts.length > 0 ? (
             <div className="border-b border-ds-border-soft px-2 py-2">
-              <div className="mb-1.5 text-[11px] font-semibold text-ds-text-muted">
+              <div className="mb-1.5 text-ds-xs font-semibold text-ds-text-muted">
                 Años
               </div>
               <div className="grid grid-cols-4 gap-1">
@@ -617,7 +730,7 @@ function ExplorerPeriodFilterControl({
                       type="button"
                       aria-label={`Seleccionar año ${year}`}
                       className={cn(
-                        "h-7 rounded-ds-sm text-ds-xs font-semibold transition-colors",
+                        "h-8 rounded-ds-sm text-ds-xs font-semibold transition-colors",
                         isSelectedYear
                           ? "bg-ds-primary text-ds-text-inverse"
                           : "text-ds-text-primary hover:bg-ds-muted"
@@ -635,7 +748,7 @@ function ExplorerPeriodFilterControl({
             <button
               type="button"
               aria-label="Año anterior"
-              className="inline-flex size-7 items-center justify-center rounded-ds-sm text-ds-text-secondary hover:bg-ds-muted hover:text-ds-text-primary disabled:pointer-events-none disabled:opacity-40"
+              className="inline-flex size-8 items-center justify-center rounded-ds-sm text-ds-text-secondary hover:bg-ds-muted hover:text-ds-text-primary disabled:pointer-events-none disabled:opacity-40"
               disabled={visibleYear <= firstYear}
               onClick={() => setVisibleYear((year) => Math.max(firstYear, year - 1))}
             >
@@ -645,7 +758,7 @@ function ExplorerPeriodFilterControl({
             <button
               type="button"
               aria-label="Año siguiente"
-              className="inline-flex size-7 items-center justify-center rounded-ds-sm text-ds-text-secondary hover:bg-ds-muted hover:text-ds-text-primary disabled:pointer-events-none disabled:opacity-40"
+              className="inline-flex size-8 items-center justify-center rounded-ds-sm text-ds-text-secondary hover:bg-ds-muted hover:text-ds-text-primary disabled:pointer-events-none disabled:opacity-40"
               disabled={visibleYear >= lastYear}
               onClick={() => setVisibleYear((year) => Math.min(lastYear, year + 1))}
             >
@@ -705,26 +818,19 @@ function ExplorerPrimaryFilterControls({
 
   return (
     <>
-      <FilterControlLabel className="w-36" label="Tipo de operación">
-        <span className="relative">
-          <select
-            className={cn(compactControlClassName, "appearance-none pr-9")}
-            name="tradeFlow"
-            value={tradeFlow}
-            onChange={(event) => setTradeFlow(normalizeTradeFlowUi(event.target.value))}
-          >
-            <option value="import">Importaciones</option>
-            <option value="export">Exportaciones</option>
-          </select>
-          <ChevronDownIcon
-            aria-hidden="true"
-            className="pointer-events-none absolute right-3 top-[calc(50%+1px)] size-3.5 -translate-y-1/2 text-ds-text-secondary"
-          />
-        </span>
-      </FilterControlLabel>
+      <FilterSelect
+        className={primaryFilterFieldWidths.tradeFlow}
+        label="Tipo de operación"
+        name="tradeFlow"
+        onValueChange={(nextValue) => setTradeFlow(normalizeTradeFlowUi(nextValue))}
+        value={tradeFlow}
+      >
+        <option value="import">Importaciones</option>
+        <option value="export">Exportaciones</option>
+      </FilterSelect>
       <FilterInput
         key={config.participant.name}
-        className="w-32"
+        className={primaryFilterFieldWidths.participant}
         label={config.participant.label}
         name={config.participant.name}
         value={participantValue}
@@ -778,7 +884,7 @@ function ExplorerAdvancedFilterControls({
   return (
     <div className="grid gap-x-4 gap-y-3 lg:grid-cols-2">
       <fieldset className="min-w-0">
-        <legend className="mb-1.5 flex items-center gap-1 text-[11px] font-semibold text-ds-text-secondary">
+        <legend className="mb-1.5 flex items-center gap-1 text-ds-xs font-semibold text-ds-text-secondary">
           <ShipIcon aria-hidden="true" className="size-3 shrink-0" />
           Logística
         </legend>
@@ -836,7 +942,7 @@ function ExplorerAdvancedFilterControls({
 
       <div className="flex min-w-0 flex-col gap-3">
         <fieldset className="min-w-0">
-          <legend className="mb-1.5 flex items-center gap-1 text-[11px] font-semibold text-ds-text-secondary">
+          <legend className="mb-1.5 flex items-center gap-1 text-ds-xs font-semibold text-ds-text-secondary">
             <MapPinIcon aria-hidden="true" className="size-3 shrink-0" />
             Geografía
           </legend>
@@ -861,7 +967,7 @@ function ExplorerAdvancedFilterControls({
         </fieldset>
 
         <fieldset className="min-w-0">
-          <legend className="mb-1.5 flex items-center gap-1 text-[11px] font-semibold text-ds-text-secondary">
+          <legend className="mb-1.5 flex items-center gap-1 text-ds-xs font-semibold text-ds-text-secondary">
           <SlidersHorizontalIcon aria-hidden="true" className="size-3 shrink-0" />
           Rangos comerciales
           </legend>
@@ -912,9 +1018,26 @@ function ExplorerAdvancedFilterControls({
   )
 }
 
-function ExplorerSortFilterControl({ value }: { value?: string }) {
+function ExplorerSortFilterControl({
+  className,
+  hideLabel,
+  onValueChange,
+  value,
+}: {
+  className?: string
+  hideLabel?: boolean
+  onValueChange?: (value: string) => void
+  value?: string
+}) {
   return (
-    <FilterSelect className="w-44" label="Orden" name="sort" value={value}>
+    <FilterSelect
+      className={className ?? primaryFilterFieldWidths.sort}
+      hideLabel={hideLabel}
+      label="Orden"
+      name="sort"
+      onValueChange={onValueChange}
+      value={value}
+    >
       <option value="">Orden fuente</option>
       {tradeRecordSortValues
         .filter((sortValue) => sortValue !== "source")
@@ -979,7 +1102,7 @@ function ExplorerAdvancedFiltersPopover({
       >
         Más filtros
         {activeCount > 0 ? (
-          <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-ds-primary px-1 text-[10px] font-semibold leading-none text-ds-text-inverse">
+          <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-ds-primary-soft px-1 text-[10px] font-semibold leading-none text-ds-primary">
             {activeCount}
           </span>
         ) : null}
@@ -998,7 +1121,7 @@ function ExplorerAdvancedFiltersPopover({
           filterOptions={filterOptions}
           searchInput={searchInput}
         />
-        <p className="mt-2 text-[11px] leading-snug text-ds-text-muted">
+        <p className="mt-2 text-ds-xs leading-snug text-ds-text-muted">
           País y peso disponibles cambian según la operación; el puerto secundario es
           contexto de ruta.
         </p>

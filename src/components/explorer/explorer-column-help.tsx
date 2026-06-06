@@ -1,7 +1,7 @@
 "use client"
 
 import { HelpCircleIcon } from "lucide-react"
-import { useEffect, useId, useRef, useState } from "react"
+import { useEffect, useId, useState } from "react"
 
 import { cn } from "@/lib/utils"
 
@@ -16,27 +16,22 @@ function ExplorerColumnHelp({
   help,
   label,
 }: ExplorerColumnHelpProps) {
-  const [hoverOpen, setHoverOpen] = useState(false)
   const [pinnedOpen, setPinnedOpen] = useState(false)
-  const rootRef = useRef<HTMLSpanElement>(null)
   const tooltipId = useId()
-  const open = hoverOpen || pinnedOpen
 
   useEffect(() => {
-    if (!open) {
+    if (!pinnedOpen) {
       return
     }
 
     function onPointerDown(event: PointerEvent) {
-      if (!rootRef.current?.contains(event.target as Node)) {
-        setHoverOpen(false)
+      if (!(event.target as HTMLElement | null)?.closest?.(`[data-column-help="${tooltipId}"]`)) {
         setPinnedOpen(false)
       }
     }
 
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
-        setHoverOpen(false)
         setPinnedOpen(false)
       }
     }
@@ -48,28 +43,29 @@ function ExplorerColumnHelp({
       document.removeEventListener("pointerdown", onPointerDown)
       document.removeEventListener("keydown", onKeyDown)
     }
-  }, [open])
+  }, [pinnedOpen, tooltipId])
 
   return (
     <span
-      ref={rootRef}
+      data-column-help={tooltipId}
       className="group/help relative inline-flex shrink-0"
       onBlur={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget)) {
-          setHoverOpen(false)
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
           setPinnedOpen(false)
         }
       }}
-      onMouseEnter={() => setHoverOpen(true)}
-      onMouseLeave={() => setHoverOpen(false)}
     >
       <button
         aria-controls={tooltipId}
-        aria-expanded={open}
+        aria-expanded={pinnedOpen}
         aria-label={`Qué significa ${label}`}
-        className="inline-flex size-3.5 items-center justify-center rounded-ds-xs text-ds-text-muted outline-none transition-colors hover:bg-ds-surface hover:text-ds-text-primary focus-visible:bg-ds-surface focus-visible:text-ds-text-primary focus-visible:ring-2 focus-visible:ring-ds-focus-ring/25"
-        onClick={() => setPinnedOpen(true)}
-        onFocus={() => setHoverOpen(true)}
+        className={cn(
+          "inline-flex size-5 items-center justify-center rounded-ds-sm text-ds-text-muted outline-none transition-opacity hover:text-ds-text-primary focus-visible:text-ds-text-primary focus-visible:ring-2 focus-visible:ring-ds-focus-ring/25",
+          "opacity-0 group-hover/help:opacity-100 group-focus-within/help:opacity-100 data-[pinned=true]:opacity-100",
+          pinnedOpen ? "data-[pinned=true]" : ""
+        )}
+        data-pinned={pinnedOpen || undefined}
+        onClick={() => setPinnedOpen((current) => !current)}
         type="button"
       >
         <HelpCircleIcon aria-hidden="true" className="size-3" />
@@ -78,8 +74,9 @@ function ExplorerColumnHelp({
         id={tooltipId}
         role="tooltip"
         className={cn(
-          "pointer-events-none absolute top-full z-30 mt-1.5 w-56 max-w-[calc(100vw-2rem)] whitespace-normal rounded-ds-sm bg-ds-text-primary px-2 py-1.5 text-left text-[11px] font-medium leading-tight text-ds-text-inverse opacity-0 shadow-ds-md transition-opacity",
-          open ? "visible opacity-100" : "invisible opacity-0",
+          "pointer-events-none absolute top-full z-30 mt-1.5 w-56 max-w-[calc(100vw-2rem)] whitespace-normal rounded-ds-sm bg-ds-text-primary px-2 py-1.5 text-left text-ds-xs font-medium leading-tight text-ds-text-inverse opacity-0 shadow-ds-md transition-opacity delay-150",
+          "group-hover/help:visible group-hover/help:opacity-100 group-focus-within/help:visible group-focus-within/help:opacity-100",
+          pinnedOpen ? "visible opacity-100" : "invisible",
           align === "start"
             ? "left-0"
             : align === "end"

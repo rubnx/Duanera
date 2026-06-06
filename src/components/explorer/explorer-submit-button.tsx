@@ -12,9 +12,9 @@ function ExplorerSubmitButton() {
       aria-live="polite"
       loading={pending}
       loadingLabel="Aplicando filtros"
+      size="product-sm"
       type="submit"
       variant="primary"
-      size="product-md"
     >
       {pending ? "Aplicando..." : "Aplicar"}
     </Button>

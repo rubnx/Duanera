@@ -29,6 +29,7 @@ type PruneEnv = {
   RAW_ROW_PRUNE_CONFIRM?: string;
   RAW_ROW_PRUNE_FLOW?: string;
   RAW_ROW_PRUNE_LIMIT?: string;
+  RAW_ROW_PRUNE_PERIOD?: string;
 };
 
 export function parsePruneArgs(argv: string[]): PruneArgs {
@@ -90,6 +91,28 @@ export function parsePruneFlow(raw: string | undefined): "import" | "export" | n
   return raw;
 }
 
+export function parsePrunePeriod(
+  raw: string | undefined,
+): { year: number; month: number; period: string } | null {
+  if (!raw?.trim()) {
+    return null;
+  }
+
+  const period = raw.trim();
+  const match = /^(\d{4})-(\d{2})$/.exec(period);
+  if (!match) {
+    throw new Error(`RAW_ROW_PRUNE_PERIOD must use YYYY-MM format, got ${raw}.`);
+  }
+
+  const year = Number.parseInt(match[1] ?? "", 10);
+  const month = Number.parseInt(match[2] ?? "", 10);
+  if (month < 1 || month > 12) {
+    throw new Error(`RAW_ROW_PRUNE_PERIOD month must be between 01 and 12, got ${raw}.`);
+  }
+
+  return { year, month, period };
+}
+
 function positiveIntegerEnv(name: string, raw: string | undefined, defaultValue: number): number {
   return positiveIntegerEnvValue(name, raw, defaultValue);
 }
@@ -100,6 +123,14 @@ function flowFilter(flow: "import" | "export" | null) {
   }
 
   return sql`and r.trade_flow = ${flow}`;
+}
+
+function periodFilter(period: { year: number; month: number; period: string } | null) {
+  if (!period) {
+    return sql``;
+  }
+
+  return sql`and r.period_year = ${period.year} and r.period_month = ${period.month}`;
 }
 
 export async function runRawRowPayloadPruner({
@@ -119,6 +150,7 @@ export async function runRawRowPayloadPruner({
     totalLimit,
   );
   const optionalFlowFilter = flowFilter(parsePruneFlow(env.RAW_ROW_PRUNE_FLOW));
+  const optionalPeriodFilter = periodFilter(parsePrunePeriod(env.RAW_ROW_PRUNE_PERIOD));
 
   const countsResult = await db.execute(sql`
     with candidates as (
@@ -134,6 +166,7 @@ export async function runRawRowPayloadPruner({
         and r.parse_warnings is null
         and (r.raw_text is not null or r.raw_values is not null)
         ${optionalFlowFilter}
+        ${optionalPeriodFilter}
     ),
     eligible as (
       select r.id
@@ -153,6 +186,7 @@ export async function runRawRowPayloadPruner({
         and r.payload_retained_reason = 'pruned_after_normalization'
         and r.payload_pruned_at is not null
         ${optionalFlowFilter}
+        ${optionalPeriodFilter}
     )
     select
       (select count(*)::int from candidates) as candidate_rows,
@@ -208,6 +242,7 @@ export async function runRawRowPayloadPruner({
           and t.period_year = r.period_year
           and t.period_month = r.period_month
           ${optionalFlowFilter}
+          ${optionalPeriodFilter}
         order by r.source_file_id, r.row_number, r.id
         limit ${currentBatchSize}
       )
@@ -260,6 +295,9 @@ async function main() {
         : {}),
       ...(process.env.RAW_ROW_PRUNE_LIMIT !== undefined
         ? { RAW_ROW_PRUNE_LIMIT: process.env.RAW_ROW_PRUNE_LIMIT }
+        : {}),
+      ...(process.env.RAW_ROW_PRUNE_PERIOD !== undefined
+        ? { RAW_ROW_PRUNE_PERIOD: process.env.RAW_ROW_PRUNE_PERIOD }
         : {}),
     },
   });

@@ -13,7 +13,7 @@ function FilterBar({
       role="group"
       aria-label={ariaLabel}
       className={cn(
-        "flex min-w-0 flex-wrap items-end gap-1.5 border-b border-ds-border-soft px-3 py-2",
+        "flex min-w-0 flex-wrap items-end gap-2 border-b border-ds-border-soft px-3 py-2",
         className
       )}
       {...props}
@@ -25,7 +25,7 @@ function FilterBarGroup({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="filter-bar-group"
-      className={cn("flex min-w-0 flex-1 flex-wrap items-end gap-1.5", className)}
+      className={cn("flex min-w-0 flex-1 flex-wrap items-end gap-2", className)}
       {...props}
     />
   )
@@ -38,7 +38,7 @@ function FilterBarActions({
   return (
     <div
       data-slot="filter-bar-actions"
-      className={cn("ml-auto flex items-end gap-1.5", className)}
+      className={cn("ml-auto flex items-end gap-2", className)}
       {...props}
     />
   )

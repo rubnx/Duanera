@@ -6,11 +6,12 @@
   --ds-bg-muted: oklch(0.966 0.004 95);
   --ds-bg-subtle: oklch(0.992 0.002 95);
 
-  /* Color: text — warm near-black ramp, tuned for WCAG AA on white */
+  /* Color: text — warm near-black ramp, tuned for WCAG AA on white.
+     Muted/subtle tuned to clear 4.5:1 on bg-subtle and bg-surface. */
   --ds-text-primary: oklch(0.26 0.008 75);
   --ds-text-secondary: oklch(0.44 0.01 75);
-  --ds-text-muted: oklch(0.53 0.012 75);
-  --ds-text-subtle: oklch(0.6 0.012 75);
+  --ds-text-muted: oklch(0.46 0.012 75);
+  --ds-text-subtle: oklch(0.54 0.012 75);
   --ds-text-inverse: oklch(1 0 0);
 
   /* Color: borders and focus */
@@ -142,9 +143,9 @@
   --ds-bg-subtle: oklch(0.22 0.006 75);
 
   --ds-text-primary: oklch(0.96 0.004 90);
-  --ds-text-secondary: oklch(0.8 0.006 90);
-  --ds-text-muted: oklch(0.68 0.008 90);
-  --ds-text-subtle: oklch(0.58 0.008 90);
+  --ds-text-secondary: oklch(0.82 0.006 90);
+  --ds-text-muted: oklch(0.74 0.008 90);
+  --ds-text-subtle: oklch(0.66 0.008 90);
   --ds-text-inverse: oklch(0.2 0.006 75);
 
   --ds-border: oklch(0.34 0.006 90);

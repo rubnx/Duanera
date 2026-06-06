@@ -53,4 +53,7 @@ export {
   type SourceTraceabilityCardProps,
   type SourceTraceabilityField,
 } from "./source-traceability-card"
-export { ExplorerSearchMemory } from "./saved-searches"
+export {
+  ExplorerSearchesPanelContent,
+  ExplorerSearchesPopover,
+} from "./saved-searches"

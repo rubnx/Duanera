@@ -127,7 +127,7 @@ function CountryMultiFilter({
     <div
       ref={rootRef}
       className={cn(
-        "relative flex w-48 flex-none flex-col gap-0.5 text-[11px] font-medium text-ds-text-muted",
+        "relative flex w-full flex-col gap-0.5 text-[11px] font-medium leading-none text-ds-text-muted",
         className
       )}
     >
@@ -149,7 +149,10 @@ function CountryMultiFilter({
           {selectedCodes.length > 0 ? selectedSummary : "Todos"}
         </span>
         {selectedCodes.length > 0 ? (
-          <span className="rounded-full bg-ds-primary-soft px-1.5 py-0.5 text-[10px] font-semibold text-ds-primary">
+          <span
+            aria-label={`${selectedCodes.length} seleccionados`}
+            className="flex size-5 shrink-0 items-center justify-center rounded-full bg-ds-primary-soft text-[10px] font-semibold leading-none tabular-nums text-ds-primary"
+          >
             {selectedCodes.length}
           </span>
         ) : null}
@@ -178,7 +181,7 @@ function CountryMultiFilter({
                 </button>
               ) : null}
             </div>
-            <div className="mt-2 flex items-center justify-between gap-2 px-1 text-[11px] text-ds-text-muted">
+            <div className="mt-2 flex items-center justify-between gap-2 px-1 text-ds-xs text-ds-text-muted">
               <span>
                 {selectedCodes.length > 0
                   ? `${selectedCodes.length} seleccionados`

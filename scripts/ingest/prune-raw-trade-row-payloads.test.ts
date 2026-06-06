@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   parsePruneArgs,
   parsePruneFlow,
+  parsePrunePeriod,
   resolvePruneMode,
 } from "./prune-raw-trade-row-payloads";
 
@@ -48,4 +49,17 @@ test("parses optional raw row prune flow safely", () => {
   assert.equal(parsePruneFlow("import"), "import");
   assert.equal(parsePruneFlow("export"), "export");
   assert.throws(() => parsePruneFlow("both"), /must be import or export/);
+});
+
+test("parses optional raw row prune period safely", () => {
+  assert.equal(parsePrunePeriod(undefined), null);
+  assert.equal(parsePrunePeriod(""), null);
+  assert.deepEqual(parsePrunePeriod("2025-02"), {
+    year: 2025,
+    month: 2,
+    period: "2025-02",
+  });
+
+  assert.throws(() => parsePrunePeriod("2025-2"), /YYYY-MM/);
+  assert.throws(() => parsePrunePeriod("2025-13"), /between 01 and 12/);
 });

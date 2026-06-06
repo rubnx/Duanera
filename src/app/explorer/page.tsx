@@ -32,7 +32,7 @@ import {
   DataTableShell,
   DataTableTitle,
   DataTableToolbar,
-  ExplorerSearchMemory,
+  ExplorerSearchesPopover,
   FilterBar,
   FilterBarActions,
   FilterBarGroup,
@@ -46,9 +46,14 @@ import {
   SidebarItem,
   SidebarSection,
 } from "@/components/explorer"
-import { ExplorerColumnHelp } from "@/components/explorer/explorer-column-help"
+import { ExplorerColumnGlossary } from "@/components/explorer/explorer-column-glossary"
+import { ExplorerCommandPalette } from "@/components/explorer/explorer-command-palette"
+import { ExplorerDensityToggle } from "@/components/explorer/explorer-density-toggle"
+import { ExplorerDisclosure } from "@/components/explorer/explorer-disclosure"
 import { ExplorerDrawerProvider } from "@/components/explorer/explorer-drawer-context"
 import { ExplorerExportPanel } from "@/components/explorer/explorer-export-panel"
+import { ExplorerToolbarSort } from "@/components/explorer/explorer-toolbar-sort"
+import { FirstStepsHint } from "@/components/explorer/first-steps-hint"
 import {
   ExplorerAdvancedFiltersPopover,
   ExplorerFlowFilterProvider,
@@ -838,6 +843,19 @@ function summaryMetricValue(
   return formatTradeSummaryValue(value ?? null, suffix, fractionDigits, "No informado")
 }
 
+function summaryMetricTonnesNote(value: string | null | undefined) {
+  if (!value) {
+    return undefined
+  }
+
+  const numericValue = Number(value)
+  if (!Number.isFinite(numericValue)) {
+    return undefined
+  }
+
+  return `${formatTradeDecimal(numericValue / 1000, 2, "0")} t`
+}
+
 function ExplorerSummaryMetric({
   label,
   note,
@@ -849,11 +867,17 @@ function ExplorerSummaryMetric({
 }) {
   return (
     <div className="min-w-0 border-r border-ds-border-soft px-2.5 py-1.5 last:border-r-0">
-      <div className="text-ds-xs font-medium text-ds-text-muted">{label}</div>
+      <div className="truncate text-[11px] font-medium uppercase text-ds-text-muted">
+        {label}
+      </div>
       <div className="mt-0.5 break-words text-ds-sm font-semibold leading-(--ds-leading-tight) tabular-nums text-ds-text-primary">
         {value}
       </div>
-      {note ? <div className="mt-0.5 text-ds-xs leading-(--ds-leading-tight) text-ds-text-muted">{note}</div> : null}
+      {note ? (
+        <div className="mt-0.5 truncate text-[11px] leading-(--ds-leading-tight) text-ds-text-muted">
+          {note}
+        </div>
+      ) : null}
     </div>
   )
 }
@@ -866,25 +890,19 @@ function ExplorerResultsSummary({
   result: TradeRecordSearchResponse
 }) {
   const isSummaryBounded = result.summary.status === "bounded"
-  const currency = optionLabel(filterOptions.currencies, result.summary.totals.currencyCode)
   const quantityUnit = optionLabel(
     filterOptions.quantityUnits,
     result.summary.totals.quantityUnitCode
   )
-  const currencyLabel = formatTradeCurrencyLabel(currency)
-  const valueSuffix = result.summary.totals.currencyIsMixed ? "moneda mixta" : undefined
-  const quantityValue = result.summary.totals.quantityUnitIsMixed
-    ? "Unidades mixtas"
-    : formatTradeQuantityDisplay(
-        result.summary.totals.quantity,
-        result.summary.totals.quantityUnitCode,
-        quantityUnit
-      )
+  const showQuantity = !result.summary.totals.quantityUnitIsMixed
+  const quantityValue = formatTradeQuantityDisplay(
+    result.summary.totals.quantity,
+    result.summary.totals.quantityUnitCode,
+    quantityUnit
+  )
   const itemValueLabel =
-    result.filters.tradeFlow === "export"
-      ? `${currencyLabel ?? "Valor"} FOB`
-      : `${currencyLabel ?? "Valor"} CIF`
-  const declarationFobLabel = currencyLabel ? `${currencyLabel} FOB total` : "FOB total"
+    result.filters.tradeFlow === "export" ? "US$ FOB" : "US$ CIF"
+  const declarationFobLabel = "US$ FOB total"
   const anonymousIdLabel =
     result.filters.tradeFlow === "export" ? "Exportadores" : "Importadores"
   const isExportFlow = result.filters.tradeFlow === "export"
@@ -915,41 +933,53 @@ function ExplorerResultsSummary({
       aria-label="Resumen del resultado"
       className="overflow-hidden rounded-ds-md border border-ds-border-soft bg-ds-surface/80"
     >
-      <div className="grid grid-cols-2 divide-y divide-ds-border-soft sm:grid-cols-4 lg:grid-cols-8 lg:divide-y-0">
+      <div
+        className={cn(
+          "grid grid-cols-2 divide-y divide-ds-border-soft sm:grid-cols-4 lg:divide-y-0",
+          isExportFlow
+            ? showQuantity
+              ? "lg:grid-cols-8"
+              : "lg:grid-cols-7"
+            : showQuantity
+              ? "lg:grid-cols-7"
+              : "lg:grid-cols-6"
+        )}
+      >
         <ExplorerSummaryMetric
           label="Registros"
           value={summaryMetricValue(result.summary.totals.records)}
         />
         <ExplorerSummaryMetric
-          label={itemValueLabel}
-          note={result.summary.totals.currencyIsMixed ? "Monedas mixtas" : undefined}
-          value={summaryMetricValue(result.summary.totals.itemValue, valueSuffix)}
-        />
-        <ExplorerSummaryMetric
-          label={declarationFobLabel}
-          value={summaryMetricValue(result.summary.totals.declarationFobValue, valueSuffix)}
-        />
-        <ExplorerSummaryMetric
           label="Operaciones"
-          note="Declaraciones únicas"
           value={summaryMetricValue(result.summary.totals.operations)}
         />
         <ExplorerSummaryMetric
           label={anonymousIdLabel}
-          note="IDs Aduana anónimos"
           value={summaryMetricValue(result.summary.totals.anonymousParticipants)}
         />
-        <ExplorerSummaryMetric label="Cantidad" value={quantityValue} />
+        <ExplorerSummaryMetric
+          label={itemValueLabel}
+          value={summaryMetricValue(result.summary.totals.itemValue)}
+        />
+        <ExplorerSummaryMetric
+          label={declarationFobLabel}
+          value={summaryMetricValue(result.summary.totals.declarationFobValue)}
+        />
         {isExportFlow ? (
           <ExplorerSummaryMetric
             label="Peso bruto ítem"
-            value={summaryMetricValue(result.summary.totals.grossWeightItem)}
+            note={summaryMetricTonnesNote(result.summary.totals.grossWeightItem)}
+            value={summaryMetricValue(result.summary.totals.grossWeightItem, "kg")}
           />
         ) : null}
         <ExplorerSummaryMetric
           label="Peso bruto total"
-          value={summaryMetricValue(result.summary.totals.grossWeightTotal)}
+          note={summaryMetricTonnesNote(result.summary.totals.grossWeightTotal)}
+          value={summaryMetricValue(result.summary.totals.grossWeightTotal, "kg")}
         />
+        {showQuantity ? (
+          <ExplorerSummaryMetric label="Cantidad" value={quantityValue} />
+        ) : null}
       </div>
     </section>
   )
@@ -1044,7 +1074,8 @@ function ExplorerRankingModule({
   result: TradeRecordSearchResponse
 }) {
   const currency = optionLabel(filterOptions.currencies, result.summary.totals.currencyCode)
-  const valueSuffix = result.summary.totals.currencyIsMixed ? "moneda mixta" : currency
+  const currencyLabel = formatTradeCurrencyLabel(currency) ?? currency
+  const valueSuffix = result.summary.totals.currencyIsMixed ? undefined : currencyLabel
   const flow = result.filters.tradeFlow
   const rankingConfig = {
     hs: {
@@ -1144,52 +1175,48 @@ function ExplorerRankingModule({
   }
 
   return (
-    <section
-      aria-label="Desglose del resultado"
-      className="rounded-ds-md border border-ds-border-soft bg-ds-surface"
+    <ExplorerDisclosure
+      defaultOpen={false}
+      description="Partidas, países, importadores, puertos y vías con más registros y valor."
+      storageKey="duanera.explorer.rankingDisclosure.v1"
+      title="Desglose del resultado"
     >
-      <div className="flex flex-col gap-3 border-b border-ds-border-soft px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
-        <div className="min-w-0">
-          <h2 className="text-ds-sm font-bold text-ds-text-primary">Desglose del resultado</h2>
-          <p className="mt-0.5 text-ds-xs text-ds-text-muted">{active.description}</p>
-        </div>
-        <nav
-          aria-label="Cambiar desglose"
-          className="flex max-w-full flex-wrap gap-1 rounded-ds-md border border-ds-border-soft bg-ds-subtle p-1"
-        >
-          {(Object.keys(rankingConfig) as ExplorerRankingId[]).map((id) => {
-            const selected = id === activeRanking
+      <nav
+        aria-label="Cambiar desglose"
+        className="flex max-w-full flex-wrap gap-1 border-b border-ds-border-soft bg-ds-subtle/60 px-4 py-2"
+      >
+        {(Object.keys(rankingConfig) as ExplorerRankingId[]).map((id) => {
+          const selected = id === activeRanking
 
-            return (
-              <Link
-                key={id}
-                aria-current={selected ? "page" : undefined}
-                className={cn(
-                  "inline-flex h-7 items-center rounded-ds-sm px-2.5 text-ds-xs font-semibold transition-colors",
-                  selected
-                    ? "bg-ds-surface text-ds-text-primary shadow-ds-xs"
-                    : "text-ds-text-muted hover:bg-ds-surface/80 hover:text-ds-text-primary"
-                )}
-                href={buildExplorerHref(params, {
-                  ranking: id,
-                  selected: null,
-                  offset: null,
-                  after: null,
-                })}
-              >
-                {rankingConfig[id].label}
-              </Link>
-            )
-          })}
-        </nav>
-      </div>
+          return (
+            <Link
+              key={id}
+              aria-current={selected ? "page" : undefined}
+              className={cn(
+                "inline-flex h-8 items-center rounded-ds-sm px-2.5 text-ds-xs font-semibold transition-colors",
+                selected
+                  ? "bg-ds-surface text-ds-text-primary shadow-ds-xs"
+                  : "text-ds-text-muted hover:bg-ds-surface/80 hover:text-ds-text-primary"
+              )}
+              href={buildExplorerHref(params, {
+                ranking: id,
+                selected: null,
+                offset: null,
+                after: null,
+              })}
+            >
+              {rankingConfig[id].label}
+            </Link>
+          )
+        })}
+      </nav>
       <ExplorerRankingList
         items={active.items}
         valueSuffix={valueSuffix}
         hrefFor={active.hrefFor}
         labelFor={active.labelFor}
       />
-    </section>
+    </ExplorerDisclosure>
   )
 }
 
@@ -1860,11 +1887,6 @@ function ExplorerTableHeaderLabel({
       ) : (
         <span className="truncate">{column.label}</span>
       )}
-      <ExplorerColumnHelp
-        align={column.tooltipAlign}
-        help={column.help}
-        label={column.label}
-      />
     </span>
   )
 }
@@ -1879,7 +1901,7 @@ function ExplorerTableViewNav({
   return (
     <nav
       aria-label="Cambiar vista de tabla"
-      className="flex max-w-full flex-wrap gap-0.5 rounded-ds-md border border-ds-border-soft bg-ds-surface p-0.5"
+      className="-mx-px flex h-9 items-stretch gap-1 border-b border-ds-border-soft px-1"
     >
       {tradeRecordTableViews.map((option) => {
         const active = option.id === view
@@ -1889,12 +1911,14 @@ function ExplorerTableViewNav({
             key={option.id}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "inline-flex h-7 items-center rounded-ds-sm px-2 text-ds-xs font-semibold transition-colors",
+              "relative inline-flex shrink-0 items-center gap-1.5 px-3 text-ds-sm font-semibold transition-colors",
+              "after:absolute after:inset-x-2 after:bottom-[-1px] after:h-0.5 after:rounded-full after:transition-colors",
               active
-                ? "bg-ds-subtle text-ds-text-primary shadow-ds-xs"
-                : "text-ds-text-muted hover:bg-ds-subtle hover:text-ds-text-primary"
+                ? "text-ds-text-primary after:bg-ds-primary"
+                : "text-ds-text-muted hover:text-ds-text-primary"
             )}
             href={explorerViewHref(params, option.id)}
+            title={option.description}
           >
             {option.shortLabel}
           </Link>
@@ -2326,6 +2350,7 @@ export default async function ExplorerPage({
         detailPanel={<ExplorerRecordDetailDrawer />}
       >
         <AppShellMain>
+        <ExplorerCommandPalette />
         <div className="sticky top-0 z-20 flex min-h-(--ds-topbar-height) items-center border-b border-ds-border-soft bg-ds-shell/95 px-6 backdrop-blur-sm">
           <GlobalSearch
             action="/explorer"
@@ -2340,10 +2365,10 @@ export default async function ExplorerPage({
           </GlobalSearch>
         </div>
 
-        <AppShellContent className="gap-3 py-3">
-          <header className="flex flex-col gap-1">
-            <div className="flex items-center gap-3">
-              <h1 className="text-ds-xl font-bold leading-(--ds-leading-tight) text-ds-text-primary">
+        <AppShellContent className="gap-2.5 py-3">
+          <header className="flex flex-col gap-0.5">
+            <div className="flex items-center gap-2.5">
+              <h1 className="text-ds-lg-plus font-bold leading-(--ds-leading-tight) text-ds-text-primary">
                 Explorador
               </h1>
               <StatusBadge
@@ -2353,18 +2378,18 @@ export default async function ExplorerPage({
                 {hasDevelopmentData ? "Datos de desarrollo" : "Datos disponibles"}
               </StatusBadge>
             </div>
-            <p className="max-w-4xl text-ds-xs leading-(--ds-leading-normal) text-ds-text-secondary">
-              Registros Aduana disponibles para {periodScope}.{" "}
-              {searchInput.tradeFlow === "export" ? "Los exportadores" : "Los importadores"} se
-              muestran como IDs Aduana anónimos; el esquema actual no contiene nombres legales ni
-              RUTs.
-              {hasDevelopmentData
-                ? " La vista actual incluye registros de prueba visibles en la base dev."
-                : ""}
+            <p className="max-w-4xl text-ds-xs leading-(--ds-leading-normal) text-ds-text-muted">
+              Registros Aduana de {periodScope}. Los{" "}
+              {searchInput.tradeFlow === "export" ? "exportadores" : "importadores"} se muestran
+              como IDs Aduana anónimos (sin nombres ni RUTs).
+              {hasDevelopmentData ? " Incluye registros de prueba de la base dev." : ""}
             </p>
           </header>
 
-          <form action="/explorer" className="rounded-ds-md border border-ds-border-soft bg-ds-surface">
+          <FirstStepsHint />
+
+          <div className="rounded-ds-md border border-ds-border-soft bg-ds-surface">
+          <form action="/explorer">
             <ExplorerFlowFilterProvider initialTradeFlow={searchInput.tradeFlow}>
             <FilterBar>
               <FilterBarGroup>
@@ -2377,8 +2402,7 @@ export default async function ExplorerPage({
                   periodFrom={periodPickerFrom}
                   periodTo={periodPickerTo}
                 />
-                <FilterInput className="w-36" label="Partida arancelaria" name="hsCodePrefix" value={searchInput.hsCodePrefix} placeholder="8471" />
-                <ExplorerSortFilterControl value={searchInput.sort} />
+                <FilterInput className="w-[7rem]" label="Partida arancelaria" name="hsCodePrefix" value={searchInput.hsCodePrefix} placeholder="8471" />
               </FilterBarGroup>
               <FilterBarActions>
                 <input type="hidden" name="q" value={searchInput.q ?? ""} />
@@ -2388,7 +2412,7 @@ export default async function ExplorerPage({
                 <input type="hidden" name="ranking" value={activeRanking} />
                 <ExplorerSubmitButton />
                 <Link
-                  className={cn(buttonVariants({ variant: "secondary", size: "product-md" }))}
+                  className={cn(buttonVariants({ variant: "secondary", size: "product-sm" }))}
                   href={resetExplorerHref()}
                 >
                   Limpiar
@@ -2402,18 +2426,18 @@ export default async function ExplorerPage({
             />
             </ExplorerFlowFilterProvider>
             {activeChips.length > 0 ? (
-              <div className="flex flex-wrap gap-1 px-3 py-1.5">
+              <div className="flex flex-wrap gap-1 border-t border-ds-border-soft px-3 py-1.5">
                 {activeChips.map((chip) => (
                   <FilterChip
                     key={chip.key}
                     variant={chip.variant}
-                    className="h-7 gap-1 px-2 text-[11px]"
+                    className="h-7 gap-1 py-0 pl-2 pr-0.5 text-ds-xs"
                   >
                     <span className="text-ds-text-muted">{chip.label}</span>
                     {chip.value}
                     <Link
                       aria-label={`Quitar filtro ${chip.label}`}
-                      className="-mr-0.5 inline-flex size-4 items-center justify-center rounded-ds-sm text-current opacity-70 transition-opacity hover:opacity-100 focus-visible:ring-3 focus-visible:ring-ds-focus-ring/20 focus-visible:outline-none [&_svg]:size-3"
+                      className="-mr-0.5 inline-flex size-6 items-center justify-center rounded-ds-sm text-current opacity-70 transition-opacity hover:bg-ds-surface/60 hover:opacity-100 focus-visible:ring-3 focus-visible:ring-ds-focus-ring/20 focus-visible:outline-none [&_svg]:size-3.5"
                       href={removeFilterHref(params, chip.key)}
                     >
                       <XIcon aria-hidden="true" />
@@ -2425,17 +2449,18 @@ export default async function ExplorerPage({
           </form>
 
           {searchError ? (
-            <div className="rounded-ds-md border border-ds-warning-border bg-ds-warning-soft p-4 text-ds-sm text-ds-warning">
+            <div className="border-t border-ds-warning-border bg-ds-warning-soft px-3 py-2 text-ds-sm text-ds-warning">
               Filtro inválido: {searchError}. Se muestran los registros por defecto.
             </div>
           ) : null}
 
           {!hasAvailablePeriods ? (
-            <div className="rounded-ds-md border border-ds-warning-border bg-ds-warning-soft p-4 text-ds-sm text-ds-warning">
+            <div className="border-t border-ds-warning-border bg-ds-warning-soft px-3 py-2 text-ds-sm text-ds-warning">
               No hay periodos cargados en la base actual. El Explorador queda listo
               para mostrar registros cuando el servicio devuelva datos.
             </div>
           ) : null}
+          </div>
 
           <ExplorerResultsSummary filterOptions={filterOptions} result={result} />
 
@@ -2445,19 +2470,45 @@ export default async function ExplorerPage({
               Espacio para abrir el detalle; presiona Escape para cerrarlo cuando
               esté abierto.
             </p>
+            <ExplorerTableViewNav params={params} view={tableView} />
             <DataTableToolbar className="min-h-0 flex-wrap gap-2 px-3 py-1.5">
-              <div className="flex min-w-0 items-baseline gap-2">
-                <DataTableTitle className="text-ds-sm">Registros</DataTableTitle>
-                <DataTableCount className="text-ds-xs">
-                  {result.pagination.total.toLocaleString("es-CL")} registros
-                </DataTableCount>
+              <div className="flex min-w-0 items-center gap-2">
+                <div className="flex min-w-0 items-baseline gap-2">
+                  <DataTableTitle className="text-ds-sm">Registros</DataTableTitle>
+                  <DataTableCount
+                    aria-live="polite"
+                    className="text-ds-xs"
+                    role="status"
+                  >
+                    {result.pagination.total.toLocaleString("es-CL")} registros
+                  </DataTableCount>
+                </div>
+                <span aria-hidden="true" className="hidden h-4 w-px bg-ds-border-soft sm:inline-block" />
+                <ExplorerToolbarSort
+                  omitParams={[]}
+                  params={params}
+                  value={searchInput.sort}
+                />
               </div>
-              <DataTableActions className="flex-wrap justify-end gap-1.5">
-                <ExplorerTableViewNav params={params} view={tableView} />
+              <DataTableActions className="flex-wrap justify-end gap-1">
+                <ExplorerColumnGlossary
+                  title={`Glosario de la vista ${activeTableView.label}`}
+                  entries={tableColumns.map((column) => ({
+                    label: column.label,
+                    help: column.help,
+                  }))}
+                />
+                <ExplorerSearchesPopover
+                  currentHref={currentExplorerHref}
+                  defaultName={savedSearchDefaultName}
+                  filtersLabel={savedSearchFiltersLabel}
+                  viewLabel={activeTableView.label}
+                />
+                <ExplorerDensityToggle compact />
                 <ExplorerExportPanel exportHref={exportHref} plan={exportPlan} />
               </DataTableActions>
             </DataTableToolbar>
-            <div className="overflow-x-auto">
+            <div className="[&>[data-slot=table-container]]:max-h-[70vh] [&>[data-slot=table-container]]:overflow-auto">
               <DataTable className="table-fixed" style={{ minWidth: tableMinWidth }}>
                 <colgroup>
                   {tableColumns.map((column) => (
@@ -2485,9 +2536,31 @@ export default async function ExplorerPage({
                   {result.data.length === 0 ? (
                     <DataTableRow>
                       <DataTableCell colSpan={tableColumns.length} className="p-0">
-                        <DataTableEmpty className="border-0">
-                          No encontramos registros con estos filtros. Ajusta periodo,
-                          producto, partida arancelaria, país, puerto o ID Aduana.
+                        <DataTableEmpty className="flex-col gap-2 border-0 px-4 py-8 text-ds-sm text-ds-text-secondary">
+                          <span className="font-semibold text-ds-text-primary">
+                            No encontramos registros con estos filtros.
+                          </span>
+                          <span className="text-ds-xs leading-(--ds-leading-normal) text-ds-text-muted">
+                            Prueba ampliar el rango de meses, quitar el puerto, o
+                            buscar por una partida más general.
+                          </span>
+                          <div className="mt-2 flex flex-wrap items-center justify-center gap-1.5">
+                            <Link
+                              className={cn(
+                                buttonVariants({ variant: "secondary", size: "product-md" })
+                              )}
+                              href={resetExplorerHref()}
+                            >
+                              Limpiar filtros
+                            </Link>
+                            <ExplorerSearchesPopover
+                              currentHref={currentExplorerHref}
+                              defaultName={savedSearchDefaultName}
+                              filtersLabel={savedSearchFiltersLabel}
+                              viewLabel={activeTableView.label}
+                              triggerLabel="Probar guardadas"
+                            />
+                          </div>
                         </DataTableEmpty>
                       </DataTableCell>
                     </DataTableRow>
@@ -2588,13 +2661,6 @@ export default async function ExplorerPage({
               </div>
             </DataTablePagination>
           </DataTableShell>
-
-          <ExplorerSearchMemory
-            currentHref={currentExplorerHref}
-            defaultName={savedSearchDefaultName}
-            filtersLabel={savedSearchFiltersLabel}
-            viewLabel={activeTableView.label}
-          />
 
           <ExplorerRankingModule
             activeRanking={activeRanking}
