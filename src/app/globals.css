@@ -3,6 +3,16 @@
 @import "shadcn/tailwind.css";
 @import "../styles/tokens.css";
 
+@theme {
+  --text-ds-xs: 12px;
+  --text-ds-sm: 13px;
+  --text-ds-md: 14px;
+  --text-ds-lg: 16px;
+  --text-ds-lg-plus: 18px;
+  --text-ds-xl: 22px;
+  --text-ds-2xl: 28px;
+}
+
 @custom-variant dark (&:is(.dark *));
 
 :root {

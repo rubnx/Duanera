@@ -870,7 +870,7 @@ function ExplorerSummaryMetric({
       <div className="truncate text-[11px] font-medium uppercase text-ds-text-muted">
         {label}
       </div>
-      <div className="mt-0.5 break-words text-ds-sm font-semibold leading-(--ds-leading-tight) tabular-nums text-ds-text-primary">
+      <div className="mt-0.5 wrap-break-word text-ds-sm font-semibold leading-(--ds-leading-tight) tabular-nums text-ds-text-primary">
         {value}
       </div>
       {note ? (
@@ -1032,7 +1032,7 @@ function ExplorerRankingList({
             return (
               <Link
                 key={item.code}
-                className="group grid gap-1 border-b border-r border-ds-border-soft px-3 py-2 last:border-r-0 hover:bg-ds-primary-softer/40 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ds-focus-ring/20 sm:[&:nth-child(2n)]:border-r-0 lg:[&:nth-child(2n)]:border-r lg:[&:nth-child(5n)]:border-r-0"
+                className="group grid gap-1 border-b border-r border-ds-border-soft px-3 py-2 last:border-r-0 hover:bg-ds-primary-softer/40 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ds-focus-ring/20 sm:nth-[2n]:border-r-0 lg:nth-[2n]:border-r lg:nth-[5n]:border-r-0"
                 href={hrefFor(item)}
               >
                 <div className="flex min-w-0 items-center justify-between gap-3">
@@ -1912,7 +1912,7 @@ function ExplorerTableViewNav({
             aria-current={active ? "page" : undefined}
             className={cn(
               "relative inline-flex shrink-0 items-center gap-1.5 px-3 text-ds-sm font-semibold transition-colors",
-              "after:absolute after:inset-x-2 after:bottom-[-1px] after:h-0.5 after:rounded-full after:transition-colors",
+              "after:absolute after:inset-x-2 after:-bottom-px after:h-0.5 after:rounded-full after:transition-colors",
               active
                 ? "text-ds-text-primary after:bg-ds-primary"
                 : "text-ds-text-muted hover:text-ds-text-primary"
@@ -1952,7 +1952,7 @@ function explorerTableCells(record: ExplorerRecord) {
       </DataTableCell>
     ),
     product: (
-      <DataTableCell key="product" className="max-w-[460px]">
+      <DataTableCell key="product" className="max-w-115">
         <div className="line-clamp-1 font-semibold leading-(--ds-leading-tight) text-ds-text-primary">
           {product.title}
         </div>
@@ -1994,7 +1994,7 @@ function explorerTableCells(record: ExplorerRecord) {
       </DataTableCell>
     ),
     originCountry: (
-      <DataTableCell key="originCountry" className="max-w-[190px]">
+      <DataTableCell key="originCountry" className="max-w-47.5">
         <CountryLabel
           countryCode={record.originCountryCode}
           value={formatKnownCodeLabel(record.originCountryCode, record.decodedLabels.originCountry, "país sin etiqueta", "country")}
@@ -2002,7 +2002,7 @@ function explorerTableCells(record: ExplorerRecord) {
       </DataTableCell>
     ),
     acquisitionCountry: (
-      <DataTableCell key="acquisitionCountry" className="max-w-[190px]">
+      <DataTableCell key="acquisitionCountry" className="max-w-47.5">
         <CountryLabel
           countryCode={record.acquisitionCountryCode}
           value={formatKnownCodeLabel(record.acquisitionCountryCode, record.decodedLabels.acquisitionCountry, "país sin etiqueta", "country")}
@@ -2010,7 +2010,7 @@ function explorerTableCells(record: ExplorerRecord) {
       </DataTableCell>
     ),
     consignmentCountry: (
-      <DataTableCell key="consignmentCountry" className="max-w-[190px]">
+      <DataTableCell key="consignmentCountry" className="max-w-47.5">
         <CountryLabel
           countryCode={record.consignmentCountryCode}
           value={formatKnownCodeLabel(record.consignmentCountryCode, record.decodedLabels.consignmentCountry, "país sin etiqueta", "country")}
@@ -2018,7 +2018,7 @@ function explorerTableCells(record: ExplorerRecord) {
       </DataTableCell>
     ),
     destinationCountry: (
-      <DataTableCell key="destinationCountry" className="max-w-[190px]">
+      <DataTableCell key="destinationCountry" className="max-w-47.5">
         <CountryLabel
           countryCode={record.destinationCountryCode}
           value={formatKnownCodeLabel(record.destinationCountryCode, record.decodedLabels.destinationCountry, "país sin etiqueta", "country")}
@@ -2036,22 +2036,22 @@ function explorerTableCells(record: ExplorerRecord) {
       </DataTableCell>
     ),
     embarkPort: (
-      <DataTableCell key="embarkPort" className="max-w-[220px]">
+      <DataTableCell key="embarkPort" className="max-w-55">
         <div className="truncate">{formatKnownCodeLabel(record.embarkPortCode, record.decodedLabels.embarkPort, "puerto sin etiqueta", "port")}</div>
       </DataTableCell>
     ),
     disembarkPort: (
-      <DataTableCell key="disembarkPort" className="max-w-[220px]">
+      <DataTableCell key="disembarkPort" className="max-w-55">
         <div className="truncate">{formatKnownCodeLabel(record.disembarkPortCode, record.decodedLabels.disembarkPort, "puerto sin etiqueta", "port")}</div>
       </DataTableCell>
     ),
     transport: (
-      <DataTableCell key="transport" className="max-w-[220px]">
+      <DataTableCell key="transport" className="max-w-55">
         <div className="truncate">{transportModeForRecord(record)}</div>
       </DataTableCell>
     ),
     cargo: (
-      <DataTableCell key="cargo" className="max-w-[170px]">
+      <DataTableCell key="cargo" className="max-w-42.5">
         <div className="truncate">{formatKnownCodeLabel(record.cargoTypeCode, record.decodedLabels.cargoType, "tipo sin etiqueta", "cargoType")}</div>
       </DataTableCell>
     ),
@@ -2101,7 +2101,7 @@ function explorerTableCells(record: ExplorerRecord) {
       </DataTableCell>
     ),
     source: (
-      <DataTableCell key="source" className="max-w-[136px]">
+      <DataTableCell key="source" className="max-w-34">
         <StatusBadge variant={sourceState.variant} size="sm">
           {sourceState.label}
         </StatusBadge>
@@ -2111,26 +2111,26 @@ function explorerTableCells(record: ExplorerRecord) {
       </DataTableCell>
     ),
     sourceFile: (
-      <DataTableCell key="sourceFile" className="max-w-[260px]">
+      <DataTableCell key="sourceFile" className="max-w-65">
         <div className="truncate font-medium">{sourceName}</div>
       </DataTableCell>
     ),
     rawRow: <DataTableCell key="rawRow" numeric>{record.rawRowNumber}</DataTableCell>,
     batch: (
-      <DataTableCell key="batch" className="max-w-[180px]">
+      <DataTableCell key="batch" className="max-w-45">
         <div className="truncate font-mono text-ds-xs">{record.importBatchId}</div>
         <div className="mt-1 text-ds-xs text-ds-text-muted">{record.importBatchStatus}</div>
       </DataTableCell>
     ),
     parser: (
-      <DataTableCell key="parser" className="max-w-[200px]">
+      <DataTableCell key="parser" className="max-w-50">
         <div className="truncate font-mono text-ds-xs">
           {record.parserName} {record.parserVersion}
         </div>
       </DataTableCell>
     ),
     payload: (
-      <DataTableCell key="payload" className="max-w-[180px]">
+      <DataTableCell key="payload" className="max-w-45">
         <div className="truncate">{record.payloadRetentionMode}</div>
         <div className="mt-1 text-ds-xs text-ds-text-muted">
           {record.payloadReconstructable ? "Reconstruible" : "No reconstruible"}
@@ -2138,7 +2138,7 @@ function explorerTableCells(record: ExplorerRecord) {
       </DataTableCell>
     ),
     declaration: (
-      <DataTableCell key="declaration" className="max-w-[170px]">
+      <DataTableCell key="declaration" className="max-w-42.5">
         <div className="truncate font-mono text-ds-xs">
           {record.declarationIdRaw ?? "No informado"}
         </div>
@@ -2146,12 +2146,12 @@ function explorerTableCells(record: ExplorerRecord) {
     ),
     itemNumber: <DataTableCell key="itemNumber" numeric>{record.itemNumber}</DataTableCell>,
     productReference: (
-      <DataTableCell key="productReference" className="max-w-[260px]">
+      <DataTableCell key="productReference" className="max-w-65">
         <div className="truncate">{productReferenceForRecord(record)}</div>
       </DataTableCell>
     ),
     productDetails: (
-      <DataTableCell key="productDetails" className="max-w-[340px]">
+      <DataTableCell key="productDetails" className="max-w-85">
         <div className="line-clamp-2">{productDetailsForRecord(record)}</div>
       </DataTableCell>
     ),
@@ -2168,7 +2168,7 @@ function ExplorerSidebar() {
           <CountryFlag
             countryCode="CL"
             countryName="Chile"
-            className="h-6 !w-9 rounded-[3px] !bg-[length:100%_100%]"
+            className="h-6 w-9! rounded-[3px] bg-size-[100%_100%]!"
           />
           <span>Duanera</span>
         </SidebarBrand>
@@ -2402,7 +2402,7 @@ export default async function ExplorerPage({
                   periodFrom={periodPickerFrom}
                   periodTo={periodPickerTo}
                 />
-                <FilterInput className="w-[7rem]" label="Partida arancelaria" name="hsCodePrefix" value={searchInput.hsCodePrefix} placeholder="8471" />
+                <FilterInput className="w-28" label="Partida arancelaria" name="hsCodePrefix" value={searchInput.hsCodePrefix} placeholder="8471" />
               </FilterBarGroup>
               <FilterBarActions>
                 <input type="hidden" name="q" value={searchInput.q ?? ""} />
@@ -2508,7 +2508,7 @@ export default async function ExplorerPage({
                 <ExplorerExportPanel exportHref={exportHref} plan={exportPlan} />
               </DataTableActions>
             </DataTableToolbar>
-            <div className="[&>[data-slot=table-container]]:max-h-[70vh] [&>[data-slot=table-container]]:overflow-auto">
+            <div className="*:data-[slot=table-container]:max-h-[70vh] *:data-[slot=table-container]:overflow-auto">
               <DataTable className="table-fixed" style={{ minWidth: tableMinWidth }}>
                 <colgroup>
                   {tableColumns.map((column) => (

@@ -44,7 +44,7 @@ function DataTableTitle({ className, ...props }: React.ComponentProps<"h2">) {
   return (
     <h2
       data-slot="data-table-title"
-      className={cn("text-[length:var(--ds-text-md)] font-bold text-ds-text-primary", className)}
+      className={cn("text-ds-md font-bold text-ds-text-primary", className)}
       {...props}
     />
   )
@@ -54,7 +54,7 @@ function DataTableCount({ className, ...props }: React.ComponentProps<"p">) {
   return (
     <p
       data-slot="data-table-count"
-      className={cn("text-[length:var(--ds-text-sm)] text-ds-text-muted", className)}
+      className={cn("text-ds-sm text-ds-text-muted", className)}
       {...props}
     />
   )
@@ -83,7 +83,7 @@ function DataTable({
       data-slot="data-table"
       data-loading={loading}
       aria-busy={loading || undefined}
-      className={cn("text-[length:var(--ds-text-sm)] text-ds-text-primary", className)}
+      className={cn("text-ds-sm text-ds-text-primary", className)}
       {...props}
     />
   )
@@ -113,7 +113,7 @@ function DataTableHead({
     <TableHead
       data-slot="data-table-head"
       className={cn(
-        "group/help h-(--ds-table-header-height) bg-ds-subtle px-(--ds-table-cell-x) text-[length:var(--ds-text-xs)] font-semibold text-ds-text-secondary",
+        "group/help h-(--ds-table-header-height) bg-ds-subtle px-(--ds-table-cell-x) text-ds-xs font-semibold text-ds-text-secondary",
         className
       )}
       {...props}
@@ -189,7 +189,7 @@ function DataTableCell({
       data-numeric={numeric}
       data-truncate={truncate}
       className={cn(
-        "px-(--ds-table-cell-x) py-(--ds-table-cell-y) align-middle text-[length:var(--ds-text-sm)] whitespace-normal data-[empty=true]:text-ds-text-muted data-[muted=true]:text-ds-text-secondary data-[truncate=true]:max-w-72 data-[truncate=true]:truncate data-[truncate=true]:whitespace-nowrap",
+        "px-(--ds-table-cell-x) py-(--ds-table-cell-y) align-middle text-ds-sm whitespace-normal data-[empty=true]:text-ds-text-muted data-[muted=true]:text-ds-text-secondary data-[truncate=true]:max-w-72 data-[truncate=true]:truncate data-[truncate=true]:whitespace-nowrap",
         numeric ? "text-right tabular-nums" : undefined,
         className
       )}
@@ -222,7 +222,7 @@ function DataTableState({
       role={variant === "loading" ? "status" : undefined}
       aria-live={variant === "loading" ? "polite" : undefined}
       className={cn(
-        "flex min-h-48 items-center justify-center border-y border-ds-border-soft px-6 text-center text-[length:var(--ds-text-sm)] text-ds-text-muted",
+        "flex min-h-48 items-center justify-center border-y border-ds-border-soft px-6 text-center text-ds-sm text-ds-text-muted",
         className
       )}
       {...props}
@@ -250,7 +250,7 @@ function DataTablePagination({
     <div
       data-slot="data-table-pagination"
       className={cn(
-        "flex min-h-11 items-center gap-2 border-t border-ds-border-soft bg-ds-subtle px-4 py-2 text-[length:var(--ds-text-sm)] text-ds-text-secondary",
+        "flex min-h-11 items-center gap-2 border-t border-ds-border-soft bg-ds-subtle px-4 py-2 text-ds-sm text-ds-text-secondary",
         className
       )}
       {...props}

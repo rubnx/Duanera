@@ -113,7 +113,7 @@ function ExplorerExportPanel({
       {isOpen ? (
         <div
           id={panelId}
-          className="absolute right-0 top-[calc(100%+0.45rem)] z-50 w-[25rem] max-w-[calc(100vw-2rem)] overflow-hidden rounded-ds-md border border-ds-border bg-ds-surface shadow-ds-md"
+          className="absolute right-0 top-[calc(100%+0.45rem)] z-50 w-100 max-w-[calc(100vw-2rem)] overflow-hidden rounded-ds-md border border-ds-border bg-ds-surface shadow-ds-md"
         >
           <div className="border-b border-ds-border-soft px-3 py-2">
             <div className="flex items-start justify-between gap-3">
@@ -143,7 +143,7 @@ function ExplorerExportPanel({
             </div>
           </div>
 
-          <div className="max-h-[24rem] overflow-auto px-3 py-2">
+          <div className="max-h-96 overflow-auto px-3 py-2">
             {plan.warnings.length > 0 ? (
               <div className="mb-2 rounded-ds-md border border-ds-warning-border bg-ds-warning-soft p-2 text-ds-xs text-ds-warning">
                 <div className="font-semibold">Antes de descargar</div>

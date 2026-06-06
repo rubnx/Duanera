@@ -67,7 +67,7 @@ function Metric({
         <div className="text-xs text-muted-foreground">{label}</div>
         {status ? <DataQualityStatusBadge status={status} /> : null}
       </div>
-      <div className="mt-1 break-words font-mono text-sm font-medium">{value}</div>
+      <div className="mt-1 wrap-break-word font-mono text-sm font-medium">{value}</div>
       {help ? <div className="mt-1 text-xs leading-5 text-muted-foreground">{help}</div> : null}
     </div>
   );
@@ -97,7 +97,7 @@ export default async function DataQualityPage({ searchParams }: DataQualityPageP
   const exportFields = report.fieldCoverage.filter((field) => field.tradeFlow === "export");
 
   return (
-    <main className="mx-auto flex w-full max-w-[1440px] flex-col gap-4 px-4 py-5 lg:px-6">
+    <main className="mx-auto flex w-full max-w-360 flex-col gap-4 px-4 py-5 lg:px-6">
       <header className="flex flex-col gap-3 border-b pb-4 lg:flex-row lg:items-end lg:justify-between">
         <div className="flex min-w-0 flex-col gap-1">
           <Badge variant="outline" className="w-fit">

@@ -124,11 +124,11 @@ const compactControlClassName =
   "h-(--ds-control-height-sm) w-full min-w-0 rounded-ds-md border border-ds-border bg-ds-surface px-2 text-ds-xs leading-none text-ds-text-primary outline-none placeholder:text-ds-text-muted focus-visible:border-ds-focus-ring focus-visible:ring-3 focus-visible:ring-ds-focus-ring/20"
 
 const primaryFilterFieldWidths = {
-  tradeFlow: "w-[11rem]",
-  participant: "w-[8.25rem]",
-  period: "w-[8.5rem]",
-  hsCode: "w-[7rem]",
-  sort: "w-[11rem]",
+  tradeFlow: "w-44",
+  participant: "w-33",
+  period: "w-34",
+  hsCode: "w-28",
+  sort: "w-44",
 } as const
 
 function ControlledFilterInput({
@@ -296,7 +296,7 @@ function FilterSelect({
           size="sm"
           className={cn(
             compactControlClassName,
-            "!h-(--ds-control-height-sm) w-full rounded-ds-md bg-ds-surface py-0 pr-2 pl-2 text-ds-xs leading-none text-ds-text-primary ring-0 data-placeholder:text-ds-text-muted [&_svg]:size-3"
+            "h-(--ds-control-height-sm)! w-full rounded-ds-md bg-ds-surface py-0 pr-2 pl-2 text-ds-xs leading-none text-ds-text-primary ring-0 data-placeholder:text-ds-text-muted [&_svg]:size-3"
           )}
         >
           <SelectValue className="min-w-0 truncate" />
@@ -710,7 +710,7 @@ function ExplorerPeriodFilterControl({
         </button>
       </FilterControlLabel>
       {isOpen ? (
-        <div className="absolute left-0 top-[calc(100%+0.35rem)] z-50 w-[19rem] overflow-hidden rounded-ds-md border border-ds-border bg-ds-surface shadow-ds-md">
+        <div className="absolute left-0 top-[calc(100%+0.35rem)] z-50 w-76 overflow-hidden rounded-ds-md border border-ds-border bg-ds-surface shadow-ds-md">
           {yearShortcuts.length > 0 ? (
             <div className="border-b border-ds-border-soft px-2 py-2">
               <div className="mb-1.5 text-ds-xs font-semibold text-ds-text-muted">
